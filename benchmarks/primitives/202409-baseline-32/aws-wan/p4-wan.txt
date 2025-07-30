@@ -1,0 +1,337 @@
+Compiler flags: -O3 -g -pthread -D PROTOCOL_NUM=4 -mbmi -march=native -DCOMMUNICATOR_NUM=MPI_COMMUNICATOR
+-- Configuring done (2.6s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/ubuntu/secrecy-private/build
+[  0%] Building CXX object CMakeFiles/micro_primitives.dir/src/micro/micro_primitives.cpp.o
+[100%] Linking CXX executable micro_primitives
+[100%] Built target micro_primitives
+==== 8192 rows; 1 threads ====
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.2417   sec
+[ SW]           AND_EQ 0.4019   sec
+[ SW]    AND_NO_ASSIGN 0.2013   sec
+--
+[ SW]               EQ 0.8083   sec
+[ SW]     EQ_NO_ASSIGN 0.7281   sec
+--
+[ SW]               GR 0.972    sec
+[ SW]     GR_NO_ASSIGN 1.011    sec
+[ SW]              LEQ 0.9718   sec
+--
+[ SW]              RCA 4.5      sec
+[ SW]    RCA_NO_ASSIGN 4.502    sec
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.2419   sec
+[ SW]           AND_EQ 0.4019   sec
+[ SW]    AND_NO_ASSIGN 0.201    sec
+--
+[ SW]               EQ 0.7683   sec
+[ SW]     EQ_NO_ASSIGN 0.6876   sec
+--
+[ SW]               GR 1.011    sec
+[ SW]     GR_NO_ASSIGN 0.9712   sec
+[ SW]              LEQ 1.011    sec
+--
+[ SW]              RCA 4.498    sec
+[ SW]    RCA_NO_ASSIGN 4.498    sec
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.2417   sec
+[ SW]           AND_EQ 0.4018   sec
+[ SW]    AND_NO_ASSIGN 0.2013   sec
+--
+[ SW]               EQ 0.6875   sec
+[ SW]     EQ_NO_ASSIGN 0.7274   sec
+--
+[ SW]               GR 0.9711   sec
+[ SW]     GR_NO_ASSIGN 1.011    sec
+[ SW]              LEQ 0.9708   sec
+--
+[ SW]              RCA 4.497    sec
+[ SW]    RCA_NO_ASSIGN 4.497    sec
+==== 16384 rows; 1 threads ====
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.7237   sec
+[ SW]           AND_EQ 0.2825   sec
+[ SW]    AND_NO_ASSIGN 0.2825   sec
+--
+[ SW]               EQ 1.417    sec
+[ SW]     EQ_NO_ASSIGN 1.417    sec
+--
+[ SW]               GR 1.824    sec
+[ SW]     GR_NO_ASSIGN 1.863    sec
+[ SW]              LEQ 1.824    sec
+--
+[ SW]              RCA 4.505    sec
+[ SW]    RCA_NO_ASSIGN 4.503    sec
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.6437   sec
+[ SW]           AND_EQ 0.4023   sec
+[ SW]    AND_NO_ASSIGN 0.3225   sec
+--
+[ SW]               EQ 1.416    sec
+[ SW]     EQ_NO_ASSIGN 1.416    sec
+--
+[ SW]               GR 1.862    sec
+[ SW]     GR_NO_ASSIGN 1.822    sec
+[ SW]              LEQ 1.861    sec
+--
+[ SW]              RCA 4.505    sec
+[ SW]    RCA_NO_ASSIGN 4.504    sec
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.6436   sec
+[ SW]           AND_EQ 0.4024   sec
+[ SW]    AND_NO_ASSIGN 0.3224   sec
+--
+[ SW]               EQ 1.415    sec
+[ SW]     EQ_NO_ASSIGN 1.415    sec
+--
+[ SW]               GR 1.861    sec
+[ SW]     GR_NO_ASSIGN 1.821    sec
+[ SW]              LEQ 1.861    sec
+--
+[ SW]              RCA 4.504    sec
+[ SW]    RCA_NO_ASSIGN 4.504    sec
+==== 65536 rows; 1 threads ====
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 1.531    sec
+[ SW]           AND_EQ 1.13     sec
+[ SW]    AND_NO_ASSIGN 1.13     sec
+--
+[ SW]               EQ 5.66     sec
+[ SW]     EQ_NO_ASSIGN 5.66     sec
+--
+[ SW]               GR 6.961    sec
+[ SW]     GR_NO_ASSIGN 6.92     sec
+[ SW]              LEQ 6.96     sec
+--
+[ SW]              RCA 4.533    sec
+[ SW]    RCA_NO_ASSIGN 4.533    sec
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 1.532    sec
+[ SW]           AND_EQ 1.131    sec
+[ SW]    AND_NO_ASSIGN 1.131    sec
+--
+[ SW]               EQ 5.663    sec
+[ SW]     EQ_NO_ASSIGN 5.662    sec
+--
+[ SW]               GR 6.977    sec
+[ SW]     GR_NO_ASSIGN 6.93     sec
+[ SW]              LEQ 6.964    sec
+--
+[ SW]              RCA 4.532    sec
+[ SW]    RCA_NO_ASSIGN 4.532    sec
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 1.612    sec
+[ SW]           AND_EQ 1.13     sec
+[ SW]    AND_NO_ASSIGN 1.13     sec
+--
+[ SW]               EQ 5.661    sec
+[ SW]     EQ_NO_ASSIGN 5.661    sec
+--
+[ SW]               GR 6.936    sec
+[ SW]     GR_NO_ASSIGN 6.959    sec
+[ SW]              LEQ 6.924    sec
+--
+[ SW]              RCA 4.532    sec
+[ SW]    RCA_NO_ASSIGN 4.532    sec
+==== 131072 rows; 1 threads ====
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 2.782    sec
+[ SW]           AND_EQ 2.259    sec
+[ SW]    AND_NO_ASSIGN 2.26     sec
+--
+[ SW]               EQ 11.32    sec
+[ SW]     EQ_NO_ASSIGN 11.32    sec
+--
+[ SW]               GR 13.74    sec
+[ SW]     GR_NO_ASSIGN 13.72    sec
+[ SW]              LEQ 13.75    sec
+--
+[ SW]              RCA 4.569    sec
+[ SW]    RCA_NO_ASSIGN 4.57     sec
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 2.662    sec
+[ SW]           AND_EQ 2.258    sec
+[ SW]    AND_NO_ASSIGN 2.26     sec
+--
+[ SW]               EQ 11.31    sec
+[ SW]     EQ_NO_ASSIGN 11.32    sec
+--
+[ SW]               GR 13.76    sec
+[ SW]     GR_NO_ASSIGN 13.71    sec
+[ SW]              LEQ 13.75    sec
+--
+[ SW]              RCA 4.57     sec
+[ SW]    RCA_NO_ASSIGN 4.57     sec
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 2.662    sec
+[ SW]           AND_EQ 2.26     sec
+[ SW]    AND_NO_ASSIGN 2.261    sec
+--
+[ SW]               EQ 11.32    sec
+[ SW]     EQ_NO_ASSIGN 11.32    sec
+--
+[ SW]               GR 13.77    sec
+[ SW]     GR_NO_ASSIGN 13.72    sec
+[ SW]              LEQ 13.76    sec
+--
+[ SW]              RCA 4.572    sec
+[ SW]    RCA_NO_ASSIGN 4.571    sec
+==== 1048576 rows; 1 threads ====
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 18.49    sec
+[ SW]           AND_EQ 18.07    sec
+[ SW]    AND_NO_ASSIGN 18.08    sec
+--
+[ SW]               EQ 90.52    sec
+[ SW]     EQ_NO_ASSIGN 90.54    sec
+--
+[ SW]               GR 109.3    sec
+[ SW]     GR_NO_ASSIGN 109.3    sec
+[ SW]              LEQ 109.3    sec
+--
+[ SW]              RCA 18.56    sec
+[ SW]    RCA_NO_ASSIGN 18.56    sec
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 18.49    sec
+[ SW]           AND_EQ 18.08    sec
+[ SW]    AND_NO_ASSIGN 18.09    sec
+--
+[ SW]               EQ 90.58    sec
+[ SW]     EQ_NO_ASSIGN 90.56    sec
+--
+[ SW]               GR 109.4    sec
+[ SW]     GR_NO_ASSIGN 109.3    sec
+[ SW]              LEQ 109.4    sec
+--
+[ SW]              RCA 18.56    sec
+[ SW]    RCA_NO_ASSIGN 18.56    sec
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 18.49    sec
+[ SW]           AND_EQ 18.08    sec
+[ SW]    AND_NO_ASSIGN 18.09    sec
+--
+[ SW]               EQ 90.56    sec
+[ SW]     EQ_NO_ASSIGN 90.56    sec
+--
+[ SW]               GR 109.4    sec
+[ SW]     GR_NO_ASSIGN 109.3    sec
+[ SW]              LEQ 109.4    sec
+--
+[ SW]              RCA 18.57    sec
+[ SW]    RCA_NO_ASSIGN 18.56    sec
+==== 8388608 rows; 1 threads ====
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 145.2    sec
+[ SW]           AND_EQ 144.7    sec
+[ SW]    AND_NO_ASSIGN 144.7    sec
+--
+[ip-172-31-3-49][[24642,1],3][../../../../../../opal/mca/btl/tcp/btl_tcp.c:559:mca_btl_tcp_recv_blocking] recv(20) failed: Connection reset by peer (104)
+[ SW]               EQ 725      sec
+[ip-172-31-6-79][[24642,1],0][../../../../../../opal/mca/btl/tcp/btl_tcp.c:559:mca_btl_tcp_recv_blocking] recv(20) failed: Connection reset by peer (104)
+[ SW]     EQ_NO_ASSIGN 724.8    sec
+--
+[ SW]               GR 904.4    sec
+[ SW]     GR_NO_ASSIGN 875.2    sec
+[ SW]              LEQ 875.1    sec
+--
+[ SW]              RCA 148.5    sec
+[ SW]    RCA_NO_ASSIGN 148.5    sec
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 145.1    sec
+[ SW]           AND_EQ 144.6    sec
+[ SW]    AND_NO_ASSIGN 144.7    sec
+--
+[ SW]               EQ 724.6    sec
+[ SW]     EQ_NO_ASSIGN 724.6    sec
+--
+[ SW]               GR 875.2    sec
+[ SW]     GR_NO_ASSIGN 875.1    sec
+[ SW]              LEQ 875.3    sec
+--
+[ SW]              RCA 148.6    sec
+[ SW]    RCA_NO_ASSIGN 148.6    sec
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 145.2    sec
+[ SW]           AND_EQ 144.6    sec
+[ SW]    AND_NO_ASSIGN 144.7    sec
+--
+[ SW]               EQ 724.4    sec
+[ SW]     EQ_NO_ASSIGN 724.3    sec
+--
+[ip-172-31-10-19][[28592,1],1][../../../../../../opal/mca/btl/tcp/btl_tcp.c:559:mca_btl_tcp_recv_blocking] recv(20) failed: Connection reset by peer (104)
+[ SW]               GR 875      sec
+[ SW]     GR_NO_ASSIGN 875      sec
+[ SW]              LEQ 875.1    sec
+--
+[ SW]              RCA 148.5    sec
+[ SW]    RCA_NO_ASSIGN 148.5    sec
+==== 16777216 rows; 1 threads ====
+Vector 16777216 x 32b
+[=SW]            Start
+[ SW]              AND 289.9    sec
+[ SW]           AND_EQ 289.2    sec
+[ SW]    AND_NO_ASSIGN 289.3    sec
+--
+[ SW]               EQ 1449     sec
+[ SW]     EQ_NO_ASSIGN 1449     sec
+--
+[ SW]               GR 1750     sec
+[ SW]     GR_NO_ASSIGN 1750     sec
+[ip-172-31-3-49][[28380,1],3][../../../../../../opal/mca/btl/tcp/btl_tcp.c:559:mca_btl_tcp_recv_blocking] recv(20) failed: Connection reset by peer (104)
+[ip-172-31-3-49][[28380,1],3][../../../../../../opal/mca/btl/tcp/btl_tcp.c:559:mca_btl_tcp_recv_blocking] recv(20) failed: Connection reset by peer (104)
+[ SW]              LEQ 1752     sec
+--
+[ SW]              RCA 297.4    sec
+[ SW]    RCA_NO_ASSIGN 297.4    sec
+Vector 16777216 x 32b
+[=SW]            Start
+[ SW]              AND 289.9    sec
+[ SW]           AND_EQ 289.2    sec
+[ SW]    AND_NO_ASSIGN 289.2    sec
+--
+[ SW]               EQ 1449     sec
+[ SW]     EQ_NO_ASSIGN 1449     sec
+--
+[ SW]               GR 1750     sec
+[ SW]     GR_NO_ASSIGN 1751     sec
+[ SW]              LEQ 1751     sec
+--
+[ SW]              RCA 297.1    sec
+[ SW]    RCA_NO_ASSIGN 297.1    sec
+Vector 16777216 x 32b
+[=SW]            Start
+[ SW]              AND 289.8    sec
+[ SW]           AND_EQ 289.2    sec
+[ SW]    AND_NO_ASSIGN 289.3    sec
+--
+[ip-172-31-0-41][[14573,1],2][../../../../../../opal/mca/btl/tcp/btl_tcp.c:559:mca_btl_tcp_recv_blocking] recv(20) failed: Connection reset by peer (104)
+[ip-172-31-0-41][[14573,1],2][../../../../../../opal/mca/btl/tcp/btl_tcp.c:559:mca_btl_tcp_recv_blocking] recv(20) failed: Connection reset by peer (104)
+[ SW]               EQ 1449     sec
+[ SW]     EQ_NO_ASSIGN 1449     sec
+--
+[ SW]               GR 1750     sec
+[ SW]     GR_NO_ASSIGN 1750     sec
+[ip-172-31-10-19][[14573,1],1][../../../../../../opal/mca/btl/tcp/btl_tcp.c:559:mca_btl_tcp_recv_blocking] recv(20) failed: Connection reset by peer (104)
+[ip-172-31-6-79][[14573,1],0][../../../../../../opal/mca/btl/tcp/btl_tcp.c:559:mca_btl_tcp_recv_blocking] recv(20) failed: Connection reset by peer (104)
+[ip-172-31-6-79][[14573,1],0][../../../../../../opal/mca/btl/tcp/btl_tcp.c:559:mca_btl_tcp_recv_blocking] recv(20) failed: Connection reset by peer (104)
+mpirun: Forwarding signal 20 to job
+mpirun: Forwarding signal 18 to job

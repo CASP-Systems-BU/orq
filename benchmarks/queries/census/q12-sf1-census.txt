@@ -1,0 +1,20 @@
+Q12 SF 1
+SQLite setup skipped
+SQLite setup skipped
+[=SW]            Start
+[ SW]           Filter 2.993    sec
+[TABLE_SORT] k=3 n=7498744
+...skipped
+[TABLE_AGG] k=2 n=8388608 a=2
+...skipped
+[TABLE_SORT] k=1 n=7498744
+...skipped
+[ SW]             Join 3.55     sec
+[TABLE_SORT] k=3 n=5998744
+...skipped
+[TABLE_AGG] k=3 n=8388608 a=1
+...skipped
+[ SW]      Aggregation 2.167    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]          Overall 11.85    sec

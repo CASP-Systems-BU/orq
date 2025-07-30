@@ -1,0 +1,185 @@
+# Build a 3-machine cluster in Chameleon.
+#
+# Make sure to use SSH key forwarding (`ssh -A ...`) so that github is
+# accessible
+
+# This describes what is deployed by this template.
+description: Chameleon 3-Machine Cluster
+
+heat_template_version: 2015-10-15
+
+# The parameters section gathers configuration from the user.
+parameters:
+  key_name:
+    type: string
+    description: Name of a KeyPair to enable SSH access to the instance
+    default: default
+    constraints:
+    - custom_constraint: nova.keypair
+  num_workers:
+    type: number
+    description: Number of worker nodes to create
+    default: 2
+  image_name: 
+    type: string
+    description: Image to use for instances; template tested with CC-Ubuntu22.04-20230601
+    # constraints:
+    # - custom_constraint: glance.image
+    default: CC-Ubuntu22.04-20230601
+  repo_name:
+    type: string
+    description: git clone specification (HTTPS or SSH)
+    default: git@github.com:CASP-Systems-BU/orq.git
+  branch_name:
+    type: string
+    description: default branch to checkout and merge
+    default: SECRECY-DEV
+  instance_flavor:
+    type: string
+    description: Size of the KVM instance
+    default: m1.large
+  cidr:
+    type: string
+    description: Opens ports 1-65535 for this IP address block, use sharednet1 CIDR
+    default: 10.56.0.0/22
+
+outputs:
+  head_ip:
+    description: Head Floating IP address
+    value: { get_attr: [ head_floating_ip, floating_ip_address ] }
+  worker_ips:
+    description: Private IP addresses of the workers
+    value: { get_attr: [workers, first_address] }
+    
+# The resources section defines what OpenStack resources are to be deployed and
+# how they should be configured.
+resources:
+  # support resources
+  head_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: public
+  ansible_key:
+    type: OS::Nova::KeyPair
+    properties:
+      name: ansible-worker-key
+      save_private_key: true
+  security_group:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      rules:
+        - direction: ingress
+          ethertype: IPv4
+          port_range_min: 22
+          port_range_max: 22
+          protocol: tcp
+        - direction: ingress
+          ethertype: IPv4
+          port_range_min: 1
+          port_range_max: 65535
+          protocol: tcp
+          remote_ip_prefix: { get_param: cidr }
+  head_port:
+    type: OS::Neutron::Port
+    properties:
+      admin_state_up: true
+      name: head_port
+      network: sharednet1
+      security_groups:
+        - { get_resource: security_group }
+  head_association:
+    type: OS::Neutron::FloatingIPAssociation
+    properties:
+      floatingip_id: {get_resource: head_floating_ip}
+      port_id: {get_attr: [head, addresses, sharednet1, 0, port]}
+
+  # servers
+  # Start workers first so we can get their IP addresses.
+  workers:
+    type: OS::Heat::ResourceGroup
+    properties:
+      count: { get_param: num_workers }
+      resource_def:
+        type: OS::Nova::Server
+        properties:
+          flavor: { get_param: instance_flavor }
+          image: { get_param: image_name }
+          key_name: { get_resource: ansible_key }
+          security_groups:
+            - { get_resource: security_group }
+          networks:
+            - network: sharednet1
+          user_data: |
+            #!/bin/bash
+            touch /home/cc/ran-script-worker
+
+            sudo dnf update
+            sudo dnf install git cmake pkg-config gfortran wget -y
+
+  head:
+    type: OS::Nova::Server
+    properties:
+      flavor: { get_param: instance_flavor }
+      image: { get_param: image_name }
+      key_name: { get_param: key_name }
+      networks:
+        - { port: { get_resource: "head_port" } }
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          params:
+            __sshprivkey__  : { get_attr: [ansible_key,private_key] }
+            __keyprivfile__ : /home/cc/.ssh/id_rsa
+            __sshpubkey__   : { get_attr: [ansible_key,public_key] }
+            __REPO__        : { get_param: repo_name }
+            __BRANCH__      : { get_param: branch_name }
+            __workerip__    : { get_attr: [workers, first_address] }
+          template: |
+            #!/bin/bash
+
+            # Sign of life
+            touch /home/cc/ran-script-head
+            
+            #### SET UP SSH ####
+            cat >__keyprivfile__ <<EOF
+            __sshprivkey__
+            EOF
+            chown cc: __keyprivfile__
+            chmod 600 __keyprivfile__
+            echo "__sshpubkey__" >> /home/cc/.ssh/authorized_keys
+            cat >/home/cc/.ssh/config <<EOF
+            Host *
+              StrictHostKeyChecking no
+              UserKnownHostsFile=/dev/null
+            EOF
+
+            #### SET UP NETWORKING ####
+            cat >/home/cc/load_ips.py <<EOF
+            import json
+
+            LOCALHOST = '127.0.0.1'
+            ips = json.loads('__workerip__')
+            ips.insert(0, LOCALHOST)
+
+            for n, ip in enumerate(ips):
+              print(f"{ip} machine-{n+1}")
+            EOF
+
+            python /home/cc/load_ips.py | sudo tee -a /etc/hosts
+
+            #### INSTALL ####
+            # (CentOS workaround)
+            sudo dnf update || true
+            sudo dnf install git cmake pkg-config gfortran wget -y || true
+
+            #### SET UP SECRECY ####
+            # (the user will run this on first launch)
+            cat >/home/cc/setup_secrecy.sh <<EOF
+            git clone __REPO__ -b __BRANCH__ repo
+            cd repo
+            chmod a+x scripts/orchestration/deploy.sh
+            scripts/orchestration/deploy.sh
+            EOF
+
+            sudo chown cc: /home/cc/setup_secrecy.sh
+            chmod a+x /home/cc/setup_secrecy.sh

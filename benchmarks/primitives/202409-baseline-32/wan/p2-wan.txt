@@ -1,0 +1,141 @@
+Common interface: enp65s0f0np0
+Compiler flags: -O3 -g -pthread -D PROTOCOL_NUM=2 -mbmi -march=native -DCOMMUNICATOR_NUM=MPI_COMMUNICATOR
+libOTeConfig.cmake: /users/elibaum/secrecy-private/build/libOTe-install/lib/cmake/libOTe
+cryptoToolsConfig.cmake: /users/elibaum/secrecy-private/build/libOTe-install/lib/cmake/cryptoTools
+-- SODIUM_INCLUDE_DIRS:  /users/elibaum/secrecy-private/build/libOTe-install/include
+-- SODIUM_LIBRARIES:  /users/elibaum/secrecy-private/build/libOTe-install/lib/libsodium.a
+-- SODIUM_MONTGOMERY:  ON
+
+coprotoConfig.cmake: /users/elibaum/secrecy-private/build/libOTe-install/lib/cmake/coproto/coprotoConfig.cmake
+find_package(macoro REQUIRED COMPONENTS cpp_20;no_pic;no_asan;Release) @ /users/elibaum/secrecy-private/build/libOTe-install/lib/cmake/coproto/coprotoFindDeps.cmake
+macoroConfig.cmake: /users/elibaum/secrecy-private/build/libOTe-install/lib/cmake/macoro/macoroConfig.cmake
+
+
+Boost_LIB: Boost::system;Boost::thread;Boost::regex
+Boost_INC: /users/elibaum/secrecy-private/build/libOTe-install/include
+
+
+-- LIBDIVIDE_INCLUDE_DIRS:  /users/elibaum/secrecy-private/build/libOTe-install/include
+-- bitpolymulConfig.cmake : /users/elibaum/secrecy-private/build/libOTe-install/lib/cmake/bitpolymul
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /users/elibaum/secrecy-private/build
+Consolidate compiler generated dependencies of target micro_primitives
+[ 50%] Building CXX object CMakeFiles/micro_primitives.dir/src/micro/micro_primitives.cpp.o
+[100%] Linking CXX executable micro_primitives
+[100%] Built target micro_primitives
+prefix: mpirun --mca btl_tcp_if_include enp65s0f0np0 --mca oob_tcp_if_include enp65s0f0np0 -n 2 --host node0,node1
+==== 8192 rows; 1 threads ====
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.2418   sec
+[ SW]               EQ 0.4055   sec
+[ SW]               GR 0.5667   sec
+[ SW]              RCA 2.567    sec
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.2418   sec
+[ SW]               EQ 0.4052   sec
+[ SW]               GR 0.5671   sec
+[ SW]              RCA 2.568    sec
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.2414   sec
+[ SW]               EQ 0.4048   sec
+[ SW]               GR 0.5665   sec
+[ SW]              RCA 2.568    sec
+==== 16384 rows; 1 threads ====
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.3226   sec
+[ SW]               EQ 0.8121   sec
+[ SW]               GR 1.053    sec
+[ SW]              RCA 2.57     sec
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.3227   sec
+[ SW]               EQ 0.811    sec
+[ SW]               GR 1.054    sec
+[ SW]              RCA 2.571    sec
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.3228   sec
+[ SW]               EQ 0.8107   sec
+[ SW]               GR 1.054    sec
+[ SW]              RCA 2.571    sec
+==== 65536 rows; 1 threads ====
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.8081   sec
+[ SW]               EQ 3.239    sec
+[ SW]               GR 3.969    sec
+[ SW]              RCA 2.58     sec
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.8072   sec
+[ SW]               EQ 3.235    sec
+[ SW]               GR 3.965    sec
+[ SW]              RCA 2.577    sec
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.8084   sec
+[ SW]               EQ 3.245    sec
+[ SW]               GR 3.976    sec
+[ SW]              RCA 2.583    sec
+==== 131072 rows; 1 threads ====
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 1.454    sec
+[ SW]               EQ 6.483    sec
+[ SW]               GR 7.856    sec
+[ SW]              RCA 2.59     sec
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 1.455    sec
+[ SW]               EQ 6.481    sec
+[ SW]               GR 7.857    sec
+[ SW]              RCA 2.592    sec
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 1.455    sec
+[ SW]               EQ 6.474    sec
+[ SW]               GR 7.857    sec
+[ SW]              RCA 2.591    sec
+==== 1048576 rows; 1 threads ====
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 10.52    sec
+[ SW]               EQ 51.87    sec
+[ SW]               GR 62.64    sec
+[ SW]              RCA 10.54    sec
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 10.52    sec
+[ SW]               EQ 51.86    sec
+[ SW]               GR 62.58    sec
+[ SW]              RCA 10.47    sec
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 10.52    sec
+[ SW]               EQ 51.87    sec
+[ SW]               GR 62.64    sec
+[ SW]              RCA 10.5     sec
+==== 8388608 rows; 1 threads ====
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 83.03    sec
+[ SW]               EQ 415.9    sec
+[ SW]               GR 503.7    sec
+[ SW]              RCA 84.46    sec
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 83.01    sec
+[ SW]               EQ 415.5    sec
+[ SW]               GR 501.4    sec
+[ SW]              RCA 84.43    sec
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 83.1     sec
+[ SW]               EQ 415.1    sec
+[ SW]               GR 502.5    sec
+[ SW]              RCA 84       sec

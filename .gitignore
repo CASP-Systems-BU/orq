@@ -1,0 +1,47 @@
+.env
+*.png
+
+# local files
+notes
+
+# editors config directories
+.idea
+.vscode
+
+.DS_Store
+
+# Build directories
+cmake-*
+build-dir
+build
+
+# Excluding external libraries
+!src/external-lib
+src/external-lib/*
+!src/external-lib/CMakeLists.txt
+
+results/
+
+# Current CMake path hints let libOTE files reside either in the 
+# project root or in the build folder, gitignore for project root
+libOTe/
+libOTe-install/
+
+env/
+
+justfile
+FlameGraph/
+*.perf
+
+# Peter Rindal's permutation correlations library
+/permutations/
+
+__pycache__
+
+# excluding temp hosts file
+scripts/orchestration/aws/common/hosts_file
+
+# excluding aws secrects file
+# If it is still tracked,
+# run `git update-index --skip-worktree scripts/orchestration/aws/secrets.sh`
+scripts/orchestration/aws/secrets.sh

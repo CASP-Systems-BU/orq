@@ -1,0 +1,38 @@
+Q11 SF 10 | FRACTION 1e-05 | DIVIDE 100000
+SQLite setup skipped
+SQLite setup skipped
+SQLite setup skipped
+[=SW]            Start
+[ SW]    Nation filter 0.1048   sec
+[TABLE_SORT] k=3 n=100025
+...skipped
+[TABLE_AGG] k=2 n=131072 a=1
+...skipped
+Note: skipping requested trim: L = 25 R = 100000 w = 64 c = 2 
+[ SW]   NationKey Join 0.3203   sec
+[TABLE_SORT] k=3 n=8100025
+...skipped
+[TABLE_AGG] k=2 n=8388608 a=1
+...skipped
+Note: skipping requested trim: L = 100025 R = 8000000 w = 64 c = 3 
+[ SW]     SuppKey Join 3.405    sec
+[ SW]   Multiplication 0.2462   sec
+[ SW]     SubQuery Agg 0.1359   sec
+[TABLE_SORT] k=2 n=8100025
+...skipped
+[TABLE_AGG] k=2 n=8388608 a=1
+...skipped
+[ SW]    MainQuery Agg 3.337    sec
+[TABLE_SORT] k=2 n=8100026
+...skipped
+[TABLE_AGG] k=1 n=8388608 a=2
+...skipped
+Note: skipping requested trim: L = 1 R = 8100025 w = 64 c = 2 
+[ SW]      HAVING Join 1.992    sec
+[ SW]    HAVING Filter 0.7894   sec
+[TABLE_SORT] k=1 n=8100026
+...skipped
+[ SW]         Order by 1.287e-05 sec
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]          Overall 15.1     sec

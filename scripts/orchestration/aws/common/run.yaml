@@ -1,0 +1,121 @@
+- name: test aws connection
+  hosts: localhost
+
+  tasks:
+    ## async this and start up all machines at same time.
+    - name: start an instance with the machine type and image
+      community.aws.ec2_instance:
+        name: "{{item.name}}"
+        # key_name: "eli baum"
+        region: "{{item.region}}"
+        instance_type: "{{item.instance_type}}"
+        network_interfaces:
+          - assign_public_ip: true
+        vpc_subnet_id: subnet-7510fd08
+        image_id: "{{item.image_id}}"
+        tags:
+          Environment: Testing
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: 32
+              delete_on_termination: true
+      register: machine_sleepers
+      async: 600
+      poll: 0
+      loop: "{{ machine_json | list }}"
+
+    ## Wait for machines to be initialized
+    - name: Wait for machine provisioning complete
+      async_status:
+        jid: "{{item.ansible_job_id}}"
+      register: status
+      until: status.finished
+      retries: 20
+      delay: 60
+      loop: "{{machine_sleepers.results | list}}"
+
+    - name: Collecting machines information
+      community.aws.ec2_instance:
+        name: "{{item.name}}"
+        region: "{{item.region}}"
+        image_id: "{{item.image_id}}"
+        instance_type: "{{item.instance_type}}"
+        vpc_subnet_id: subnet-7510fd08
+      register: machine_information
+      loop: "{{ machine_json | list  }}"
+
+    # TODO: Instead run the `_update_hostfile.sh` playbook
+    - name: Add machines to host
+      add_host:
+        name: "{{item.instances[0]['public_ip_address']}}"
+        groups:
+          - machine_{{ind+1}}_host
+          - cluster
+      loop: "{{machine_information.results | list}}"
+      loop_control:
+        index_var: ind
+
+    - name: Delete old hosts file
+      file:
+        path: ../common/hosts_file
+        state: absent
+
+    - name: Create new hosts file template
+      copy:
+        src: ../common/hosts_file_temp
+        dest: ../common/hosts_file
+
+    - name: Add to hosts file
+      lineinfile:
+        path: ../common/hosts_file
+        line: "{{item.instances[0]['private_ip_address']}} node{{ind}}"
+        create: yes
+      loop: "{{machine_information.results | list}}"
+      loop_control:
+        index_var: ind
+
+- name: Start prepping machines
+  hosts: cluster
+  remote_user: ubuntu
+  tasks:
+    - name: Add StrictHostKeyChecking=no to ssh config
+      copy:
+        src: ../common/config
+        dest: ~/.ssh/config
+        owner: ubuntu
+        mode: u=rw,g=r,o=r
+
+    - name: Add hosts file to cluster
+      copy:
+        src: ../common/hosts_file
+        dest: /etc/hosts
+      become: yes
+
+    # built in ansible git doesn't auto use the machine's ssh to download.
+    # This is a simpler workaround.
+    - name: Update the github repo
+      shell: "git pull"
+      args:
+        chdir: ~/orq
+      retries: 3
+      delay: 5
+
+    - name: Clean up build directory from executables
+      shell: "make clean"
+      args:
+        chdir: ~/orq/build
+
+    - name: Clean up build directory
+      shell: "rm -rf CMakeFiles CMakeCache.txt Makefile cmake_install.cmake"
+      args:
+        chdir: ~/orq/build
+
+- name: Change hostnames for machines
+  hosts: localhost
+  tasks:
+    - name: Change hostnames for machines
+      shell: ssh ubuntu@{{item.instances[0]['public_ip_address']}} "sudo hostnamectl set-hostname node{{ind}}"
+      loop: "{{machine_information.results | list}}"
+      loop_control:
+        index_var: ind

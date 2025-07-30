@@ -1,0 +1,557 @@
+Compiler flags: -O3 -g -pthread -D PROTOCOL_NUM=1 -mbmi -march=native -DCOMMUNICATOR_NUM=MPI_COMMUNICATOR
+-- Configuring done (2.6s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/ubuntu/secrecy-private/build
+[ 50%] Building CXX object CMakeFiles/micro_primitives.dir/src/micro/micro_primitives.cpp.o
+[100%] Linking CXX executable micro_primitives
+[100%] Built target micro_primitives
+==== 8192 rows; 1 threads ====
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.0001056 sec
+[ SW]               EQ 0.0007503 sec
+[ SW]               GR 0.001205 sec
+[ SW]              RCA 0.004431 sec
+
+========================
+Op Counts (32b):  [rel|total]
+ and_b  106752 |  106752
+ not_b   34048 |   34048
+ xor_b   58112 |   58112
+
+Round Counts:
+ and_b      45 |      45
+Total rounds: 45 (45 overall)
+========================
+
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.000117 sec
+[ SW]               EQ 0.0007379 sec
+[ SW]               GR 0.001256 sec
+[ SW]              RCA 0.004463 sec
+
+========================
+Op Counts (32b):  [rel|total]
+ and_b  106752 |  106752
+ not_b   34048 |   34048
+ xor_b   58112 |   58112
+
+Round Counts:
+ and_b      45 |      45
+Total rounds: 45 (45 overall)
+========================
+
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.0001044 sec
+[ SW]               EQ 0.0007387 sec
+[ SW]               GR 0.00122  sec
+[ SW]              RCA 0.004446 sec
+
+========================
+Op Counts (32b):  [rel|total]
+ and_b  106752 |  106752
+ not_b   34048 |   34048
+ xor_b   58112 |   58112
+
+Round Counts:
+ and_b      45 |      45
+Total rounds: 45 (45 overall)
+========================
+
+==== 16384 rows; 1 threads ====
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.000156 sec
+[ SW]               EQ 0.001255 sec
+[ SW]               GR 0.001934 sec
+[ SW]              RCA 0.005667 sec
+
+========================
+Op Counts (32b):  [rel|total]
+ and_b  213504 |  213504
+ not_b   68096 |   68096
+ xor_b  116224 |  116224
+
+Round Counts:
+ and_b      45 |      45
+Total rounds: 45 (45 overall)
+========================
+
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.0001437 sec
+[ SW]               EQ 0.001222 sec
+[ SW]               GR 0.001909 sec
+[ SW]              RCA 0.005696 sec
+
+========================
+Op Counts (32b):  [rel|total]
+ and_b  213504 |  213504
+ not_b   68096 |   68096
+ xor_b  116224 |  116224
+
+Round Counts:
+ and_b      45 |      45
+Total rounds: 45 (45 overall)
+========================
+
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.0001632 sec
+[ SW]               EQ 0.001261 sec
+[ SW]               GR 0.001937 sec
+[ SW]              RCA 0.005777 sec
+
+========================
+Op Counts (32b):  [rel|total]
+ and_b  213504 |  213504
+ not_b   68096 |   68096
+ xor_b  116224 |  116224
+
+Round Counts:
+ and_b      45 |      45
+Total rounds: 45 (45 overall)
+========================
+
+==== 65536 rows; 1 threads ====
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.0005201 sec
+[ SW]               EQ 0.004386 sec
+[ SW]               GR 0.006379 sec
+[ SW]              RCA 0.01293  sec
+
+========================
+Op Counts (32b):  [rel|total]
+ and_b  854016 |  854016
+ not_b  272384 |  272384
+ xor_b  464896 |  464896
+
+Round Counts:
+ and_b      45 |      45
+Total rounds: 45 (45 overall)
+========================
+
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.000535 sec
+[ SW]               EQ 0.004362 sec
+[ SW]               GR 0.006431 sec
+[ SW]              RCA 0.01288  sec
+
+========================
+Op Counts (32b):  [rel|total]
+ and_b  854016 |  854016
+ not_b  272384 |  272384
+ xor_b  464896 |  464896
+
+Round Counts:
+ and_b      45 |      45
+Total rounds: 45 (45 overall)
+========================
+
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.0005289 sec
+[ SW]               EQ 0.004233 sec
+[ SW]               GR 0.006209 sec
+[ SW]              RCA 0.01295  sec
+
+========================
+Op Counts (32b):  [rel|total]
+ and_b  854016 |  854016
+ not_b  272384 |  272384
+ xor_b  464896 |  464896
+
+Round Counts:
+ and_b      45 |      45
+Total rounds: 45 (45 overall)
+========================
+
+==== 131072 rows; 1 threads ====
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.000968 sec
+[ SW]               EQ 0.008512 sec
+[ SW]               GR 0.01228  sec
+[ SW]              RCA 0.02275  sec
+
+==========================
+Op Counts (32b):  [rel|total]
+ and_b  1708032 |  1708032
+ not_b   544768 |   544768
+ xor_b   929792 |   929792
+
+Round Counts:
+ and_b       45 |       45
+Total rounds: 45 (45 overall)
+==========================
+
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.0009878 sec
+[ SW]               EQ 0.008461 sec
+[ SW]               GR 0.0123   sec
+[ SW]              RCA 0.0229   sec
+
+==========================
+Op Counts (32b):  [rel|total]
+ and_b  1708032 |  1708032
+ not_b   544768 |   544768
+ xor_b   929792 |   929792
+
+Round Counts:
+ and_b       45 |       45
+Total rounds: 45 (45 overall)
+==========================
+
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.0009914 sec
+[ SW]               EQ 0.00849  sec
+[ SW]               GR 0.01219  sec
+[ SW]              RCA 0.02267  sec
+
+==========================
+Op Counts (32b):  [rel|total]
+ and_b  1708032 |  1708032
+ not_b   544768 |   544768
+ xor_b   929792 |   929792
+
+Round Counts:
+ and_b       45 |       45
+Total rounds: 45 (45 overall)
+==========================
+
+==== 1048576 rows; 1 threads ====
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 0.007545 sec
+[ SW]               EQ 0.06744  sec
+[ SW]               GR 0.09729  sec
+[ SW]              RCA 0.1605   sec
+
+============================
+Op Counts (32b):  [rel|total]
+ and_b  13664256 |  13664256
+ not_b   4358144 |   4358144
+ xor_b   7438336 |   7438336
+
+Round Counts:
+ and_b        45 |        45
+Total rounds: 45 (45 overall)
+============================
+
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 0.007479 sec
+[ SW]               EQ 0.06761  sec
+[ SW]               GR 0.09711  sec
+[ SW]              RCA 0.1603   sec
+
+============================
+Op Counts (32b):  [rel|total]
+ and_b  13664256 |  13664256
+ not_b   4358144 |   4358144
+ xor_b   7438336 |   7438336
+
+Round Counts:
+ and_b        45 |        45
+Total rounds: 45 (45 overall)
+============================
+
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 0.007397 sec
+[ SW]               EQ 0.0674   sec
+[ SW]               GR 0.09724  sec
+[ SW]              RCA 0.1603   sec
+
+============================
+Op Counts (32b):  [rel|total]
+ and_b  13664256 |  13664256
+ not_b   4358144 |   4358144
+ xor_b   7438336 |   7438336
+
+Round Counts:
+ and_b        45 |        45
+Total rounds: 45 (45 overall)
+============================
+
+==== 8388608 rows; 1 threads ====
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 0.05931  sec
+[ SW]               EQ 0.8304   sec
+[ SW]               GR 1.313    sec
+[ SW]              RCA 1.325    sec
+
+==============================
+Op Counts (32b):  [rel|total]
+ and_b  109314048 |  109314048
+ not_b   34865152 |   34865152
+ xor_b   59506688 |   59506688
+
+Round Counts:
+ and_b         45 |         45
+Total rounds: 45 (45 overall)
+==============================
+
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 0.06018  sec
+[ SW]               EQ 0.8305   sec
+[ SW]               GR 1.308    sec
+[ SW]              RCA 1.322    sec
+
+==============================
+Op Counts (32b):  [rel|total]
+ and_b  109314048 |  109314048
+ not_b   34865152 |   34865152
+ xor_b   59506688 |   59506688
+
+Round Counts:
+ and_b         45 |         45
+Total rounds: 45 (45 overall)
+==============================
+
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 0.05924  sec
+[ SW]               EQ 0.8281   sec
+[ SW]               GR 1.311    sec
+[ SW]              RCA 1.324    sec
+
+==============================
+Op Counts (32b):  [rel|total]
+ and_b  109314048 |  109314048
+ not_b   34865152 |   34865152
+ xor_b   59506688 |   59506688
+
+Round Counts:
+ and_b         45 |         45
+Total rounds: 45 (45 overall)
+==============================
+
+==== 16777216 rows; 1 threads ====
+Vector 16777216 x 32b
+[=SW]            Start
+[ SW]              AND 0.1197   sec
+[ SW]               EQ 1.69     sec
+[ SW]               GR 2.669    sec
+[ SW]              RCA 2.644    sec
+
+==============================
+Op Counts (32b):  [rel|total]
+ and_b  218628096 |  218628096
+ not_b   69730304 |   69730304
+ xor_b  119013376 |  119013376
+
+Round Counts:
+ and_b         45 |         45
+Total rounds: 45 (45 overall)
+==============================
+
+Vector 16777216 x 32b
+[=SW]            Start
+[ SW]              AND 0.1205   sec
+[ SW]               EQ 1.693    sec
+[ SW]               GR 2.689    sec
+[ SW]              RCA 2.644    sec
+
+==============================
+Op Counts (32b):  [rel|total]
+ and_b  218628096 |  218628096
+ not_b   69730304 |   69730304
+ xor_b  119013376 |  119013376
+
+Round Counts:
+ and_b         45 |         45
+Total rounds: 45 (45 overall)
+==============================
+
+Vector 16777216 x 32b
+[=SW]            Start
+[ SW]              AND 0.1199   sec
+[ SW]               EQ 1.691    sec
+[ SW]               GR 2.672    sec
+[ SW]              RCA 2.642    sec
+
+==============================
+Op Counts (32b):  [rel|total]
+ and_b  218628096 |  218628096
+ not_b   69730304 |   69730304
+ xor_b  119013376 |  119013376
+
+Round Counts:
+ and_b         45 |         45
+Total rounds: 45 (45 overall)
+==============================
+
+==== 67108864 rows; 1 threads ====
+Vector 67108864 x 32b
+[=SW]            Start
+[ SW]              AND 0.4852   sec
+[ SW]               EQ 6.814    sec
+[ SW]               GR 10.75    sec
+[ SW]              RCA 10.62    sec
+
+==============================
+Op Counts (32b):  [rel|total]
+ and_b  874512384 |  874512384
+ not_b  278921216 |  278921216
+ xor_b  476053504 |  476053504
+
+Round Counts:
+ and_b         45 |         45
+Total rounds: 45 (45 overall)
+==============================
+
+Vector 67108864 x 32b
+[=SW]            Start
+[ SW]              AND 0.4898   sec
+[ SW]               EQ 6.862    sec
+[ SW]               GR 10.76    sec
+[ SW]              RCA 10.63    sec
+
+==============================
+Op Counts (32b):  [rel|total]
+ and_b  874512384 |  874512384
+ not_b  278921216 |  278921216
+ xor_b  476053504 |  476053504
+
+Round Counts:
+ and_b         45 |         45
+Total rounds: 45 (45 overall)
+==============================
+
+Vector 67108864 x 32b
+[=SW]            Start
+[ SW]              AND 0.4814   sec
+[ SW]               EQ 6.851    sec
+[ SW]               GR 10.73    sec
+[ SW]              RCA 10.62    sec
+
+==============================
+Op Counts (32b):  [rel|total]
+ and_b  874512384 |  874512384
+ not_b  278921216 |  278921216
+ xor_b  476053504 |  476053504
+
+Round Counts:
+ and_b         45 |         45
+Total rounds: 45 (45 overall)
+==============================
+
+==== 134217728 rows; 1 threads ====
+Vector 134217728 x 32b
+[=SW]            Start
+[ SW]              AND 0.9597   sec
+[ SW]               EQ 13.63    sec
+[ SW]               GR 21.41    sec
+[ SW]              RCA 21.32    sec
+
+================================
+Op Counts (32b):  [rel|total]
+ and_b  1749024768 |  1749024768
+ not_b   557842432 |   557842432
+ xor_b   952107008 |   952107008
+
+Round Counts:
+ and_b          45 |          45
+Total rounds: 45 (45 overall)
+================================
+
+Vector 134217728 x 32b
+[=SW]            Start
+[ SW]              AND 0.9605   sec
+[ SW]               EQ 13.6     sec
+[ SW]               GR 21.41    sec
+[ SW]              RCA 21.31    sec
+
+================================
+Op Counts (32b):  [rel|total]
+ and_b  1749024768 |  1749024768
+ not_b   557842432 |   557842432
+ xor_b   952107008 |   952107008
+
+Round Counts:
+ and_b          45 |          45
+Total rounds: 45 (45 overall)
+================================
+
+Vector 134217728 x 32b
+[=SW]            Start
+[ SW]              AND 0.9603   sec
+[ SW]               EQ 13.63    sec
+[ SW]               GR 21.42    sec
+[ SW]              RCA 21.34    sec
+
+================================
+Op Counts (32b):  [rel|total]
+ and_b  1749024768 |  1749024768
+ not_b   557842432 |   557842432
+ xor_b   952107008 |   952107008
+
+Round Counts:
+ and_b          45 |          45
+Total rounds: 45 (45 overall)
+================================
+
+==== 536870912 rows; 1 threads ====
+Vector 536870912 x 32b
+[=SW]            Start
+[ SW]              AND 3.838    sec
+[ SW]               EQ 54.6     sec
+[ SW]               GR 86.18    sec
+[ SW]              RCA 91.35    sec
+
+================================
+Op Counts (32b):  [rel|total]
+ and_b  6996099072 |  6996099072
+ not_b  2231369728 |  2231369728
+ xor_b  3808428032 |  3808428032
+
+Round Counts:
+ and_b          45 |          45
+Total rounds: 45 (45 overall)
+================================
+
+Vector 536870912 x 32b
+[=SW]            Start
+[ SW]              AND 3.844    sec
+[ SW]               EQ 54.69    sec
+[ SW]               GR 86.26    sec
+[ SW]              RCA 91.38    sec
+
+================================
+Op Counts (32b):  [rel|total]
+ and_b  6996099072 |  6996099072
+ not_b  2231369728 |  2231369728
+ xor_b  3808428032 |  3808428032
+
+Round Counts:
+ and_b          45 |          45
+Total rounds: 45 (45 overall)
+================================
+
+Vector 536870912 x 32b
+[=SW]            Start
+[ SW]              AND 3.834    sec
+[ SW]               EQ 54.58    sec
+[ SW]               GR 86.2     sec
+[ SW]              RCA 91.34    sec
+
+================================
+Op Counts (32b):  [rel|total]
+ and_b  6996099072 |  6996099072
+ not_b  2231369728 |  2231369728
+ xor_b  3808428032 |  3808428032
+
+Round Counts:
+ and_b          45 |          45
+Total rounds: 45 (45 overall)
+================================
+

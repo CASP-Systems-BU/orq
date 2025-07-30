@@ -1,0 +1,2076 @@
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /users/elibaum/secrecy-private/build
+==== 1048576 rows; 1 threads ====
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.769e-05 sec
+[ SW]       Radix Sort 25.76    sec
+[=PROFILE]           --oaep 0.01432  sec
+[=PROFILE]           --oasp 0.02431  sec
+[=PROFILE]           --perm 0.2873   sec
+[=PROFILE]        --reshare 0.2509   sec
+[=PROFILE]        oaep-copy 0.247    sec
+[=PROFILE]         oaep-get 7.497e-05 sec
+[=PROFILE]         oaep-lap 0.5876   sec
+[=PROFILE]        oaep-open 0.2427   sec
+[=PROFILE]         oasp-lap 1.62     sec
+[=PROFILE]     oasp-reshare 0.01846  sec
+[=PROFILE]         perm-b2a 1.476    sec
+[=PROFILE]        perm-copy 0.1214   sec
+[=PROFILE]         perm-mpx 0.781    sec
+[=PROFILE]         perm-neg 0.2709   sec
+[=PROFILE]         perm-pfx 1.236    sec
+[=PROFILE]    radix-genperm 0.005069 sec
+[=PROFILE]       radix-oaep 0.0002881 sec
+[=PROFILE]        radix-pad 0.02327  sec
+[=PROFILE]    radix-reserve 14.31    sec
+[=PROFILE]      radix-unpad 0.09668  sec
+[=PROFILE]    reshare-alloc 0.04813  sec
+[=PROFILE]     reshare-comm 2.296    sec
+[=PROFILE] reshare-decide-r 0.002149 sec
+[=PROFILE] reshare-decide-s 0.001301 sec
+[=PROFILE]     reshare-rand 1.806    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.024e-05 sec
+[ SW]       Radix Sort 25.51    sec
+[=PROFILE]           --oaep 0.01406  sec
+[=PROFILE]           --oasp 0.02455  sec
+[=PROFILE]           --perm 0.289    sec
+[=PROFILE]        --reshare 0.2508   sec
+[=PROFILE]        oaep-copy 0.2525   sec
+[=PROFILE]         oaep-get 6.62e-05 sec
+[=PROFILE]         oaep-lap 0.5776   sec
+[=PROFILE]        oaep-open 0.2369   sec
+[=PROFILE]         oasp-lap 1.574    sec
+[=PROFILE]     oasp-reshare 0.01835  sec
+[=PROFILE]         perm-b2a 1.321    sec
+[=PROFILE]        perm-copy 0.1164   sec
+[=PROFILE]         perm-mpx 0.7805   sec
+[=PROFILE]         perm-neg 0.2763   sec
+[=PROFILE]         perm-pfx 1.231    sec
+[=PROFILE]    radix-genperm 0.005039 sec
+[=PROFILE]       radix-oaep 0.0002659 sec
+[=PROFILE]        radix-pad 0.02292  sec
+[=PROFILE]    radix-reserve 14.32    sec
+[=PROFILE]      radix-unpad 0.09436  sec
+[=PROFILE]    reshare-alloc 0.04813  sec
+[=PROFILE]     reshare-comm 2.259    sec
+[=PROFILE] reshare-decide-r 0.002155 sec
+[=PROFILE] reshare-decide-s 0.001257 sec
+[=PROFILE]     reshare-rand 1.801    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.613e-05 sec
+[ SW]       Radix Sort 25.59    sec
+[=PROFILE]           --oaep 0.01397  sec
+[=PROFILE]           --oasp 0.02449  sec
+[=PROFILE]           --perm 0.2896   sec
+[=PROFILE]        --reshare 0.2531   sec
+[=PROFILE]        oaep-copy 0.2494   sec
+[=PROFILE]         oaep-get 6.112e-05 sec
+[=PROFILE]         oaep-lap 0.5891   sec
+[=PROFILE]        oaep-open 0.2443   sec
+[=PROFILE]         oasp-lap 1.613    sec
+[=PROFILE]     oasp-reshare 0.01846  sec
+[=PROFILE]         perm-b2a 1.528    sec
+[=PROFILE]        perm-copy 0.12     sec
+[=PROFILE]         perm-mpx 0.7763   sec
+[=PROFILE]         perm-neg 0.2778   sec
+[=PROFILE]         perm-pfx 1.23     sec
+[=PROFILE]    radix-genperm 0.005073 sec
+[=PROFILE]       radix-oaep 0.000282 sec
+[=PROFILE]        radix-pad 0.02271  sec
+[=PROFILE]    radix-reserve 14.05    sec
+[=PROFILE]      radix-unpad 0.09632  sec
+[=PROFILE]    reshare-alloc 0.04803  sec
+[=PROFILE]     reshare-comm 2.331    sec
+[=PROFILE] reshare-decide-r 0.00221  sec
+[=PROFILE] reshare-decide-s 0.001274 sec
+[=PROFILE]     reshare-rand 1.803    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.179e-05 sec
+[ SW]       Radix Sort 25.39    sec
+[=PROFILE]           --oaep 0.01399  sec
+[=PROFILE]           --oasp 0.02428  sec
+[=PROFILE]           --perm 0.2864   sec
+[=PROFILE]        --reshare 0.25     sec
+[=PROFILE]        oaep-copy 0.2534   sec
+[=PROFILE]         oaep-get 8.802e-05 sec
+[=PROFILE]         oaep-lap 0.5797   sec
+[=PROFILE]        oaep-open 0.2413   sec
+[=PROFILE]         oasp-lap 1.586    sec
+[=PROFILE]     oasp-reshare 0.01848  sec
+[=PROFILE]         perm-b2a 1.326    sec
+[=PROFILE]        perm-copy 0.1159   sec
+[=PROFILE]         perm-mpx 0.7757   sec
+[=PROFILE]         perm-neg 0.2682   sec
+[=PROFILE]         perm-pfx 1.222    sec
+[=PROFILE]    radix-genperm 0.005049 sec
+[=PROFILE]       radix-oaep 0.0002694 sec
+[=PROFILE]        radix-pad 0.02292  sec
+[=PROFILE]    radix-reserve 14.18    sec
+[=PROFILE]      radix-unpad 0.09659  sec
+[=PROFILE]    reshare-alloc 0.04824  sec
+[=PROFILE]     reshare-comm 2.259    sec
+[=PROFILE] reshare-decide-r 0.002184 sec
+[=PROFILE] reshare-decide-s 0.001293 sec
+[=PROFILE]     reshare-rand 1.806    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.824e-05 sec
+[ SW]       Radix Sort 25.24    sec
+[=PROFILE]           --oaep 0.01392  sec
+[=PROFILE]           --oasp 0.02421  sec
+[=PROFILE]           --perm 0.2865   sec
+[=PROFILE]        --reshare 0.2501   sec
+[=PROFILE]        oaep-copy 0.2532   sec
+[=PROFILE]         oaep-get 6.761e-05 sec
+[=PROFILE]         oaep-lap 0.5767   sec
+[=PROFILE]        oaep-open 0.2384   sec
+[=PROFILE]         oasp-lap 1.58     sec
+[=PROFILE]     oasp-reshare 0.01853  sec
+[=PROFILE]         perm-b2a 1.331    sec
+[=PROFILE]        perm-copy 0.1161   sec
+[=PROFILE]         perm-mpx 0.7814   sec
+[=PROFILE]         perm-neg 0.2682   sec
+[=PROFILE]         perm-pfx 1.219    sec
+[=PROFILE]    radix-genperm 0.005199 sec
+[=PROFILE]       radix-oaep 0.0002705 sec
+[=PROFILE]        radix-pad 0.0224   sec
+[=PROFILE]    radix-reserve 14.04    sec
+[=PROFILE]      radix-unpad 0.09495  sec
+[=PROFILE]    reshare-alloc 0.04794  sec
+[=PROFILE]     reshare-comm 2.276    sec
+[=PROFILE] reshare-decide-r 0.002221 sec
+[=PROFILE] reshare-decide-s 0.001267 sec
+[=PROFILE]     reshare-rand 1.8      sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.039e-05 sec
+[ SW]       Radix Sort 25.42    sec
+[=PROFILE]           --oaep 0.01392  sec
+[=PROFILE]           --oasp 0.02476  sec
+[=PROFILE]           --perm 0.2896   sec
+[=PROFILE]        --reshare 0.2526   sec
+[=PROFILE]        oaep-copy 0.249    sec
+[=PROFILE]         oaep-get 6.515e-05 sec
+[=PROFILE]         oaep-lap 0.6026   sec
+[=PROFILE]        oaep-open 0.2432   sec
+[=PROFILE]         oasp-lap 1.651    sec
+[=PROFILE]     oasp-reshare 0.01869  sec
+[=PROFILE]         perm-b2a 1.416    sec
+[=PROFILE]        perm-copy 0.1235   sec
+[=PROFILE]         perm-mpx 0.7827   sec
+[=PROFILE]         perm-neg 0.2778   sec
+[=PROFILE]         perm-pfx 1.232    sec
+[=PROFILE]    radix-genperm 0.005014 sec
+[=PROFILE]       radix-oaep 0.0002857 sec
+[=PROFILE]        radix-pad 0.02274  sec
+[=PROFILE]    radix-reserve 13.97    sec
+[=PROFILE]      radix-unpad 0.09543  sec
+[=PROFILE]    reshare-alloc 0.04801  sec
+[=PROFILE]     reshare-comm 2.291    sec
+[=PROFILE] reshare-decide-r 0.002197 sec
+[=PROFILE] reshare-decide-s 0.001328 sec
+[=PROFILE]     reshare-rand 1.808    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.798e-05 sec
+[ SW]       Radix Sort 25.3     sec
+[=PROFILE]           --oaep 0.01393  sec
+[=PROFILE]           --oasp 0.02431  sec
+[=PROFILE]           --perm 0.2863   sec
+[=PROFILE]        --reshare 0.274    sec
+[=PROFILE]        oaep-copy 0.2497   sec
+[=PROFILE]         oaep-get 6.088e-05 sec
+[=PROFILE]         oaep-lap 0.5874   sec
+[=PROFILE]        oaep-open 0.2305   sec
+[=PROFILE]         oasp-lap 1.615    sec
+[=PROFILE]     oasp-reshare 0.0195   sec
+[=PROFILE]         perm-b2a 1.429    sec
+[=PROFILE]        perm-copy 0.122    sec
+[=PROFILE]         perm-mpx 0.7684   sec
+[=PROFILE]         perm-neg 0.2689   sec
+[=PROFILE]         perm-pfx 1.216    sec
+[=PROFILE]    radix-genperm 0.004977 sec
+[=PROFILE]       radix-oaep 0.0002648 sec
+[=PROFILE]        radix-pad 0.02264  sec
+[=PROFILE]    radix-reserve 14.01    sec
+[=PROFILE]      radix-unpad 0.09488  sec
+[=PROFILE]    reshare-alloc 0.05031  sec
+[=PROFILE]     reshare-comm 2.196    sec
+[=PROFILE] reshare-decide-r 0.002267 sec
+[=PROFILE] reshare-decide-s 0.00137  sec
+[=PROFILE]     reshare-rand 1.818    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.079e-05 sec
+[ SW]       Radix Sort 25.52    sec
+[=PROFILE]           --oaep 0.01396  sec
+[=PROFILE]           --oasp 0.02446  sec
+[=PROFILE]           --perm 0.2865   sec
+[=PROFILE]        --reshare 0.252    sec
+[=PROFILE]        oaep-copy 0.2495   sec
+[=PROFILE]         oaep-get 6.348e-05 sec
+[=PROFILE]         oaep-lap 0.5862   sec
+[=PROFILE]        oaep-open 0.2394   sec
+[=PROFILE]         oasp-lap 1.612    sec
+[=PROFILE]     oasp-reshare 0.01846  sec
+[=PROFILE]         perm-b2a 1.322    sec
+[=PROFILE]        perm-copy 0.1215   sec
+[=PROFILE]         perm-mpx 0.7787   sec
+[=PROFILE]         perm-neg 0.2764   sec
+[=PROFILE]         perm-pfx 1.236    sec
+[=PROFILE]    radix-genperm 0.005177 sec
+[=PROFILE]       radix-oaep 0.0002705 sec
+[=PROFILE]        radix-pad 0.02283  sec
+[=PROFILE]    radix-reserve 14.25    sec
+[=PROFILE]      radix-unpad 0.09454  sec
+[=PROFILE]    reshare-alloc 0.04825  sec
+[=PROFILE]     reshare-comm 2.271    sec
+[=PROFILE] reshare-decide-r 0.002207 sec
+[=PROFILE] reshare-decide-s 0.001278 sec
+[=PROFILE]     reshare-rand 1.807    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.645e-05 sec
+[ SW]       Radix Sort 25.47    sec
+[=PROFILE]           --oaep 0.01425  sec
+[=PROFILE]           --oasp 0.0252   sec
+[=PROFILE]           --perm 0.2889   sec
+[=PROFILE]        --reshare 0.2577   sec
+[=PROFILE]        oaep-copy 0.2498   sec
+[=PROFILE]         oaep-get 7.027e-05 sec
+[=PROFILE]         oaep-lap 0.5872   sec
+[=PROFILE]        oaep-open 0.2355   sec
+[=PROFILE]         oasp-lap 1.603    sec
+[=PROFILE]     oasp-reshare 0.01978  sec
+[=PROFILE]         perm-b2a 1.308    sec
+[=PROFILE]        perm-copy 0.1247   sec
+[=PROFILE]         perm-mpx 0.7749   sec
+[=PROFILE]         perm-neg 0.2745   sec
+[=PROFILE]         perm-pfx 1.232    sec
+[=PROFILE]    radix-genperm 0.005028 sec
+[=PROFILE]       radix-oaep 0.0002941 sec
+[=PROFILE]        radix-pad 0.02271  sec
+[=PROFILE]    radix-reserve 14.2     sec
+[=PROFILE]      radix-unpad 0.09528  sec
+[=PROFILE]    reshare-alloc 0.04806  sec
+[=PROFILE]     reshare-comm 2.267    sec
+[=PROFILE] reshare-decide-r 0.002183 sec
+[=PROFILE] reshare-decide-s 0.001274 sec
+[=PROFILE]     reshare-rand 1.836    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.817e-05 sec
+[ SW]       Radix Sort 25.45    sec
+[=PROFILE]           --oaep 0.0141   sec
+[=PROFILE]           --oasp 0.02437  sec
+[=PROFILE]           --perm 0.2889   sec
+[=PROFILE]        --reshare 0.2729   sec
+[=PROFILE]        oaep-copy 0.2537   sec
+[=PROFILE]         oaep-get 6.291e-05 sec
+[=PROFILE]         oaep-lap 0.5782   sec
+[=PROFILE]        oaep-open 0.2416   sec
+[=PROFILE]         oasp-lap 1.584    sec
+[=PROFILE]     oasp-reshare 0.01958  sec
+[=PROFILE]         perm-b2a 1.36     sec
+[=PROFILE]        perm-copy 0.1165   sec
+[=PROFILE]         perm-mpx 0.7777   sec
+[=PROFILE]         perm-neg 0.2698   sec
+[=PROFILE]         perm-pfx 1.227    sec
+[=PROFILE]    radix-genperm 0.004969 sec
+[=PROFILE]       radix-oaep 0.0002524 sec
+[=PROFILE]        radix-pad 0.0227   sec
+[=PROFILE]    radix-reserve 14.18    sec
+[=PROFILE]      radix-unpad 0.09518  sec
+[=PROFILE]    reshare-alloc 0.05159  sec
+[=PROFILE]     reshare-comm 2.234    sec
+[=PROFILE] reshare-decide-r 0.002528 sec
+[=PROFILE] reshare-decide-s 0.001333 sec
+[=PROFILE]     reshare-rand 1.822    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.856e-05 sec
+[ SW]       Radix Sort 25.45    sec
+[=PROFILE]           --oaep 0.01408  sec
+[=PROFILE]           --oasp 0.02433  sec
+[=PROFILE]           --perm 0.2864   sec
+[=PROFILE]        --reshare 0.2712   sec
+[=PROFILE]        oaep-copy 0.2506   sec
+[=PROFILE]         oaep-get 6.812e-05 sec
+[=PROFILE]         oaep-lap 0.5809   sec
+[=PROFILE]        oaep-open 0.2327   sec
+[=PROFILE]         oasp-lap 1.574    sec
+[=PROFILE]     oasp-reshare 0.0203   sec
+[=PROFILE]         perm-b2a 1.404    sec
+[=PROFILE]        perm-copy 0.1182   sec
+[=PROFILE]         perm-mpx 0.7726   sec
+[=PROFILE]         perm-neg 0.2676   sec
+[=PROFILE]         perm-pfx 1.231    sec
+[=PROFILE]    radix-genperm 0.005024 sec
+[=PROFILE]       radix-oaep 0.0002846 sec
+[=PROFILE]        radix-pad 0.02265  sec
+[=PROFILE]    radix-reserve 14.11    sec
+[=PROFILE]      radix-unpad 0.09444  sec
+[=PROFILE]    reshare-alloc 0.05389  sec
+[=PROFILE]     reshare-comm 2.289    sec
+[=PROFILE] reshare-decide-r 0.002356 sec
+[=PROFILE] reshare-decide-s 0.001294 sec
+[=PROFILE]     reshare-rand 1.824    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.789e-05 sec
+[ SW]       Radix Sort 25.44    sec
+[=PROFILE]           --oaep 0.0139   sec
+[=PROFILE]           --oasp 0.02419  sec
+[=PROFILE]           --perm 0.2858   sec
+[=PROFILE]        --reshare 0.2498   sec
+[=PROFILE]        oaep-copy 0.252    sec
+[=PROFILE]         oaep-get 5.915e-05 sec
+[=PROFILE]         oaep-lap 0.5819   sec
+[=PROFILE]        oaep-open 0.2303   sec
+[=PROFILE]         oasp-lap 1.587    sec
+[=PROFILE]     oasp-reshare 0.01828  sec
+[=PROFILE]         perm-b2a 1.42     sec
+[=PROFILE]        perm-copy 0.1178   sec
+[=PROFILE]         perm-mpx 0.7682   sec
+[=PROFILE]         perm-neg 0.2671   sec
+[=PROFILE]         perm-pfx 1.23     sec
+[=PROFILE]    radix-genperm 0.005133 sec
+[=PROFILE]       radix-oaep 0.0005282 sec
+[=PROFILE]        radix-pad 0.02294  sec
+[=PROFILE]    radix-reserve 14.14    sec
+[=PROFILE]      radix-unpad 0.09539  sec
+[=PROFILE]    reshare-alloc 0.048    sec
+[=PROFILE]     reshare-comm 2.277    sec
+[=PROFILE] reshare-decide-r 0.002257 sec
+[=PROFILE] reshare-decide-s 0.001288 sec
+[=PROFILE]     reshare-rand 1.801    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.807e-05 sec
+[ SW]       Radix Sort 25.47    sec
+[=PROFILE]           --oaep 0.01389  sec
+[=PROFILE]           --oasp 0.02425  sec
+[=PROFILE]           --perm 0.2872   sec
+[=PROFILE]        --reshare 0.2515   sec
+[=PROFILE]        oaep-copy 0.2509   sec
+[=PROFILE]         oaep-get 6.082e-05 sec
+[=PROFILE]         oaep-lap 0.5795   sec
+[=PROFILE]        oaep-open 0.2428   sec
+[=PROFILE]         oasp-lap 1.585    sec
+[=PROFILE]     oasp-reshare 0.01868  sec
+[=PROFILE]         perm-b2a 1.326    sec
+[=PROFILE]        perm-copy 0.1161   sec
+[=PROFILE]         perm-mpx 0.7781   sec
+[=PROFILE]         perm-neg 0.2685   sec
+[=PROFILE]         perm-pfx 1.223    sec
+[=PROFILE]    radix-genperm 0.00503  sec
+[=PROFILE]       radix-oaep 0.0002792 sec
+[=PROFILE]        radix-pad 0.02274  sec
+[=PROFILE]    radix-reserve 14.26    sec
+[=PROFILE]      radix-unpad 0.09595  sec
+[=PROFILE]    reshare-alloc 0.04806  sec
+[=PROFILE]     reshare-comm 2.267    sec
+[=PROFILE] reshare-decide-r 0.002298 sec
+[=PROFILE] reshare-decide-s 0.001263 sec
+[=PROFILE]     reshare-rand 1.803    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.809e-05 sec
+[ SW]       Radix Sort 25.43    sec
+[=PROFILE]           --oaep 0.01391  sec
+[=PROFILE]           --oasp 0.02421  sec
+[=PROFILE]           --perm 0.2873   sec
+[=PROFILE]        --reshare 0.2536   sec
+[=PROFILE]        oaep-copy 0.2516   sec
+[=PROFILE]         oaep-get 7.149e-05 sec
+[=PROFILE]         oaep-lap 0.5807   sec
+[=PROFILE]        oaep-open 0.2389   sec
+[=PROFILE]         oasp-lap 1.575    sec
+[=PROFILE]     oasp-reshare 0.01916  sec
+[=PROFILE]         perm-b2a 1.482    sec
+[=PROFILE]        perm-copy 0.1177   sec
+[=PROFILE]         perm-mpx 0.7782   sec
+[=PROFILE]         perm-neg 0.2734   sec
+[=PROFILE]         perm-pfx 1.237    sec
+[=PROFILE]    radix-genperm 0.004984 sec
+[=PROFILE]       radix-oaep 0.0004043 sec
+[=PROFILE]        radix-pad 0.02299  sec
+[=PROFILE]    radix-reserve 14.05    sec
+[=PROFILE]      radix-unpad 0.09415  sec
+[=PROFILE]    reshare-alloc 0.04772  sec
+[=PROFILE]     reshare-comm 2.267    sec
+[=PROFILE] reshare-decide-r 0.002274 sec
+[=PROFILE] reshare-decide-s 0.001251 sec
+[=PROFILE]     reshare-rand 1.806    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.711e-05 sec
+[ SW]       Radix Sort 25.38    sec
+[=PROFILE]           --oaep 0.01403  sec
+[=PROFILE]           --oasp 0.02426  sec
+[=PROFILE]           --perm 0.2865   sec
+[=PROFILE]        --reshare 0.2528   sec
+[=PROFILE]        oaep-copy 0.2524   sec
+[=PROFILE]         oaep-get 6.593e-05 sec
+[=PROFILE]         oaep-lap 0.5801   sec
+[=PROFILE]        oaep-open 0.2407   sec
+[=PROFILE]         oasp-lap 1.584    sec
+[=PROFILE]     oasp-reshare 0.01845  sec
+[=PROFILE]         perm-b2a 1.376    sec
+[=PROFILE]        perm-copy 0.119    sec
+[=PROFILE]         perm-mpx 0.779    sec
+[=PROFILE]         perm-neg 0.2745   sec
+[=PROFILE]         perm-pfx 1.235    sec
+[=PROFILE]    radix-genperm 0.005192 sec
+[=PROFILE]       radix-oaep 0.0002527 sec
+[=PROFILE]        radix-pad 0.02264  sec
+[=PROFILE]    radix-reserve 14.09    sec
+[=PROFILE]      radix-unpad 0.09538  sec
+[=PROFILE]    reshare-alloc 0.04803  sec
+[=PROFILE]     reshare-comm 2.272    sec
+[=PROFILE] reshare-decide-r 0.002139 sec
+[=PROFILE] reshare-decide-s 0.001281 sec
+[=PROFILE]     reshare-rand 1.804    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.969e-05 sec
+[ SW]       Radix Sort 25.91    sec
+[=PROFILE]           --oaep 0.01393  sec
+[=PROFILE]           --oasp 0.02423  sec
+[=PROFILE]           --perm 0.2864   sec
+[=PROFILE]        --reshare 0.2543   sec
+[=PROFILE]        oaep-copy 0.2524   sec
+[=PROFILE]         oaep-get 6.335e-05 sec
+[=PROFILE]         oaep-lap 0.5767   sec
+[=PROFILE]        oaep-open 0.2329   sec
+[=PROFILE]         oasp-lap 1.572    sec
+[=PROFILE]     oasp-reshare 0.01871  sec
+[=PROFILE]         perm-b2a 1.768    sec
+[=PROFILE]        perm-copy 0.1161   sec
+[=PROFILE]         perm-mpx 0.774    sec
+[=PROFILE]         perm-neg 0.2675   sec
+[=PROFILE]         perm-pfx 1.232    sec
+[=PROFILE]    radix-genperm 0.005076 sec
+[=PROFILE]       radix-oaep 0.0004102 sec
+[=PROFILE]        radix-pad 0.02319  sec
+[=PROFILE]    radix-reserve 14.25    sec
+[=PROFILE]      radix-unpad 0.0961   sec
+[=PROFILE]    reshare-alloc 0.04899  sec
+[=PROFILE]     reshare-comm 2.295    sec
+[=PROFILE] reshare-decide-r 0.002221 sec
+[=PROFILE] reshare-decide-s 0.001257 sec
+[=PROFILE]     reshare-rand 1.801    sec
+==== 1048576 rows; 2 threads ====
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.939e-05 sec
+[ SW]       Radix Sort 16.47    sec
+[=PROFILE]           --oaep 0.01387  sec
+[=PROFILE]           --oasp 0.0214   sec
+[=PROFILE]           --perm 0.2294   sec
+[=PROFILE]        --reshare 0.2304   sec
+[=PROFILE]        oaep-copy 0.2638   sec
+[=PROFILE]         oaep-get 7.638e-05 sec
+[=PROFILE]         oaep-lap 0.5011   sec
+[=PROFILE]        oaep-open 0.232    sec
+[=PROFILE]         oasp-lap 1.42     sec
+[=PROFILE]     oasp-reshare 0.0122   sec
+[=PROFILE]         perm-b2a 1.443    sec
+[=PROFILE]        perm-copy 0.104    sec
+[=PROFILE]         perm-mpx 0.5636   sec
+[=PROFILE]         perm-neg 0.229    sec
+[=PROFILE]         perm-pfx 1.226    sec
+[=PROFILE]    radix-genperm 0.005142 sec
+[=PROFILE]       radix-oaep 0.0002955 sec
+[=PROFILE]        radix-pad 0.01755  sec
+[=PROFILE]    radix-reserve 7.154    sec
+[=PROFILE]      radix-unpad 0.09588  sec
+[=PROFILE]    reshare-alloc 0.04338  sec
+[=PROFILE]     reshare-comm 1.889    sec
+[=PROFILE] reshare-decide-r 0.004556 sec
+[=PROFILE] reshare-decide-s 0.003503 sec
+[=PROFILE]     reshare-rand 0.7694   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.99e-05 sec
+[ SW]       Radix Sort 15.97    sec
+[=PROFILE]           --oaep 0.01369  sec
+[=PROFILE]           --oasp 0.02055  sec
+[=PROFILE]           --perm 0.2206   sec
+[=PROFILE]        --reshare 0.2371   sec
+[=PROFILE]        oaep-copy 0.2829   sec
+[=PROFILE]         oaep-get 7.673e-05 sec
+[=PROFILE]         oaep-lap 0.5063   sec
+[=PROFILE]        oaep-open 0.2246   sec
+[=PROFILE]         oasp-lap 1.418    sec
+[=PROFILE]     oasp-reshare 0.01256  sec
+[=PROFILE]         perm-b2a 0.9085   sec
+[=PROFILE]        perm-copy 0.1024   sec
+[=PROFILE]         perm-mpx 0.5448   sec
+[=PROFILE]         perm-neg 0.2276   sec
+[=PROFILE]         perm-pfx 1.209    sec
+[=PROFILE]    radix-genperm 0.005175 sec
+[=PROFILE]       radix-oaep 0.0003176 sec
+[=PROFILE]        radix-pad 0.01761  sec
+[=PROFILE]    radix-reserve 7.281    sec
+[=PROFILE]      radix-unpad 0.07364  sec
+[=PROFILE]    reshare-alloc 0.04334  sec
+[=PROFILE]     reshare-comm 1.865    sec
+[=PROFILE] reshare-decide-r 0.00466  sec
+[=PROFILE] reshare-decide-s 0.003836 sec
+[=PROFILE]     reshare-rand 0.7412   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.773e-05 sec
+[ SW]       Radix Sort 16.04    sec
+[=PROFILE]           --oaep 0.01371  sec
+[=PROFILE]           --oasp 0.0214   sec
+[=PROFILE]           --perm 0.228    sec
+[=PROFILE]        --reshare 0.2325   sec
+[=PROFILE]        oaep-copy 0.2618   sec
+[=PROFILE]         oaep-get 6.397e-05 sec
+[=PROFILE]         oaep-lap 0.4992   sec
+[=PROFILE]        oaep-open 0.2278   sec
+[=PROFILE]         oasp-lap 1.418    sec
+[=PROFILE]     oasp-reshare 0.01194  sec
+[=PROFILE]         perm-b2a 0.9571   sec
+[=PROFILE]        perm-copy 0.1035   sec
+[=PROFILE]         perm-mpx 0.5568   sec
+[=PROFILE]         perm-neg 0.2301   sec
+[=PROFILE]         perm-pfx 1.218    sec
+[=PROFILE]    radix-genperm 0.005122 sec
+[=PROFILE]       radix-oaep 0.0002797 sec
+[=PROFILE]        radix-pad 0.01763  sec
+[=PROFILE]    radix-reserve 7.24     sec
+[=PROFILE]      radix-unpad 0.09551  sec
+[=PROFILE]    reshare-alloc 0.04378  sec
+[=PROFILE]     reshare-comm 1.875    sec
+[=PROFILE] reshare-decide-r 0.004691 sec
+[=PROFILE] reshare-decide-s 0.003256 sec
+[=PROFILE]     reshare-rand 0.7741   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.241e-05 sec
+[ SW]       Radix Sort 16.18    sec
+[=PROFILE]           --oaep 0.01374  sec
+[=PROFILE]           --oasp 0.0214   sec
+[=PROFILE]           --perm 0.2264   sec
+[=PROFILE]        --reshare 0.2249   sec
+[=PROFILE]        oaep-copy 0.2614   sec
+[=PROFILE]         oaep-get 7.715e-05 sec
+[=PROFILE]         oaep-lap 0.5381   sec
+[=PROFILE]        oaep-open 0.2327   sec
+[=PROFILE]         oasp-lap 1.496    sec
+[=PROFILE]     oasp-reshare 0.01183  sec
+[=PROFILE]         perm-b2a 0.9268   sec
+[=PROFILE]        perm-copy 0.1048   sec
+[=PROFILE]         perm-mpx 0.5551   sec
+[=PROFILE]         perm-neg 0.2224   sec
+[=PROFILE]         perm-pfx 1.213    sec
+[=PROFILE]    radix-genperm 0.004998 sec
+[=PROFILE]       radix-oaep 0.0002793 sec
+[=PROFILE]        radix-pad 0.01802  sec
+[=PROFILE]    radix-reserve 7.334    sec
+[=PROFILE]      radix-unpad 0.09432  sec
+[=PROFILE]    reshare-alloc 0.044    sec
+[=PROFILE]     reshare-comm 1.914    sec
+[=PROFILE] reshare-decide-r 0.004688 sec
+[=PROFILE] reshare-decide-s 0.003652 sec
+[=PROFILE]     reshare-rand 0.7072   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.943e-05 sec
+[ SW]       Radix Sort 16.04    sec
+[=PROFILE]           --oaep 0.01379  sec
+[=PROFILE]           --oasp 0.02146  sec
+[=PROFILE]           --perm 0.2269   sec
+[=PROFILE]        --reshare 0.2204   sec
+[=PROFILE]        oaep-copy 0.2614   sec
+[=PROFILE]         oaep-get 6.525e-05 sec
+[=PROFILE]         oaep-lap 0.512    sec
+[=PROFILE]        oaep-open 0.2196   sec
+[=PROFILE]         oasp-lap 1.436    sec
+[=PROFILE]     oasp-reshare 0.0123   sec
+[=PROFILE]         perm-b2a 0.9598   sec
+[=PROFILE]        perm-copy 0.1037   sec
+[=PROFILE]         perm-mpx 0.5348   sec
+[=PROFILE]         perm-neg 0.226    sec
+[=PROFILE]         perm-pfx 1.223    sec
+[=PROFILE]    radix-genperm 0.004993 sec
+[=PROFILE]       radix-oaep 0.0002853 sec
+[=PROFILE]        radix-pad 0.01763  sec
+[=PROFILE]    radix-reserve 7.244    sec
+[=PROFILE]      radix-unpad 0.09447  sec
+[=PROFILE]    reshare-alloc 0.04374  sec
+[=PROFILE]     reshare-comm 1.888    sec
+[=PROFILE] reshare-decide-r 0.004709 sec
+[=PROFILE] reshare-decide-s 0.003838 sec
+[=PROFILE]     reshare-rand 0.7619   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.834e-05 sec
+[ SW]       Radix Sort 16.02    sec
+[=PROFILE]           --oaep 0.01394  sec
+[=PROFILE]           --oasp 0.02149  sec
+[=PROFILE]           --perm 0.2187   sec
+[=PROFILE]        --reshare 0.2273   sec
+[=PROFILE]        oaep-copy 0.2644   sec
+[=PROFILE]         oaep-get 7.951e-05 sec
+[=PROFILE]         oaep-lap 0.5101   sec
+[=PROFILE]        oaep-open 0.2237   sec
+[=PROFILE]         oasp-lap 1.425    sec
+[=PROFILE]     oasp-reshare 0.01199  sec
+[=PROFILE]         perm-b2a 0.9194   sec
+[=PROFILE]        perm-copy 0.1042   sec
+[=PROFILE]         perm-mpx 0.5328   sec
+[=PROFILE]         perm-neg 0.2345   sec
+[=PROFILE]         perm-pfx 1.227    sec
+[=PROFILE]    radix-genperm 0.01195  sec
+[=PROFILE]       radix-oaep 0.0002861 sec
+[=PROFILE]        radix-pad 0.01769  sec
+[=PROFILE]    radix-reserve 7.222    sec
+[=PROFILE]      radix-unpad 0.09567  sec
+[=PROFILE]    reshare-alloc 0.04364  sec
+[=PROFILE]     reshare-comm 1.97     sec
+[=PROFILE] reshare-decide-r 0.004607 sec
+[=PROFILE] reshare-decide-s 0.003945 sec
+[=PROFILE]     reshare-rand 0.7192   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.928e-05 sec
+[ SW]       Radix Sort 15.98    sec
+[=PROFILE]           --oaep 0.01377  sec
+[=PROFILE]           --oasp 0.02153  sec
+[=PROFILE]           --perm 0.2279   sec
+[=PROFILE]        --reshare 0.2282   sec
+[=PROFILE]        oaep-copy 0.2643   sec
+[=PROFILE]         oaep-get 7.368e-05 sec
+[=PROFILE]         oaep-lap 0.5075   sec
+[=PROFILE]        oaep-open 0.227    sec
+[=PROFILE]         oasp-lap 1.426    sec
+[=PROFILE]     oasp-reshare 0.01263  sec
+[=PROFILE]         perm-b2a 0.9385   sec
+[=PROFILE]        perm-copy 0.1034   sec
+[=PROFILE]         perm-mpx 0.5508   sec
+[=PROFILE]         perm-neg 0.2282   sec
+[=PROFILE]         perm-pfx 1.213    sec
+[=PROFILE]    radix-genperm 0.005083 sec
+[=PROFILE]       radix-oaep 0.0002962 sec
+[=PROFILE]        radix-pad 0.01763  sec
+[=PROFILE]    radix-reserve 7.195    sec
+[=PROFILE]      radix-unpad 0.09341  sec
+[=PROFILE]    reshare-alloc 0.04458  sec
+[=PROFILE]     reshare-comm 1.878    sec
+[=PROFILE] reshare-decide-r 0.004593 sec
+[=PROFILE] reshare-decide-s 0.004001 sec
+[=PROFILE]     reshare-rand 0.78     sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.814e-05 sec
+[ SW]       Radix Sort 16.18    sec
+[=PROFILE]           --oaep 0.01382  sec
+[=PROFILE]           --oasp 0.02163  sec
+[=PROFILE]           --perm 0.2327   sec
+[=PROFILE]        --reshare 0.2447   sec
+[=PROFILE]        oaep-copy 0.2598   sec
+[=PROFILE]         oaep-get 7.914e-05 sec
+[=PROFILE]         oaep-lap 0.5143   sec
+[=PROFILE]        oaep-open 0.242    sec
+[=PROFILE]         oasp-lap 1.456    sec
+[=PROFILE]     oasp-reshare 0.01248  sec
+[=PROFILE]         perm-b2a 0.9432   sec
+[=PROFILE]        perm-copy 0.1043   sec
+[=PROFILE]         perm-mpx 0.5601   sec
+[=PROFILE]         perm-neg 0.2294   sec
+[=PROFILE]         perm-pfx 1.214    sec
+[=PROFILE]    radix-genperm 0.005015 sec
+[=PROFILE]       radix-oaep 0.0002817 sec
+[=PROFILE]        radix-pad 0.01781  sec
+[=PROFILE]    radix-reserve 7.353    sec
+[=PROFILE]      radix-unpad 0.06912  sec
+[=PROFILE]    reshare-alloc 0.04394  sec
+[=PROFILE]     reshare-comm 1.864    sec
+[=PROFILE] reshare-decide-r 0.004725 sec
+[=PROFILE] reshare-decide-s 0.003344 sec
+[=PROFILE]     reshare-rand 0.7691   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.711e-05 sec
+[ SW]       Radix Sort 15.82    sec
+[=PROFILE]           --oaep 0.01381  sec
+[=PROFILE]           --oasp 0.02141  sec
+[=PROFILE]           --perm 0.2298   sec
+[=PROFILE]        --reshare 0.228    sec
+[=PROFILE]        oaep-copy 0.2761   sec
+[=PROFILE]         oaep-get 7.042e-05 sec
+[=PROFILE]         oaep-lap 0.5003   sec
+[=PROFILE]        oaep-open 0.2208   sec
+[=PROFILE]         oasp-lap 1.42     sec
+[=PROFILE]     oasp-reshare 0.01192  sec
+[=PROFILE]         perm-b2a 0.9204   sec
+[=PROFILE]        perm-copy 0.1041   sec
+[=PROFILE]         perm-mpx 0.5424   sec
+[=PROFILE]         perm-neg 0.2298   sec
+[=PROFILE]         perm-pfx 1.219    sec
+[=PROFILE]    radix-genperm 0.00516  sec
+[=PROFILE]       radix-oaep 0.0002946 sec
+[=PROFILE]        radix-pad 0.0176   sec
+[=PROFILE]    radix-reserve 7.092    sec
+[=PROFILE]      radix-unpad 0.09721  sec
+[=PROFILE]    reshare-alloc 0.04375  sec
+[=PROFILE]     reshare-comm 1.859    sec
+[=PROFILE] reshare-decide-r 0.004572 sec
+[=PROFILE] reshare-decide-s 0.003839 sec
+[=PROFILE]     reshare-rand 0.7608   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.879e-05 sec
+[ SW]       Radix Sort 16.23    sec
+[=PROFILE]           --oaep 0.01374  sec
+[=PROFILE]           --oasp 0.02145  sec
+[=PROFILE]           --perm 0.2281   sec
+[=PROFILE]        --reshare 0.2193   sec
+[=PROFILE]        oaep-copy 0.2633   sec
+[=PROFILE]         oaep-get 7.108e-05 sec
+[=PROFILE]         oaep-lap 0.5123   sec
+[=PROFILE]        oaep-open 0.2537   sec
+[=PROFILE]         oasp-lap 1.464    sec
+[=PROFILE]     oasp-reshare 0.01188  sec
+[=PROFILE]         perm-b2a 0.9431   sec
+[=PROFILE]        perm-copy 0.1047   sec
+[=PROFILE]         perm-mpx 0.559    sec
+[=PROFILE]         perm-neg 0.2285   sec
+[=PROFILE]         perm-pfx 1.218    sec
+[=PROFILE]    radix-genperm 0.005178 sec
+[=PROFILE]       radix-oaep 0.0002877 sec
+[=PROFILE]        radix-pad 0.01723  sec
+[=PROFILE]    radix-reserve 7.153    sec
+[=PROFILE]      radix-unpad 0.09482  sec
+[=PROFILE]    reshare-alloc 0.04446  sec
+[=PROFILE]     reshare-comm 2.101    sec
+[=PROFILE] reshare-decide-r 0.004747 sec
+[=PROFILE] reshare-decide-s 0.003806 sec
+[=PROFILE]     reshare-rand 0.7703   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.056e-05 sec
+[ SW]       Radix Sort 16.05    sec
+[=PROFILE]           --oaep 0.01403  sec
+[=PROFILE]           --oasp 0.02173  sec
+[=PROFILE]           --perm 0.2294   sec
+[=PROFILE]        --reshare 0.2254   sec
+[=PROFILE]        oaep-copy 0.2604   sec
+[=PROFILE]         oaep-get 7.547e-05 sec
+[=PROFILE]         oaep-lap 0.5124   sec
+[=PROFILE]        oaep-open 0.2279   sec
+[=PROFILE]         oasp-lap 1.469    sec
+[=PROFILE]     oasp-reshare 0.01309  sec
+[=PROFILE]         perm-b2a 0.9259   sec
+[=PROFILE]        perm-copy 0.1058   sec
+[=PROFILE]         perm-mpx 0.5652   sec
+[=PROFILE]         perm-neg 0.2362   sec
+[=PROFILE]         perm-pfx 1.224    sec
+[=PROFILE]    radix-genperm 0.005047 sec
+[=PROFILE]       radix-oaep 0.0003044 sec
+[=PROFILE]        radix-pad 0.01745  sec
+[=PROFILE]    radix-reserve 7.201    sec
+[=PROFILE]      radix-unpad 0.09514  sec
+[=PROFILE]    reshare-alloc 0.04364  sec
+[=PROFILE]     reshare-comm 1.875    sec
+[=PROFILE] reshare-decide-r 0.004596 sec
+[=PROFILE] reshare-decide-s 0.003415 sec
+[=PROFILE]     reshare-rand 0.7702   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.939e-05 sec
+[ SW]       Radix Sort 15.99    sec
+[=PROFILE]           --oaep 0.01376  sec
+[=PROFILE]           --oasp 0.02145  sec
+[=PROFILE]           --perm 0.2278   sec
+[=PROFILE]        --reshare 0.2306   sec
+[=PROFILE]        oaep-copy 0.262    sec
+[=PROFILE]         oaep-get 6.303e-05 sec
+[=PROFILE]         oaep-lap 0.5074   sec
+[=PROFILE]        oaep-open 0.2303   sec
+[=PROFILE]         oasp-lap 1.42     sec
+[=PROFILE]     oasp-reshare 0.01222  sec
+[=PROFILE]         perm-b2a 0.9884   sec
+[=PROFILE]        perm-copy 0.1038   sec
+[=PROFILE]         perm-mpx 0.5471   sec
+[=PROFILE]         perm-neg 0.227    sec
+[=PROFILE]         perm-pfx 1.218    sec
+[=PROFILE]    radix-genperm 0.005173 sec
+[=PROFILE]       radix-oaep 0.0002866 sec
+[=PROFILE]        radix-pad 0.01744  sec
+[=PROFILE]    radix-reserve 7.157    sec
+[=PROFILE]      radix-unpad 0.09578  sec
+[=PROFILE]    reshare-alloc 0.04429  sec
+[=PROFILE]     reshare-comm 1.899    sec
+[=PROFILE] reshare-decide-r 0.004566 sec
+[=PROFILE] reshare-decide-s 0.00368  sec
+[=PROFILE]     reshare-rand 0.7553   sec
+==== 1048576 rows; 4 threads ====
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.893e-05 sec
+[ SW]       Radix Sort 12.17    sec
+[=PROFILE]           --oaep 0.01449  sec
+[=PROFILE]           --oasp 0.02068  sec
+[=PROFILE]           --perm 0.2042   sec
+[=PROFILE]        --reshare 0.2129   sec
+[=PROFILE]        oaep-copy 0.2853   sec
+[=PROFILE]         oaep-get 7.221e-05 sec
+[=PROFILE]         oaep-lap 0.4835   sec
+[=PROFILE]        oaep-open 0.267    sec
+[=PROFILE]         oasp-lap 1.256    sec
+[=PROFILE]     oasp-reshare 0.008569 sec
+[=PROFILE]         perm-b2a 0.9238   sec
+[=PROFILE]        perm-copy 0.119    sec
+[=PROFILE]         perm-mpx 0.487    sec
+[=PROFILE]         perm-neg 0.2137   sec
+[=PROFILE]         perm-pfx 1.21     sec
+[=PROFILE]    radix-genperm 0.005233 sec
+[=PROFILE]       radix-oaep 0.0003431 sec
+[=PROFILE]        radix-pad 0.01651  sec
+[=PROFILE]    radix-reserve 4.015    sec
+[=PROFILE]      radix-unpad 0.09392  sec
+[=PROFILE]    reshare-alloc 0.04552  sec
+[=PROFILE]     reshare-comm 1.752    sec
+[=PROFILE] reshare-decide-r 0.009396 sec
+[=PROFILE] reshare-decide-s 0.006691 sec
+[=PROFILE]     reshare-rand 0.5126   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.986e-05 sec
+[ SW]       Radix Sort 11.99    sec
+[=PROFILE]           --oaep 0.01445  sec
+[=PROFILE]           --oasp 0.02019  sec
+[=PROFILE]           --perm 0.195    sec
+[=PROFILE]        --reshare 0.2224   sec
+[=PROFILE]        oaep-copy 0.289    sec
+[=PROFILE]         oaep-get 7.01e-05 sec
+[=PROFILE]         oaep-lap 0.4786   sec
+[=PROFILE]        oaep-open 0.2656   sec
+[=PROFILE]         oasp-lap 1.236    sec
+[=PROFILE]     oasp-reshare 0.008407 sec
+[=PROFILE]         perm-b2a 0.9213   sec
+[=PROFILE]        perm-copy 0.1129   sec
+[=PROFILE]         perm-mpx 0.4746   sec
+[=PROFILE]         perm-neg 0.2131   sec
+[=PROFILE]         perm-pfx 1.216    sec
+[=PROFILE]    radix-genperm 0.01116  sec
+[=PROFILE]       radix-oaep 0.0003177 sec
+[=PROFILE]        radix-pad 0.0164   sec
+[=PROFILE]    radix-reserve 3.926    sec
+[=PROFILE]      radix-unpad 0.09409  sec
+[=PROFILE]    reshare-alloc 0.04548  sec
+[=PROFILE]     reshare-comm 1.703    sec
+[=PROFILE] reshare-decide-r 0.0103   sec
+[=PROFILE] reshare-decide-s 0.007113 sec
+[=PROFILE]     reshare-rand 0.5137   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.061e-05 sec
+[ SW]       Radix Sort 11.9     sec
+[=PROFILE]           --oaep 0.01458  sec
+[=PROFILE]           --oasp 0.02023  sec
+[=PROFILE]           --perm 0.2062   sec
+[=PROFILE]        --reshare 0.2106   sec
+[=PROFILE]        oaep-copy 0.279    sec
+[=PROFILE]         oaep-get 6.787e-05 sec
+[=PROFILE]         oaep-lap 0.4882   sec
+[=PROFILE]        oaep-open 0.2639   sec
+[=PROFILE]         oasp-lap 1.246    sec
+[=PROFILE]     oasp-reshare 0.008143 sec
+[=PROFILE]         perm-b2a 0.856    sec
+[=PROFILE]        perm-copy 0.1176   sec
+[=PROFILE]         perm-mpx 0.483    sec
+[=PROFILE]         perm-neg 0.212    sec
+[=PROFILE]         perm-pfx 1.207    sec
+[=PROFILE]    radix-genperm 0.005147 sec
+[=PROFILE]       radix-oaep 0.0003342 sec
+[=PROFILE]        radix-pad 0.01628  sec
+[=PROFILE]    radix-reserve 3.892    sec
+[=PROFILE]      radix-unpad 0.09326  sec
+[=PROFILE]    reshare-alloc 0.04486  sec
+[=PROFILE]     reshare-comm 1.734    sec
+[=PROFILE] reshare-decide-r 0.009515 sec
+[=PROFILE] reshare-decide-s 0.007547 sec
+[=PROFILE]     reshare-rand 0.4823   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.779e-05 sec
+[ SW]       Radix Sort 11.95    sec
+[=PROFILE]           --oaep 0.01443  sec
+[=PROFILE]           --oasp 0.02023  sec
+[=PROFILE]           --perm 0.2054   sec
+[=PROFILE]        --reshare 0.2129   sec
+[=PROFILE]        oaep-copy 0.2859   sec
+[=PROFILE]         oaep-get 7.225e-05 sec
+[=PROFILE]         oaep-lap 0.4886   sec
+[=PROFILE]        oaep-open 0.2694   sec
+[=PROFILE]         oasp-lap 1.25     sec
+[=PROFILE]     oasp-reshare 0.008183 sec
+[=PROFILE]         perm-b2a 0.8772   sec
+[=PROFILE]        perm-copy 0.1175   sec
+[=PROFILE]         perm-mpx 0.4865   sec
+[=PROFILE]         perm-neg 0.2128   sec
+[=PROFILE]         perm-pfx 1.207    sec
+[=PROFILE]    radix-genperm 0.005053 sec
+[=PROFILE]       radix-oaep 0.0003355 sec
+[=PROFILE]        radix-pad 0.01651  sec
+[=PROFILE]    radix-reserve 3.88     sec
+[=PROFILE]      radix-unpad 0.09447  sec
+[=PROFILE]    reshare-alloc 0.04452  sec
+[=PROFILE]     reshare-comm 1.732    sec
+[=PROFILE] reshare-decide-r 0.009026 sec
+[=PROFILE] reshare-decide-s 0.007155 sec
+[=PROFILE]     reshare-rand 0.4998   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.962e-05 sec
+[ SW]       Radix Sort 12.04    sec
+[=PROFILE]           --oaep 0.01446  sec
+[=PROFILE]           --oasp 0.02029  sec
+[=PROFILE]           --perm 0.1936   sec
+[=PROFILE]        --reshare 0.2139   sec
+[=PROFILE]        oaep-copy 0.2876   sec
+[=PROFILE]         oaep-get 6.634e-05 sec
+[=PROFILE]         oaep-lap 0.4836   sec
+[=PROFILE]        oaep-open 0.2677   sec
+[=PROFILE]         oasp-lap 1.262    sec
+[=PROFILE]     oasp-reshare 0.00853  sec
+[=PROFILE]         perm-b2a 0.8849   sec
+[=PROFILE]        perm-copy 0.1188   sec
+[=PROFILE]         perm-mpx 0.4693   sec
+[=PROFILE]         perm-neg 0.2138   sec
+[=PROFILE]         perm-pfx 1.208    sec
+[=PROFILE]    radix-genperm 0.005059 sec
+[=PROFILE]       radix-oaep 0.000327 sec
+[=PROFILE]        radix-pad 0.01661  sec
+[=PROFILE]    radix-reserve 3.987    sec
+[=PROFILE]      radix-unpad 0.09381  sec
+[=PROFILE]    reshare-alloc 0.04427  sec
+[=PROFILE]     reshare-comm 1.733    sec
+[=PROFILE] reshare-decide-r 0.009672 sec
+[=PROFILE] reshare-decide-s 0.007645 sec
+[=PROFILE]     reshare-rand 0.4952   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.632e-05 sec
+[ SW]       Radix Sort 12.01    sec
+[=PROFILE]           --oaep 0.01444  sec
+[=PROFILE]           --oasp 0.02058  sec
+[=PROFILE]           --perm 0.2037   sec
+[=PROFILE]        --reshare 0.2098   sec
+[=PROFILE]        oaep-copy 0.2868   sec
+[=PROFILE]         oaep-get 7.617e-05 sec
+[=PROFILE]         oaep-lap 0.4879   sec
+[=PROFILE]        oaep-open 0.2671   sec
+[=PROFILE]         oasp-lap 1.25     sec
+[=PROFILE]     oasp-reshare 0.008471 sec
+[=PROFILE]         perm-b2a 0.8728   sec
+[=PROFILE]        perm-copy 0.1185   sec
+[=PROFILE]         perm-mpx 0.4883   sec
+[=PROFILE]         perm-neg 0.2114   sec
+[=PROFILE]         perm-pfx 1.206    sec
+[=PROFILE]    radix-genperm 0.005044 sec
+[=PROFILE]       radix-oaep 0.0003316 sec
+[=PROFILE]        radix-pad 0.01683  sec
+[=PROFILE]    radix-reserve 3.956    sec
+[=PROFILE]      radix-unpad 0.09448  sec
+[=PROFILE]    reshare-alloc 0.04478  sec
+[=PROFILE]     reshare-comm 1.74     sec
+[=PROFILE] reshare-decide-r 0.009692 sec
+[=PROFILE] reshare-decide-s 0.007757 sec
+[=PROFILE]     reshare-rand 0.4957   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.792e-05 sec
+[ SW]       Radix Sort 12.03    sec
+[=PROFILE]           --oaep 0.01452  sec
+[=PROFILE]           --oasp 0.02043  sec
+[=PROFILE]           --perm 0.2064   sec
+[=PROFILE]        --reshare 0.2193   sec
+[=PROFILE]        oaep-copy 0.2889   sec
+[=PROFILE]         oaep-get 6.347e-05 sec
+[=PROFILE]         oaep-lap 0.4883   sec
+[=PROFILE]        oaep-open 0.2689   sec
+[=PROFILE]         oasp-lap 1.271    sec
+[=PROFILE]     oasp-reshare 0.007988 sec
+[=PROFILE]         perm-b2a 0.8758   sec
+[=PROFILE]        perm-copy 0.1176   sec
+[=PROFILE]         perm-mpx 0.489    sec
+[=PROFILE]         perm-neg 0.2132   sec
+[=PROFILE]         perm-pfx 1.21     sec
+[=PROFILE]    radix-genperm 0.005097 sec
+[=PROFILE]       radix-oaep 0.0003124 sec
+[=PROFILE]        radix-pad 0.01628  sec
+[=PROFILE]    radix-reserve 3.931    sec
+[=PROFILE]      radix-unpad 0.09302  sec
+[=PROFILE]    reshare-alloc 0.04541  sec
+[=PROFILE]     reshare-comm 1.718    sec
+[=PROFILE] reshare-decide-r 0.009654 sec
+[=PROFILE] reshare-decide-s 0.006693 sec
+[=PROFILE]     reshare-rand 0.508    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.7e-05  sec
+[ SW]       Radix Sort 12.05    sec
+[=PROFILE]           --oaep 0.01452  sec
+[=PROFILE]           --oasp 0.02061  sec
+[=PROFILE]           --perm 0.1936   sec
+[=PROFILE]        --reshare 0.2126   sec
+[=PROFILE]        oaep-copy 0.2858   sec
+[=PROFILE]         oaep-get 7.221e-05 sec
+[=PROFILE]         oaep-lap 0.4877   sec
+[=PROFILE]        oaep-open 0.2606   sec
+[=PROFILE]         oasp-lap 1.259    sec
+[=PROFILE]     oasp-reshare 0.008192 sec
+[=PROFILE]         perm-b2a 0.8903   sec
+[=PROFILE]        perm-copy 0.1198   sec
+[=PROFILE]         perm-mpx 0.477    sec
+[=PROFILE]         perm-neg 0.2128   sec
+[=PROFILE]         perm-pfx 1.212    sec
+[=PROFILE]    radix-genperm 0.01208  sec
+[=PROFILE]       radix-oaep 0.000341 sec
+[=PROFILE]        radix-pad 0.01672  sec
+[=PROFILE]    radix-reserve 3.935    sec
+[=PROFILE]      radix-unpad 0.0948   sec
+[=PROFILE]    reshare-alloc 0.04539  sec
+[=PROFILE]     reshare-comm 1.755    sec
+[=PROFILE] reshare-decide-r 0.009998 sec
+[=PROFILE] reshare-decide-s 0.006863 sec
+[=PROFILE]     reshare-rand 0.5163   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.047e-05 sec
+[ SW]       Radix Sort 12.06    sec
+[=PROFILE]           --oaep 0.01444  sec
+[=PROFILE]           --oasp 0.02007  sec
+[=PROFILE]           --perm 0.2045   sec
+[=PROFILE]        --reshare 0.2268   sec
+[=PROFILE]        oaep-copy 0.2859   sec
+[=PROFILE]         oaep-get 6.23e-05 sec
+[=PROFILE]         oaep-lap 0.4873   sec
+[=PROFILE]        oaep-open 0.2652   sec
+[=PROFILE]         oasp-lap 1.258    sec
+[=PROFILE]     oasp-reshare 0.008553 sec
+[=PROFILE]         perm-b2a 0.8801   sec
+[=PROFILE]        perm-copy 0.1178   sec
+[=PROFILE]         perm-mpx 0.4876   sec
+[=PROFILE]         perm-neg 0.2114   sec
+[=PROFILE]         perm-pfx 1.212    sec
+[=PROFILE]    radix-genperm 0.005055 sec
+[=PROFILE]       radix-oaep 0.0003148 sec
+[=PROFILE]        radix-pad 0.01656  sec
+[=PROFILE]    radix-reserve 4.011    sec
+[=PROFILE]      radix-unpad 0.09315  sec
+[=PROFILE]    reshare-alloc 0.04511  sec
+[=PROFILE]     reshare-comm 1.693    sec
+[=PROFILE] reshare-decide-r 0.01001  sec
+[=PROFILE] reshare-decide-s 0.007599 sec
+[=PROFILE]     reshare-rand 0.4956   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.927e-05 sec
+[ SW]       Radix Sort 12.06    sec
+[=PROFILE]           --oaep 0.0147   sec
+[=PROFILE]           --oasp 0.02069  sec
+[=PROFILE]           --perm 0.1956   sec
+[=PROFILE]        --reshare 0.2237   sec
+[=PROFILE]        oaep-copy 0.2872   sec
+[=PROFILE]         oaep-get 7.165e-05 sec
+[=PROFILE]         oaep-lap 0.4828   sec
+[=PROFILE]        oaep-open 0.2726   sec
+[=PROFILE]         oasp-lap 1.266    sec
+[=PROFILE]     oasp-reshare 0.008484 sec
+[=PROFILE]         perm-b2a 0.9087   sec
+[=PROFILE]        perm-copy 0.1181   sec
+[=PROFILE]         perm-mpx 0.4802   sec
+[=PROFILE]         perm-neg 0.2144   sec
+[=PROFILE]         perm-pfx 1.208    sec
+[=PROFILE]    radix-genperm 0.005105 sec
+[=PROFILE]       radix-oaep 0.0003427 sec
+[=PROFILE]        radix-pad 0.01681  sec
+[=PROFILE]    radix-reserve 3.876    sec
+[=PROFILE]      radix-unpad 0.09476  sec
+[=PROFILE]    reshare-alloc 0.04548  sec
+[=PROFILE]     reshare-comm 1.795    sec
+[=PROFILE] reshare-decide-r 0.01001  sec
+[=PROFILE] reshare-decide-s 0.008772 sec
+[=PROFILE]     reshare-rand 0.5142   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.667e-05 sec
+[ SW]       Radix Sort 12.06    sec
+[=PROFILE]           --oaep 0.01449  sec
+[=PROFILE]           --oasp 0.02059  sec
+[=PROFILE]           --perm 0.2053   sec
+[=PROFILE]        --reshare 0.2114   sec
+[=PROFILE]        oaep-copy 0.2776   sec
+[=PROFILE]         oaep-get 6.943e-05 sec
+[=PROFILE]         oaep-lap 0.4891   sec
+[=PROFILE]        oaep-open 0.2616   sec
+[=PROFILE]         oasp-lap 1.246    sec
+[=PROFILE]     oasp-reshare 0.008296 sec
+[=PROFILE]         perm-b2a 0.8509   sec
+[=PROFILE]        perm-copy 0.1176   sec
+[=PROFILE]         perm-mpx 0.477    sec
+[=PROFILE]         perm-neg 0.2109   sec
+[=PROFILE]         perm-pfx 1.208    sec
+[=PROFILE]    radix-genperm 0.005041 sec
+[=PROFILE]       radix-oaep 0.0003401 sec
+[=PROFILE]        radix-pad 0.01663  sec
+[=PROFILE]    radix-reserve 4.024    sec
+[=PROFILE]      radix-unpad 0.09306  sec
+[=PROFILE]    reshare-alloc 0.04417  sec
+[=PROFILE]     reshare-comm 1.756    sec
+[=PROFILE] reshare-decide-r 0.009234 sec
+[=PROFILE] reshare-decide-s 0.007124 sec
+[=PROFILE]     reshare-rand 0.5049   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.186e-05 sec
+[ SW]       Radix Sort 11.99    sec
+[=PROFILE]           --oaep 0.01447  sec
+[=PROFILE]           --oasp 0.02047  sec
+[=PROFILE]           --perm 0.2047   sec
+[=PROFILE]        --reshare 0.2183   sec
+[=PROFILE]        oaep-copy 0.2884   sec
+[=PROFILE]         oaep-get 7.536e-05 sec
+[=PROFILE]         oaep-lap 0.489    sec
+[=PROFILE]        oaep-open 0.2669   sec
+[=PROFILE]         oasp-lap 1.254    sec
+[=PROFILE]     oasp-reshare 0.008451 sec
+[=PROFILE]         perm-b2a 0.9093   sec
+[=PROFILE]        perm-copy 0.1177   sec
+[=PROFILE]         perm-mpx 0.4842   sec
+[=PROFILE]         perm-neg 0.2112   sec
+[=PROFILE]         perm-pfx 1.207    sec
+[=PROFILE]    radix-genperm 0.005069 sec
+[=PROFILE]       radix-oaep 0.0003225 sec
+[=PROFILE]        radix-pad 0.01659  sec
+[=PROFILE]    radix-reserve 3.889    sec
+[=PROFILE]      radix-unpad 0.09365  sec
+[=PROFILE]    reshare-alloc 0.0461   sec
+[=PROFILE]     reshare-comm 1.729    sec
+[=PROFILE] reshare-decide-r 0.00962  sec
+[=PROFILE] reshare-decide-s 0.00668  sec
+[=PROFILE]     reshare-rand 0.5003   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.514e-05 sec
+[ SW]       Radix Sort 12.01    sec
+[=PROFILE]           --oaep 0.01445  sec
+[=PROFILE]           --oasp 0.02017  sec
+[=PROFILE]           --perm 0.2071   sec
+[=PROFILE]        --reshare 0.2081   sec
+[=PROFILE]        oaep-copy 0.2853   sec
+[=PROFILE]         oaep-get 6.323e-05 sec
+[=PROFILE]         oaep-lap 0.4779   sec
+[=PROFILE]        oaep-open 0.2585   sec
+[=PROFILE]         oasp-lap 1.229    sec
+[=PROFILE]     oasp-reshare 0.008192 sec
+[=PROFILE]         perm-b2a 0.9522   sec
+[=PROFILE]        perm-copy 0.1135   sec
+[=PROFILE]         perm-mpx 0.4821   sec
+[=PROFILE]         perm-neg 0.2143   sec
+[=PROFILE]         perm-pfx 1.21     sec
+[=PROFILE]    radix-genperm 0.005085 sec
+[=PROFILE]       radix-oaep 0.0003176 sec
+[=PROFILE]        radix-pad 0.01597  sec
+[=PROFILE]    radix-reserve 3.909    sec
+[=PROFILE]      radix-unpad 0.09391  sec
+[=PROFILE]    reshare-alloc 0.04469  sec
+[=PROFILE]     reshare-comm 1.746    sec
+[=PROFILE] reshare-decide-r 0.00959  sec
+[=PROFILE] reshare-decide-s 0.007444 sec
+[=PROFILE]     reshare-rand 0.4988   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.973e-05 sec
+[ SW]       Radix Sort 12.09    sec
+[=PROFILE]           --oaep 0.01432  sec
+[=PROFILE]           --oasp 0.01997  sec
+[=PROFILE]           --perm 0.2062   sec
+[=PROFILE]        --reshare 0.2194   sec
+[=PROFILE]        oaep-copy 0.2852   sec
+[=PROFILE]         oaep-get 6.925e-05 sec
+[=PROFILE]         oaep-lap 0.4765   sec
+[=PROFILE]        oaep-open 0.269    sec
+[=PROFILE]         oasp-lap 1.225    sec
+[=PROFILE]     oasp-reshare 0.008066 sec
+[=PROFILE]         perm-b2a 0.949    sec
+[=PROFILE]        perm-copy 0.1128   sec
+[=PROFILE]         perm-mpx 0.4922   sec
+[=PROFILE]         perm-neg 0.2132   sec
+[=PROFILE]         perm-pfx 1.217    sec
+[=PROFILE]    radix-genperm 0.005062 sec
+[=PROFILE]       radix-oaep 0.0003343 sec
+[=PROFILE]        radix-pad 0.01736  sec
+[=PROFILE]    radix-reserve 3.95     sec
+[=PROFILE]      radix-unpad 0.09413  sec
+[=PROFILE]    reshare-alloc 0.04541  sec
+[=PROFILE]     reshare-comm 1.729    sec
+[=PROFILE] reshare-decide-r 0.01009  sec
+[=PROFILE] reshare-decide-s 0.007251 sec
+[=PROFILE]     reshare-rand 0.5152   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.085e-05 sec
+[ SW]       Radix Sort 12       sec
+[=PROFILE]           --oaep 0.01448  sec
+[=PROFILE]           --oasp 0.02025  sec
+[=PROFILE]           --perm 0.2047   sec
+[=PROFILE]        --reshare 0.2165   sec
+[=PROFILE]        oaep-copy 0.2869   sec
+[=PROFILE]         oaep-get 6.526e-05 sec
+[=PROFILE]         oaep-lap 0.4866   sec
+[=PROFILE]        oaep-open 0.2575   sec
+[=PROFILE]         oasp-lap 1.272    sec
+[=PROFILE]     oasp-reshare 0.008428 sec
+[=PROFILE]         perm-b2a 0.857    sec
+[=PROFILE]        perm-copy 0.117    sec
+[=PROFILE]         perm-mpx 0.4835   sec
+[=PROFILE]         perm-neg 0.2127   sec
+[=PROFILE]         perm-pfx 1.208    sec
+[=PROFILE]    radix-genperm 0.005065 sec
+[=PROFILE]       radix-oaep 0.0003217 sec
+[=PROFILE]        radix-pad 0.01694  sec
+[=PROFILE]    radix-reserve 3.965    sec
+[=PROFILE]      radix-unpad 0.09417  sec
+[=PROFILE]    reshare-alloc 0.04554  sec
+[=PROFILE]     reshare-comm 1.715    sec
+[=PROFILE] reshare-decide-r 0.009498 sec
+[=PROFILE] reshare-decide-s 0.00792  sec
+[=PROFILE]     reshare-rand 0.4991   sec
+==== 1048576 rows; 8 threads ====
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.632e-05 sec
+[ SW]       Radix Sort 9.761    sec
+[=PROFILE]           --oaep 0.01438  sec
+[=PROFILE]           --oasp 0.01879  sec
+[=PROFILE]           --perm 0.1874   sec
+[=PROFILE]        --reshare 0.239    sec
+[=PROFILE]        oaep-copy 0.2789   sec
+[=PROFILE]         oaep-get 6.765e-05 sec
+[=PROFILE]         oaep-lap 0.4202   sec
+[=PROFILE]        oaep-open 0.1985   sec
+[=PROFILE]         oasp-lap 1.003    sec
+[=PROFILE]     oasp-reshare 0.005714 sec
+[=PROFILE]         perm-b2a 0.7877   sec
+[=PROFILE]        perm-copy 0.111    sec
+[=PROFILE]         perm-mpx 0.3784   sec
+[=PROFILE]         perm-neg 0.2171   sec
+[=PROFILE]         perm-pfx 1.286    sec
+[=PROFILE]    radix-genperm 0.005228 sec
+[=PROFILE]       radix-oaep 0.0003082 sec
+[=PROFILE]        radix-pad 0.01612  sec
+[=PROFILE]    radix-reserve 2.314    sec
+[=PROFILE]      radix-unpad 0.09807  sec
+[=PROFILE]    reshare-alloc 0.0562   sec
+[=PROFILE]     reshare-comm 1.744    sec
+[=PROFILE] reshare-decide-r 0.02013  sec
+[=PROFILE] reshare-decide-s 0.01414  sec
+[=PROFILE]     reshare-rand 0.3492   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3e-05    sec
+[ SW]       Radix Sort 9.572    sec
+[=PROFILE]           --oaep 0.01448  sec
+[=PROFILE]           --oasp 0.01823  sec
+[=PROFILE]           --perm 0.1871   sec
+[=PROFILE]        --reshare 0.2408   sec
+[=PROFILE]        oaep-copy 0.279    sec
+[=PROFILE]         oaep-get 0.0001954 sec
+[=PROFILE]         oaep-lap 0.4122   sec
+[=PROFILE]        oaep-open 0.1916   sec
+[=PROFILE]         oasp-lap 0.9969   sec
+[=PROFILE]     oasp-reshare 0.00581  sec
+[=PROFILE]         perm-b2a 0.6752   sec
+[=PROFILE]        perm-copy 0.1069   sec
+[=PROFILE]         perm-mpx 0.3796   sec
+[=PROFILE]         perm-neg 0.2113   sec
+[=PROFILE]         perm-pfx 1.271    sec
+[=PROFILE]    radix-genperm 0.005641 sec
+[=PROFILE]       radix-oaep 0.0003089 sec
+[=PROFILE]        radix-pad 0.01625  sec
+[=PROFILE]    radix-reserve 2.316    sec
+[=PROFILE]      radix-unpad 0.09692  sec
+[=PROFILE]    reshare-alloc 0.05573  sec
+[=PROFILE]     reshare-comm 1.717    sec
+[=PROFILE] reshare-decide-r 0.01983  sec
+[=PROFILE] reshare-decide-s 0.01567  sec
+[=PROFILE]     reshare-rand 0.3429   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.57e-05 sec
+[ SW]       Radix Sort 9.522    sec
+[=PROFILE]           --oaep 0.0151   sec
+[=PROFILE]           --oasp 0.01939  sec
+[=PROFILE]           --perm 0.1911   sec
+[=PROFILE]        --reshare 0.2339   sec
+[=PROFILE]        oaep-copy 0.2781   sec
+[=PROFILE]         oaep-get 6.726e-05 sec
+[=PROFILE]         oaep-lap 0.4513   sec
+[=PROFILE]        oaep-open 0.201    sec
+[=PROFILE]         oasp-lap 1.116    sec
+[=PROFILE]     oasp-reshare 0.005779 sec
+[=PROFILE]         perm-b2a 0.5585   sec
+[=PROFILE]        perm-copy 0.1172   sec
+[=PROFILE]         perm-mpx 0.3821   sec
+[=PROFILE]         perm-neg 0.2247   sec
+[=PROFILE]         perm-pfx 1.177    sec
+[=PROFILE]    radix-genperm 0.00552  sec
+[=PROFILE]       radix-oaep 0.0003139 sec
+[=PROFILE]        radix-pad 0.01617  sec
+[=PROFILE]    radix-reserve 2.269    sec
+[=PROFILE]      radix-unpad 0.09181  sec
+[=PROFILE]    reshare-alloc 0.05412  sec
+[=PROFILE]     reshare-comm 1.755    sec
+[=PROFILE] reshare-decide-r 0.01959  sec
+[=PROFILE] reshare-decide-s 0.0158   sec
+[=PROFILE]     reshare-rand 0.3293   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 4.558e-05 sec
+[ SW]       Radix Sort 9.421    sec
+[=PROFILE]           --oaep 0.01497  sec
+[=PROFILE]           --oasp 0.0189   sec
+[=PROFILE]           --perm 0.2072   sec
+[=PROFILE]        --reshare 0.2304   sec
+[=PROFILE]        oaep-copy 0.2812   sec
+[=PROFILE]         oaep-get 7.077e-05 sec
+[=PROFILE]         oaep-lap 0.4203   sec
+[=PROFILE]        oaep-open 0.188    sec
+[=PROFILE]         oasp-lap 0.9938   sec
+[=PROFILE]     oasp-reshare 0.006346 sec
+[=PROFILE]         perm-b2a 0.5334   sec
+[=PROFILE]        perm-copy 0.09654  sec
+[=PROFILE]         perm-mpx 0.3735   sec
+[=PROFILE]         perm-neg 0.223    sec
+[=PROFILE]         perm-pfx 1.293    sec
+[=PROFILE]    radix-genperm 0.005469 sec
+[=PROFILE]       radix-oaep 0.000331 sec
+[=PROFILE]        radix-pad 0.02134  sec
+[=PROFILE]    radix-reserve 2.299    sec
+[=PROFILE]      radix-unpad 0.07716  sec
+[=PROFILE]    reshare-alloc 0.05371  sec
+[=PROFILE]     reshare-comm 1.723    sec
+[=PROFILE] reshare-decide-r 0.0199   sec
+[=PROFILE] reshare-decide-s 0.01322  sec
+[=PROFILE]     reshare-rand 0.3284   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.634e-05 sec
+[ SW]       Radix Sort 9.419    sec
+[=PROFILE]           --oaep 0.01502  sec
+[=PROFILE]           --oasp 0.01879  sec
+[=PROFILE]           --perm 0.2027   sec
+[=PROFILE]        --reshare 0.2301   sec
+[=PROFILE]        oaep-copy 0.2853   sec
+[=PROFILE]         oaep-get 6.297e-05 sec
+[=PROFILE]         oaep-lap 0.425    sec
+[=PROFILE]        oaep-open 0.1981   sec
+[=PROFILE]         oasp-lap 0.9908   sec
+[=PROFILE]     oasp-reshare 0.005524 sec
+[=PROFILE]         perm-b2a 0.5407   sec
+[=PROFILE]        perm-copy 0.09809  sec
+[=PROFILE]         perm-mpx 0.3835   sec
+[=PROFILE]         perm-neg 0.2117   sec
+[=PROFILE]         perm-pfx 1.291    sec
+[=PROFILE]    radix-genperm 0.005228 sec
+[=PROFILE]       radix-oaep 0.0002988 sec
+[=PROFILE]        radix-pad 0.02092  sec
+[=PROFILE]    radix-reserve 2.264    sec
+[=PROFILE]      radix-unpad 0.07911  sec
+[=PROFILE]    reshare-alloc 0.05308  sec
+[=PROFILE]     reshare-comm 1.745    sec
+[=PROFILE] reshare-decide-r 0.01927  sec
+[=PROFILE] reshare-decide-s 0.01395  sec
+[=PROFILE]     reshare-rand 0.3252   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.244e-05 sec
+[ SW]       Radix Sort 9.541    sec
+[=PROFILE]           --oaep 0.01511  sec
+[=PROFILE]           --oasp 0.01787  sec
+[=PROFILE]           --perm 0.2032   sec
+[=PROFILE]        --reshare 0.2482   sec
+[=PROFILE]        oaep-copy 0.2798   sec
+[=PROFILE]         oaep-get 7.182e-05 sec
+[=PROFILE]         oaep-lap 0.4139   sec
+[=PROFILE]        oaep-open 0.2006   sec
+[=PROFILE]         oasp-lap 1.027    sec
+[=PROFILE]     oasp-reshare 0.00606  sec
+[=PROFILE]         perm-b2a 0.6033   sec
+[=PROFILE]        perm-copy 0.09782  sec
+[=PROFILE]         perm-mpx 0.3855   sec
+[=PROFILE]         perm-neg 0.2083   sec
+[=PROFILE]         perm-pfx 1.244    sec
+[=PROFILE]    radix-genperm 0.005668 sec
+[=PROFILE]       radix-oaep 0.0003264 sec
+[=PROFILE]        radix-pad 0.02119  sec
+[=PROFILE]    radix-reserve 2.292    sec
+[=PROFILE]      radix-unpad 0.07704  sec
+[=PROFILE]    reshare-alloc 0.05851  sec
+[=PROFILE]     reshare-comm 1.737    sec
+[=PROFILE] reshare-decide-r 0.02249  sec
+[=PROFILE] reshare-decide-s 0.01454  sec
+[=PROFILE]     reshare-rand 0.3618   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.932e-05 sec
+[ SW]       Radix Sort 9.639    sec
+[=PROFILE]           --oaep 0.01449  sec
+[=PROFILE]           --oasp 0.01867  sec
+[=PROFILE]           --perm 0.1893   sec
+[=PROFILE]        --reshare 0.2382   sec
+[=PROFILE]        oaep-copy 0.2871   sec
+[=PROFILE]         oaep-get 7.407e-05 sec
+[=PROFILE]         oaep-lap 0.4319   sec
+[=PROFILE]        oaep-open 0.1993   sec
+[=PROFILE]         oasp-lap 1.019    sec
+[=PROFILE]     oasp-reshare 0.006587 sec
+[=PROFILE]         perm-b2a 0.7119   sec
+[=PROFILE]        perm-copy 0.1119   sec
+[=PROFILE]         perm-mpx 0.3781   sec
+[=PROFILE]         perm-neg 0.222    sec
+[=PROFILE]         perm-pfx 1.288    sec
+[=PROFILE]    radix-genperm 0.005206 sec
+[=PROFILE]       radix-oaep 0.0003138 sec
+[=PROFILE]        radix-pad 0.01615  sec
+[=PROFILE]    radix-reserve 2.235    sec
+[=PROFILE]      radix-unpad 0.09877  sec
+[=PROFILE]    reshare-alloc 0.05657  sec
+[=PROFILE]     reshare-comm 1.732    sec
+[=PROFILE] reshare-decide-r 0.02049  sec
+[=PROFILE] reshare-decide-s 0.01418  sec
+[=PROFILE]     reshare-rand 0.3486   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.972e-05 sec
+[ SW]       Radix Sort 9.578    sec
+[=PROFILE]           --oaep 0.01512  sec
+[=PROFILE]           --oasp 0.0194   sec
+[=PROFILE]           --perm 0.1862   sec
+[=PROFILE]        --reshare 0.2308   sec
+[=PROFILE]        oaep-copy 0.2794   sec
+[=PROFILE]         oaep-get 7.512e-05 sec
+[=PROFILE]         oaep-lap 0.4378   sec
+[=PROFILE]        oaep-open 0.1846   sec
+[=PROFILE]         oasp-lap 1.111    sec
+[=PROFILE]     oasp-reshare 0.00586  sec
+[=PROFILE]         perm-b2a 0.5527   sec
+[=PROFILE]        perm-copy 0.116    sec
+[=PROFILE]         perm-mpx 0.3806   sec
+[=PROFILE]         perm-neg 0.2211   sec
+[=PROFILE]         perm-pfx 1.196    sec
+[=PROFILE]    radix-genperm 0.005628 sec
+[=PROFILE]       radix-oaep 0.0003014 sec
+[=PROFILE]        radix-pad 0.01627  sec
+[=PROFILE]    radix-reserve 2.409    sec
+[=PROFILE]      radix-unpad 0.09143  sec
+[=PROFILE]    reshare-alloc 0.05422  sec
+[=PROFILE]     reshare-comm 1.714    sec
+[=PROFILE] reshare-decide-r 0.01955  sec
+[=PROFILE] reshare-decide-s 0.01281  sec
+[=PROFILE]     reshare-rand 0.3215   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.776e-05 sec
+[ SW]       Radix Sort 9.256    sec
+[=PROFILE]           --oaep 0.01404  sec
+[=PROFILE]           --oasp 0.01751  sec
+[=PROFILE]           --perm 0.1811   sec
+[=PROFILE]        --reshare 0.2309   sec
+[=PROFILE]        oaep-copy 0.2639   sec
+[=PROFILE]         oaep-get 6.992e-05 sec
+[=PROFILE]         oaep-lap 0.4005   sec
+[=PROFILE]        oaep-open 0.1953   sec
+[=PROFILE]         oasp-lap 0.9876   sec
+[=PROFILE]     oasp-reshare 0.005937 sec
+[=PROFILE]         perm-b2a 0.5406   sec
+[=PROFILE]        perm-copy 0.1062   sec
+[=PROFILE]         perm-mpx 0.3827   sec
+[=PROFILE]         perm-neg 0.2055   sec
+[=PROFILE]         perm-pfx 1.208    sec
+[=PROFILE]    radix-genperm 0.005535 sec
+[=PROFILE]       radix-oaep 0.000301 sec
+[=PROFILE]        radix-pad 0.01623  sec
+[=PROFILE]    radix-reserve 2.271    sec
+[=PROFILE]      radix-unpad 0.09256  sec
+[=PROFILE]    reshare-alloc 0.05236  sec
+[=PROFILE]     reshare-comm 1.728    sec
+[=PROFILE] reshare-decide-r 0.01907  sec
+[=PROFILE] reshare-decide-s 0.01517  sec
+[=PROFILE]     reshare-rand 0.3239   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.784e-05 sec
+[ SW]       Radix Sort 9.49     sec
+[=PROFILE]           --oaep 0.01389  sec
+[=PROFILE]           --oasp 0.01854  sec
+[=PROFILE]           --perm 0.1829   sec
+[=PROFILE]        --reshare 0.238    sec
+[=PROFILE]        oaep-copy 0.2744   sec
+[=PROFILE]         oaep-get 5.958e-05 sec
+[=PROFILE]         oaep-lap 0.4079   sec
+[=PROFILE]        oaep-open 0.2019   sec
+[=PROFILE]         oasp-lap 1.031    sec
+[=PROFILE]     oasp-reshare 0.00571  sec
+[=PROFILE]         perm-b2a 0.5971   sec
+[=PROFILE]        perm-copy 0.1056   sec
+[=PROFILE]         perm-mpx 0.3856   sec
+[=PROFILE]         perm-neg 0.2105   sec
+[=PROFILE]         perm-pfx 1.252    sec
+[=PROFILE]    radix-genperm 0.005563 sec
+[=PROFILE]       radix-oaep 0.000294 sec
+[=PROFILE]        radix-pad 0.01618  sec
+[=PROFILE]    radix-reserve 2.293    sec
+[=PROFILE]      radix-unpad 0.09479  sec
+[=PROFILE]    reshare-alloc 0.0549   sec
+[=PROFILE]     reshare-comm 1.71     sec
+[=PROFILE] reshare-decide-r 0.02025  sec
+[=PROFILE] reshare-decide-s 0.01597  sec
+[=PROFILE]     reshare-rand 0.3575   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.73e-05 sec
+[ SW]       Radix Sort 9.616    sec
+[=PROFILE]           --oaep 0.01499  sec
+[=PROFILE]           --oasp 0.01816  sec
+[=PROFILE]           --perm 0.1984   sec
+[=PROFILE]        --reshare 0.2277   sec
+[=PROFILE]        oaep-copy 0.2853   sec
+[=PROFILE]         oaep-get 7.178e-05 sec
+[=PROFILE]         oaep-lap 0.4247   sec
+[=PROFILE]        oaep-open 0.2025   sec
+[=PROFILE]         oasp-lap 1.002    sec
+[=PROFILE]     oasp-reshare 0.005719 sec
+[=PROFILE]         perm-b2a 0.7147   sec
+[=PROFILE]        perm-copy 0.1045   sec
+[=PROFILE]         perm-mpx 0.3817   sec
+[=PROFILE]         perm-neg 0.2201   sec
+[=PROFILE]         perm-pfx 1.293    sec
+[=PROFILE]    radix-genperm 0.005185 sec
+[=PROFILE]       radix-oaep 0.0003351 sec
+[=PROFILE]        radix-pad 0.02113  sec
+[=PROFILE]    radix-reserve 2.258    sec
+[=PROFILE]      radix-unpad 0.07764  sec
+[=PROFILE]    reshare-alloc 0.05581  sec
+[=PROFILE]     reshare-comm 1.734    sec
+[=PROFILE] reshare-decide-r 0.02065  sec
+[=PROFILE] reshare-decide-s 0.01473  sec
+[=PROFILE]     reshare-rand 0.334    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.782e-05 sec
+[ SW]       Radix Sort 9.512    sec
+[=PROFILE]           --oaep 0.01514  sec
+[=PROFILE]           --oasp 0.01961  sec
+[=PROFILE]           --perm 0.2077   sec
+[=PROFILE]        --reshare 0.2352   sec
+[=PROFILE]        oaep-copy 0.2867   sec
+[=PROFILE]         oaep-get 6.44e-05 sec
+[=PROFILE]         oaep-lap 0.4186   sec
+[=PROFILE]        oaep-open 0.1992   sec
+[=PROFILE]         oasp-lap 1.017    sec
+[=PROFILE]     oasp-reshare 0.005782 sec
+[=PROFILE]         perm-b2a 0.5604   sec
+[=PROFILE]        perm-copy 0.09708  sec
+[=PROFILE]         perm-mpx 0.3832   sec
+[=PROFILE]         perm-neg 0.2112   sec
+[=PROFILE]         perm-pfx 1.272    sec
+[=PROFILE]    radix-genperm 0.005527 sec
+[=PROFILE]       radix-oaep 0.0003026 sec
+[=PROFILE]        radix-pad 0.02095  sec
+[=PROFILE]    radix-reserve 2.312    sec
+[=PROFILE]      radix-unpad 0.07231  sec
+[=PROFILE]    reshare-alloc 0.05347  sec
+[=PROFILE]     reshare-comm 1.736    sec
+[=PROFILE] reshare-decide-r 0.01979  sec
+[=PROFILE] reshare-decide-s 0.0134   sec
+[=PROFILE]     reshare-rand 0.3507   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.846e-05 sec
+[ SW]       Radix Sort 9.407    sec
+[=PROFILE]           --oaep 0.01463  sec
+[=PROFILE]           --oasp 0.01859  sec
+[=PROFILE]           --perm 0.1868   sec
+[=PROFILE]        --reshare 0.2342   sec
+[=PROFILE]        oaep-copy 0.2659   sec
+[=PROFILE]         oaep-get 6.288e-05 sec
+[=PROFILE]         oaep-lap 0.4369   sec
+[=PROFILE]        oaep-open 0.1961   sec
+[=PROFILE]         oasp-lap 0.993    sec
+[=PROFILE]     oasp-reshare 0.006011 sec
+[=PROFILE]         perm-b2a 0.5559   sec
+[=PROFILE]        perm-copy 0.1092   sec
+[=PROFILE]         perm-mpx 0.3811   sec
+[=PROFILE]         perm-neg 0.2256   sec
+[=PROFILE]         perm-pfx 1.26     sec
+[=PROFILE]    radix-genperm 0.005229 sec
+[=PROFILE]       radix-oaep 0.0003229 sec
+[=PROFILE]        radix-pad 0.01634  sec
+[=PROFILE]    radix-reserve 2.266    sec
+[=PROFILE]      radix-unpad 0.0948   sec
+[=PROFILE]    reshare-alloc 0.05282  sec
+[=PROFILE]     reshare-comm 1.727    sec
+[=PROFILE] reshare-decide-r 0.01933  sec
+[=PROFILE] reshare-decide-s 0.01308  sec
+[=PROFILE]     reshare-rand 0.33     sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.876e-05 sec
+[ SW]       Radix Sort 9.716    sec
+[=PROFILE]           --oaep 0.01467  sec
+[=PROFILE]           --oasp 0.01895  sec
+[=PROFILE]           --perm 0.194    sec
+[=PROFILE]        --reshare 0.2488   sec
+[=PROFILE]        oaep-copy 0.2706   sec
+[=PROFILE]         oaep-get 6.576e-05 sec
+[=PROFILE]         oaep-lap 0.4321   sec
+[=PROFILE]        oaep-open 0.2027   sec
+[=PROFILE]         oasp-lap 1.025    sec
+[=PROFILE]     oasp-reshare 0.006109 sec
+[=PROFILE]         perm-b2a 0.6592   sec
+[=PROFILE]        perm-copy 0.1037   sec
+[=PROFILE]         perm-mpx 0.3789   sec
+[=PROFILE]         perm-neg 0.22     sec
+[=PROFILE]         perm-pfx 1.269    sec
+[=PROFILE]    radix-genperm 0.005614 sec
+[=PROFILE]       radix-oaep 0.0003013 sec
+[=PROFILE]        radix-pad 0.01782  sec
+[=PROFILE]    radix-reserve 2.365    sec
+[=PROFILE]      radix-unpad 0.09539  sec
+[=PROFILE]    reshare-alloc 0.05622  sec
+[=PROFILE]     reshare-comm 1.74     sec
+[=PROFILE] reshare-decide-r 0.02059  sec
+[=PROFILE] reshare-decide-s 0.0145   sec
+[=PROFILE]     reshare-rand 0.3593   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.906e-05 sec
+[ SW]       Radix Sort 9.614    sec
+[=PROFILE]           --oaep 0.01425  sec
+[=PROFILE]           --oasp 0.01866  sec
+[=PROFILE]           --perm 0.1882   sec
+[=PROFILE]        --reshare 0.2331   sec
+[=PROFILE]        oaep-copy 0.2799   sec
+[=PROFILE]         oaep-get 6.539e-05 sec
+[=PROFILE]         oaep-lap 0.4182   sec
+[=PROFILE]        oaep-open 0.1879   sec
+[=PROFILE]         oasp-lap 1.005    sec
+[=PROFILE]     oasp-reshare 0.005818 sec
+[=PROFILE]         perm-b2a 0.5579   sec
+[=PROFILE]        perm-copy 0.1095   sec
+[=PROFILE]         perm-mpx 0.3746   sec
+[=PROFILE]         perm-neg 0.2187   sec
+[=PROFILE]         perm-pfx 1.279    sec
+[=PROFILE]    radix-genperm 0.00515  sec
+[=PROFILE]       radix-oaep 0.0003046 sec
+[=PROFILE]        radix-pad 0.01636  sec
+[=PROFILE]    radix-reserve 2.447    sec
+[=PROFILE]      radix-unpad 0.09704  sec
+[=PROFILE]    reshare-alloc 0.05496  sec
+[=PROFILE]     reshare-comm 1.727    sec
+[=PROFILE] reshare-decide-r 0.01971  sec
+[=PROFILE] reshare-decide-s 0.01457  sec
+[=PROFILE]     reshare-rand 0.3431   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.822e-05 sec
+[ SW]       Radix Sort 9.534    sec
+[=PROFILE]           --oaep 0.01496  sec
+[=PROFILE]           --oasp 0.01977  sec
+[=PROFILE]           --perm 0.1933   sec
+[=PROFILE]        --reshare 0.2313   sec
+[=PROFILE]        oaep-copy 0.2743   sec
+[=PROFILE]         oaep-get 7.149e-05 sec
+[=PROFILE]         oaep-lap 0.4419   sec
+[=PROFILE]        oaep-open 0.1881   sec
+[=PROFILE]         oasp-lap 1.109    sec
+[=PROFILE]     oasp-reshare 0.005867 sec
+[=PROFILE]         perm-b2a 0.5272   sec
+[=PROFILE]        perm-copy 0.1179   sec
+[=PROFILE]         perm-mpx 0.3775   sec
+[=PROFILE]         perm-neg 0.2239   sec
+[=PROFILE]         perm-pfx 1.196    sec
+[=PROFILE]    radix-genperm 0.005543 sec
+[=PROFILE]       radix-oaep 0.000325 sec
+[=PROFILE]        radix-pad 0.01628  sec
+[=PROFILE]    radix-reserve 2.361    sec
+[=PROFILE]      radix-unpad 0.0917   sec
+[=PROFILE]    reshare-alloc 0.05371  sec
+[=PROFILE]     reshare-comm 1.72     sec
+[=PROFILE] reshare-decide-r 0.02008  sec
+[=PROFILE] reshare-decide-s 0.01326  sec
+[=PROFILE]     reshare-rand 0.3336   sec
+==== 1048576 rows; 16 threads ====
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.48e-05 sec
+[ SW]       Radix Sort 9.322    sec
+[=PROFILE]           --oaep 0.01561  sec
+[=PROFILE]           --oasp 0.0194   sec
+[=PROFILE]           --perm 0.2052   sec
+[=PROFILE]        --reshare 0.2961   sec
+[=PROFILE]        oaep-copy 0.2913   sec
+[=PROFILE]         oaep-get 7.457e-05 sec
+[=PROFILE]         oaep-lap 0.4535   sec
+[=PROFILE]        oaep-open 0.2768   sec
+[=PROFILE]         oasp-lap 1.107    sec
+[=PROFILE]     oasp-reshare 0.006812 sec
+[=PROFILE]         perm-b2a 0.7919   sec
+[=PROFILE]        perm-copy 0.1162   sec
+[=PROFILE]         perm-mpx 0.4467   sec
+[=PROFILE]         perm-neg 0.2356   sec
+[=PROFILE]         perm-pfx 1.281    sec
+[=PROFILE]    radix-genperm 0.005081 sec
+[=PROFILE]       radix-oaep 0.0003696 sec
+[=PROFILE]        radix-pad 0.0207   sec
+[=PROFILE]    radix-reserve 1.47     sec
+[=PROFILE]      radix-unpad 0.07545  sec
+[=PROFILE]    reshare-alloc 0.08713  sec
+[=PROFILE]     reshare-comm 1.764    sec
+[=PROFILE] reshare-decide-r 0.04639  sec
+[=PROFILE] reshare-decide-s 0.03688  sec
+[=PROFILE]     reshare-rand 0.2831   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 3.136e-05 sec
+[ SW]       Radix Sort 9.222    sec
+[=PROFILE]           --oaep 0.01505  sec
+[=PROFILE]           --oasp 0.02073  sec
+[=PROFILE]           --perm 0.1953   sec
+[=PROFILE]        --reshare 0.2826   sec
+[=PROFILE]        oaep-copy 0.2824   sec
+[=PROFILE]         oaep-get 8.142e-05 sec
+[=PROFILE]         oaep-lap 0.4923   sec
+[=PROFILE]        oaep-open 0.2794   sec
+[=PROFILE]         oasp-lap 1.142    sec
+[=PROFILE]     oasp-reshare 0.005495 sec
+[=PROFILE]         perm-b2a 0.8064   sec
+[=PROFILE]        perm-copy 0.1199   sec
+[=PROFILE]         perm-mpx 0.4504   sec
+[=PROFILE]         perm-neg 0.234    sec
+[=PROFILE]         perm-pfx 1.281    sec
+[=PROFILE]    radix-genperm 0.005508 sec
+[=PROFILE]       radix-oaep 0.0003327 sec
+[=PROFILE]        radix-pad 0.01453  sec
+[=PROFILE]    radix-reserve 1.499    sec
+[=PROFILE]      radix-unpad 0.09522  sec
+[=PROFILE]    reshare-alloc 0.08711  sec
+[=PROFILE]     reshare-comm 1.578    sec
+[=PROFILE] reshare-decide-r 0.04459  sec
+[=PROFILE] reshare-decide-s 0.03418  sec
+[=PROFILE]     reshare-rand 0.2723   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.874e-05 sec
+[ SW]       Radix Sort 9.367    sec
+[=PROFILE]           --oaep 0.01495  sec
+[=PROFILE]           --oasp 0.01964  sec
+[=PROFILE]           --perm 0.2002   sec
+[=PROFILE]        --reshare 0.3128   sec
+[=PROFILE]        oaep-copy 0.3008   sec
+[=PROFILE]         oaep-get 7.409e-05 sec
+[=PROFILE]         oaep-lap 0.4455   sec
+[=PROFILE]        oaep-open 0.2834   sec
+[=PROFILE]         oasp-lap 1.109    sec
+[=PROFILE]     oasp-reshare 0.005608 sec
+[=PROFILE]         perm-b2a 0.8574   sec
+[=PROFILE]        perm-copy 0.1086   sec
+[=PROFILE]         perm-mpx 0.4383   sec
+[=PROFILE]         perm-neg 0.246    sec
+[=PROFILE]         perm-pfx 1.266    sec
+[=PROFILE]    radix-genperm 0.00538  sec
+[=PROFILE]       radix-oaep 0.0003448 sec
+[=PROFILE]        radix-pad 0.02106  sec
+[=PROFILE]    radix-reserve 1.444    sec
+[=PROFILE]      radix-unpad 0.07405  sec
+[=PROFILE]    reshare-alloc 0.08961  sec
+[=PROFILE]     reshare-comm 1.785    sec
+[=PROFILE] reshare-decide-r 0.04651  sec
+[=PROFILE] reshare-decide-s 0.03891  sec
+[=PROFILE]     reshare-rand 0.2841   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.256e-05 sec
+[ SW]       Radix Sort 9.335    sec
+[=PROFILE]           --oaep 0.01621  sec
+[=PROFILE]           --oasp 0.01934  sec
+[=PROFILE]           --perm 0.1748   sec
+[=PROFILE]        --reshare 0.2868   sec
+[=PROFILE]        oaep-copy 0.2989   sec
+[=PROFILE]         oaep-get 6.782e-05 sec
+[=PROFILE]         oaep-lap 0.4693   sec
+[=PROFILE]        oaep-open 0.278    sec
+[=PROFILE]         oasp-lap 1.111    sec
+[=PROFILE]     oasp-reshare 0.005558 sec
+[=PROFILE]         perm-b2a 0.8284   sec
+[=PROFILE]        perm-copy 0.1119   sec
+[=PROFILE]         perm-mpx 0.4275   sec
+[=PROFILE]         perm-neg 0.2121   sec
+[=PROFILE]         perm-pfx 1.284    sec
+[=PROFILE]    radix-genperm 0.005075 sec
+[=PROFILE]       radix-oaep 0.0003644 sec
+[=PROFILE]        radix-pad 0.0207   sec
+[=PROFILE]    radix-reserve 1.523    sec
+[=PROFILE]      radix-unpad 0.06778  sec
+[=PROFILE]    reshare-alloc 0.08521  sec
+[=PROFILE]     reshare-comm 1.772    sec
+[=PROFILE] reshare-decide-r 0.0466   sec
+[=PROFILE] reshare-decide-s 0.03671  sec
+[=PROFILE]     reshare-rand 0.273    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.848e-05 sec
+[ SW]       Radix Sort 9.42     sec
+[=PROFILE]           --oaep 0.02027  sec
+[=PROFILE]           --oasp 0.02271  sec
+[=PROFILE]           --perm 0.1926   sec
+[=PROFILE]        --reshare 0.3002   sec
+[=PROFILE]        oaep-copy 0.2928   sec
+[=PROFILE]         oaep-get 6.892e-05 sec
+[=PROFILE]         oaep-lap 0.4797   sec
+[=PROFILE]        oaep-open 0.2747   sec
+[=PROFILE]         oasp-lap 1.143    sec
+[=PROFILE]     oasp-reshare 0.006237 sec
+[=PROFILE]         perm-b2a 0.8015   sec
+[=PROFILE]        perm-copy 0.1213   sec
+[=PROFILE]         perm-mpx 0.4471   sec
+[=PROFILE]         perm-neg 0.2266   sec
+[=PROFILE]         perm-pfx 1.28     sec
+[=PROFILE]    radix-genperm 0.005848 sec
+[=PROFILE]       radix-oaep 0.000383 sec
+[=PROFILE]        radix-pad 0.02034  sec
+[=PROFILE]    radix-reserve 1.481    sec
+[=PROFILE]      radix-unpad 0.07828  sec
+[=PROFILE]    reshare-alloc 0.08664  sec
+[=PROFILE]     reshare-comm 1.793    sec
+[=PROFILE] reshare-decide-r 0.0463   sec
+[=PROFILE] reshare-decide-s 0.03398  sec
+[=PROFILE]     reshare-rand 0.2757   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.474e-05 sec
+[ SW]       Radix Sort 9.423    sec
+[=PROFILE]           --oaep 0.01505  sec
+[=PROFILE]           --oasp 0.0204   sec
+[=PROFILE]           --perm 0.1952   sec
+[=PROFILE]        --reshare 0.2933   sec
+[=PROFILE]        oaep-copy 0.2904   sec
+[=PROFILE]         oaep-get 6.482e-05 sec
+[=PROFILE]         oaep-lap 0.5066   sec
+[=PROFILE]        oaep-open 0.2759   sec
+[=PROFILE]         oasp-lap 1.166    sec
+[=PROFILE]     oasp-reshare 0.005449 sec
+[=PROFILE]         perm-b2a 0.8251   sec
+[=PROFILE]        perm-copy 0.1156   sec
+[=PROFILE]         perm-mpx 0.4553   sec
+[=PROFILE]         perm-neg 0.2303   sec
+[=PROFILE]         perm-pfx 1.243    sec
+[=PROFILE]    radix-genperm 0.005952 sec
+[=PROFILE]       radix-oaep 0.0003431 sec
+[=PROFILE]        radix-pad 0.02048  sec
+[=PROFILE]    radix-reserve 1.463    sec
+[=PROFILE]      radix-unpad 0.07693  sec
+[=PROFILE]    reshare-alloc 0.08647  sec
+[=PROFILE]     reshare-comm 1.791    sec
+[=PROFILE] reshare-decide-r 0.04563  sec
+[=PROFILE] reshare-decide-s 0.03456  sec
+[=PROFILE]     reshare-rand 0.2773   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.473e-05 sec
+[ SW]       Radix Sort 9.252    sec
+[=PROFILE]           --oaep 0.01694  sec
+[=PROFILE]           --oasp 0.01915  sec
+[=PROFILE]           --perm 0.1779   sec
+[=PROFILE]        --reshare 0.2547   sec
+[=PROFILE]        oaep-copy 0.3125   sec
+[=PROFILE]         oaep-get 8.988e-05 sec
+[=PROFILE]         oaep-lap 0.623    sec
+[=PROFILE]        oaep-open 0.2656   sec
+[=PROFILE]         oasp-lap 1.306    sec
+[=PROFILE]     oasp-reshare 0.005509 sec
+[=PROFILE]         perm-b2a 0.721    sec
+[=PROFILE]        perm-copy 0.1277   sec
+[=PROFILE]         perm-mpx 0.4318   sec
+[=PROFILE]         perm-neg 0.2253   sec
+[=PROFILE]         perm-pfx 1.414    sec
+[=PROFILE]    radix-genperm 0.005136 sec
+[=PROFILE]       radix-oaep 0.000402 sec
+[=PROFILE]        radix-pad 0.02052  sec
+[=PROFILE]    radix-reserve 1.445    sec
+[=PROFILE]      radix-unpad 0.06505  sec
+[=PROFILE]    reshare-alloc 0.07227  sec
+[=PROFILE]     reshare-comm 1.452    sec
+[=PROFILE] reshare-decide-r 0.03855  sec
+[=PROFILE] reshare-decide-s 0.03157  sec
+[=PROFILE]     reshare-rand 0.2347   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.377e-05 sec
+[ SW]       Radix Sort 9.414    sec
+[=PROFILE]           --oaep 0.01516  sec
+[=PROFILE]           --oasp 0.0192   sec
+[=PROFILE]           --perm 0.1695   sec
+[=PROFILE]        --reshare 0.2875   sec
+[=PROFILE]        oaep-copy 0.3037   sec
+[=PROFILE]         oaep-get 7.459e-05 sec
+[=PROFILE]         oaep-lap 0.486    sec
+[=PROFILE]        oaep-open 0.2761   sec
+[=PROFILE]         oasp-lap 1.146    sec
+[=PROFILE]     oasp-reshare 0.005514 sec
+[=PROFILE]         perm-b2a 0.8253   sec
+[=PROFILE]        perm-copy 0.1265   sec
+[=PROFILE]         perm-mpx 0.4234   sec
+[=PROFILE]         perm-neg 0.207    sec
+[=PROFILE]         perm-pfx 1.281    sec
+[=PROFILE]    radix-genperm 0.005296 sec
+[=PROFILE]       radix-oaep 0.0003452 sec
+[=PROFILE]        radix-pad 0.02057  sec
+[=PROFILE]    radix-reserve 1.467    sec
+[=PROFILE]      radix-unpad 0.0782   sec
+[=PROFILE]    reshare-alloc 0.08675  sec
+[=PROFILE]     reshare-comm 1.839    sec
+[=PROFILE] reshare-decide-r 0.04734  sec
+[=PROFILE] reshare-decide-s 0.03501  sec
+[=PROFILE]     reshare-rand 0.2772   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.736e-05 sec
+[ SW]       Radix Sort 9.191    sec
+[=PROFILE]           --oaep 0.01611  sec
+[=PROFILE]           --oasp 0.01966  sec
+[=PROFILE]           --perm 0.1801   sec
+[=PROFILE]        --reshare 0.2926   sec
+[=PROFILE]        oaep-copy 0.2926   sec
+[=PROFILE]         oaep-get 7.382e-05 sec
+[=PROFILE]         oaep-lap 0.5261   sec
+[=PROFILE]        oaep-open 0.2713   sec
+[=PROFILE]         oasp-lap 1.195    sec
+[=PROFILE]     oasp-reshare 0.005485 sec
+[=PROFILE]         perm-b2a 0.7848   sec
+[=PROFILE]        perm-copy 0.1164   sec
+[=PROFILE]         perm-mpx 0.4266   sec
+[=PROFILE]         perm-neg 0.2109   sec
+[=PROFILE]         perm-pfx 1.243    sec
+[=PROFILE]    radix-genperm 0.005028 sec
+[=PROFILE]       radix-oaep 0.0003786 sec
+[=PROFILE]        radix-pad 0.02064  sec
+[=PROFILE]    radix-reserve 1.509    sec
+[=PROFILE]      radix-unpad 0.07694  sec
+[=PROFILE]    reshare-alloc 0.08484  sec
+[=PROFILE]     reshare-comm 1.584    sec
+[=PROFILE] reshare-decide-r 0.04331  sec
+[=PROFILE] reshare-decide-s 0.03815  sec
+[=PROFILE]     reshare-rand 0.2717   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.615e-05 sec
+[ SW]       Radix Sort 9.149    sec
+[=PROFILE]           --oaep 0.0146   sec
+[=PROFILE]           --oasp 0.01952  sec
+[=PROFILE]           --perm 0.2029   sec
+[=PROFILE]        --reshare 0.2947   sec
+[=PROFILE]        oaep-copy 0.2804   sec
+[=PROFILE]         oaep-get 7.102e-05 sec
+[=PROFILE]         oaep-lap 0.4579   sec
+[=PROFILE]        oaep-open 0.2785   sec
+[=PROFILE]         oasp-lap 1.094    sec
+[=PROFILE]     oasp-reshare 0.005401 sec
+[=PROFILE]         perm-b2a 0.8174   sec
+[=PROFILE]        perm-copy 0.1157   sec
+[=PROFILE]         perm-mpx 0.4293   sec
+[=PROFILE]         perm-neg 0.2378   sec
+[=PROFILE]         perm-pfx 1.268    sec
+[=PROFILE]    radix-genperm 0.005631 sec
+[=PROFILE]       radix-oaep 0.0003433 sec
+[=PROFILE]        radix-pad 0.02039  sec
+[=PROFILE]    radix-reserve 1.469    sec
+[=PROFILE]      radix-unpad 0.06582  sec
+[=PROFILE]    reshare-alloc 0.08896  sec
+[=PROFILE]     reshare-comm 1.637    sec
+[=PROFILE] reshare-decide-r 0.04631  sec
+[=PROFILE] reshare-decide-s 0.03733  sec
+[=PROFILE]     reshare-rand 0.281    sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.573e-05 sec
+[ SW]       Radix Sort 9.453    sec
+[=PROFILE]           --oaep 0.0154   sec
+[=PROFILE]           --oasp 0.01954  sec
+[=PROFILE]           --perm 0.1995   sec
+[=PROFILE]        --reshare 0.2988   sec
+[=PROFILE]        oaep-copy 0.2997   sec
+[=PROFILE]         oaep-get 7.188e-05 sec
+[=PROFILE]         oaep-lap 0.4448   sec
+[=PROFILE]        oaep-open 0.2753   sec
+[=PROFILE]         oasp-lap 1.113    sec
+[=PROFILE]     oasp-reshare 0.005666 sec
+[=PROFILE]         perm-b2a 0.8444   sec
+[=PROFILE]        perm-copy 0.1223   sec
+[=PROFILE]         perm-mpx 0.4433   sec
+[=PROFILE]         perm-neg 0.2301   sec
+[=PROFILE]         perm-pfx 1.278    sec
+[=PROFILE]    radix-genperm 0.006191 sec
+[=PROFILE]       radix-oaep 0.0003378 sec
+[=PROFILE]        radix-pad 0.02042  sec
+[=PROFILE]    radix-reserve 1.488    sec
+[=PROFILE]      radix-unpad 0.07606  sec
+[=PROFILE]    reshare-alloc 0.08969  sec
+[=PROFILE]     reshare-comm 1.824    sec
+[=PROFILE] reshare-decide-r 0.04739  sec
+[=PROFILE] reshare-decide-s 0.03895  sec
+[=PROFILE]     reshare-rand 0.2911   sec
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]            Start
+[ SW]        Quicksort 2.477e-05 sec
+[ SW]       Radix Sort 9.651    sec
+[=PROFILE]           --oaep 0.01589  sec
+[=PROFILE]           --oasp 0.01963  sec
+[=PROFILE]           --perm 0.2004   sec
+[=PROFILE]        --reshare 0.2908   sec
+[=PROFILE]        oaep-copy 0.2878   sec
+[=PROFILE]         oaep-get 9.806e-05 sec
+[=PROFILE]         oaep-lap 0.6111   sec
+[=PROFILE]        oaep-open 0.2776   sec
+[=PROFILE]         oasp-lap 1.289    sec
+[=PROFILE]     oasp-reshare 0.005945 sec
+[=PROFILE]         perm-b2a 0.7987   sec
+[=PROFILE]        perm-copy 0.1197   sec
+[=PROFILE]         perm-mpx 0.4419   sec
+[=PROFILE]         perm-neg 0.2375   sec
+[=PROFILE]         perm-pfx 1.344    sec
+[=PROFILE]    radix-genperm 0.005027 sec
+[=PROFILE]       radix-oaep 0.000397 sec
+[=PROFILE]        radix-pad 0.02064  sec
+[=PROFILE]    radix-reserve 1.434    sec
+[=PROFILE]      radix-unpad 0.07558  sec
+[=PROFILE]    reshare-alloc 0.08428  sec
+[=PROFILE]     reshare-comm 1.754    sec
+[=PROFILE] reshare-decide-r 0.04487  sec
+[=PROFILE] reshare-decide-s 0.03865  sec
+[=PROFILE]     reshare-rand 0.2742   sec

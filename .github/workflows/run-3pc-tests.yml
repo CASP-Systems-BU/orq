@@ -1,0 +1,165 @@
+# Build and run our test suite, automatically, upon
+#  - push to SECRECY-DEV
+#  - updates to non-draft PRs
+name: Build + Run Tests
+
+on:
+  push:
+    branches: [ "SECRECY-DEV" ]
+  pull_request:
+    types:
+      - opened
+      - ready_for_review
+      - synchronize
+      - reopened
+    branches:
+      - SECRECY-DEV
+  # this allows manual execution of tests against a branch, but it won't tie
+  # into the checks
+  workflow_dispatch:
+    
+jobs:
+  test-all-3pc:
+    if: github.event.pull_request.draft == false
+
+    # ubuntu-latest, for private repos, only gives us 2 cores
+    # see github docs for more info
+    runs-on: ubuntu-latest
+
+    # ~2x longer than we actually need
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create build dir
+        run: mkdir -p ${{github.workspace}}/build
+
+      - name: Install required dependencies
+        run: scripts/_setup_required.sh
+
+      - name: Configure
+        run: cmake -B ${{github.workspace}}/build -DPROTOCOL=3
+
+      - name: Build Tests
+        working-directory: ${{github.workspace}}/build
+        run: make -j$(nproc) tests-only
+
+      - name: Run All Tests
+        working-directory: ${{github.workspace}}/build
+        run: |
+            for t in test_*; do
+              echo "::group::Running Test: $t"
+              mpirun --use-hwthread-cpus -np 3 --oversubscribe $t || exit 1
+              echo "::endgroup::"
+            done
+            echo "All tests passed!"
+  
+  test-2pc:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    
+    # This should be more than enough time to run tests, but also need enough
+    # time to install libOTe + save cache, where necessary
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install required dependencies
+        run: scripts/_setup_required.sh
+
+      - name: Create build dir
+        run: mkdir -p ${{github.workspace}}/build
+
+      # To save time, restore libOTe and other deps from cache if no changes to
+      # script. This saves about 10 minutes. To prevent over-agressive caching,
+      # manually specifying the files we need.
+      - name: Restore cached libOTe
+        uses: actions/cache@v4
+        id: cache-deps
+        with:
+          path: |
+            build/libOTe-install
+          key: secrecy-libote-${{ hashFiles('scripts/_setup_libote.sh') }}
+  
+      # cache miss, so install from scratch
+      - if: ${{ steps.cache-deps.outputs.cache-hit != 'true' }}
+        name: Install libOTe
+        working-directory: ${{github.workspace}}/build
+        run: ../scripts/_setup_libote.sh
+
+      # To save time, restore SecureJoin from cache if no changes to either script
+      - name: Restore cached SecureJoin
+        uses: actions/cache@v4
+        id: cache-securejoin
+        with:
+          path: |
+            build/secure-join-install
+          key: secrecy-securejoin-${{ hashFiles('scripts/_setup_libote.sh', 'scripts/_setup_securejoin.sh') }}
+  
+      # cache miss, so install from scratch
+      - if: ${{ steps.cache-securejoin.outputs.cache-hit != 'true' }}
+        name: Install SecureJoin
+        working-directory: ${{github.workspace}}/build
+        run: ../scripts/_setup_securejoin.sh
+
+      - name: Configure (2PC)
+        run: cmake -B ${{github.workspace}}/build -DPROTOCOL=2 -DTRIPLES=REAL
+      
+      - name: Build Tests (2PC)
+        working-directory: ${{github.workspace}}/build
+        run: make -j$(nproc) test_primitives test_libote test_securejoin
+  
+      - name: Run Basic Tests (2PC)
+        working-directory: ${{github.workspace}}/build
+        run: mpirun --use-hwthread-cpus -np 2 --oversubscribe test_primitives
+
+      - name: Run libOTe Tests (2PC)
+        working-directory: ${{github.workspace}}/build
+        run: mpirun --use-hwthread-cpus -np 2 --oversubscribe test_libote
+
+      - name: Run secureJoin Tests (2PC)
+        working-directory: ${{github.workspace}}/build
+        run: mpirun --use-hwthread-cpus -np 2 --oversubscribe test_securejoin
+
+  test-others:
+    if: github.event.pull_request.draft == false
+
+    # ubuntu-latest, for private repos, only gives us 2 cores
+    # see github docs for more info
+    runs-on: ubuntu-latest
+
+    # ~5x longer than we actually need
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create build dir
+        run: mkdir -p ${{github.workspace}}/build
+
+      - name: Install required dependencies
+        run: scripts/_setup_required.sh
+
+      - name: Configure (1PC)
+        run: cmake -B ${{github.workspace}}/build -DPROTOCOL=1
+      
+      - name: Build Basic Tests (1PC)
+        working-directory: ${{github.workspace}}/build
+        run: make -j$(nproc) test_primitives
+
+      - name: Run Basic Tests (1PC)
+        working-directory: ${{github.workspace}}/build
+        run: ./test_primitives
+  
+      - name: Configure (4PC)
+        run: cmake -B ${{github.workspace}}/build -DPROTOCOL=4
+      
+      - name: Build Basic Tests (4PC)
+        working-directory: ${{github.workspace}}/build
+        run: make -j$(nproc) test_primitives
+
+      - name: Run Basic Tests (4PC)
+        working-directory: ${{github.workspace}}/build
+        run: mpirun --use-hwthread-cpus -np 4 --oversubscribe test_primitives

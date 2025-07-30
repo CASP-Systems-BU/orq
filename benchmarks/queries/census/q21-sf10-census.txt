@@ -1,0 +1,57 @@
+Q21 SF 10
+SQLite setup skipped
+SQLite setup skipped
+SQLite setup skipped
+SQLite setup skipped
+[=SW]            start
+[ SW]          filters 5.801    sec
+[ SW]          project 0.01768  sec
+[TABLE_SORT] k=3 n=74994662
+...skipped
+[TABLE_AGG] k=2 n=134217728 a=1
+...skipped
+[TABLE_SORT] k=1 n=74994662
+...skipped
+[TABLE_SORT] k=3 n=100025
+...skipped
+[TABLE_AGG] k=2 n=131072 a=1
+...skipped
+Note: skipping requested trim: L = 25 R = 100000 w = 64 c = 1 
+[TABLE_SORT] k=3 n=60094687
+...skipped
+[TABLE_AGG] k=2 n=67108864 a=3
+...skipped
+Note: skipping requested trim: L = 100025 R = 59994662 w = 64 c = 3 
+[TABLE_SORT] k=3 n=60094687
+...skipped
+[TABLE_AGG] k=3 n=67108864 a=1
+...skipped
+[ SW]            joins 87.02    sec
+[TABLE_SORT] k=3 n=59994662
+...skipped
+[TABLE_AGG] k=3 n=67108864 a=1
+...skipped
+[TABLE_SORT] k=2 n=59994662
+...skipped
+[TABLE_AGG] k=2 n=67108864 a=3
+...skipped
+[ SW] exists / not exists 51.27    sec
+[TABLE_SORT] k=4 n=120089349
+...skipped
+[TABLE_AGG] k=3 n=134217728 a=1
+...skipped
+[TABLE_SORT] k=1 n=120089349
+...skipped
+[TABLE_SORT] k=2 n=60094687
+...skipped
+[TABLE_AGG] k=2 n=67108864 a=1
+...skipped
+[TABLE_SORT] k=1 n=60094687
+...skipped
+[ SW]       final join 74.69    sec
+[TABLE_SORT] k=2 n=100000
+...skipped
+[ SW]             sort 0.04956  sec
+NOTE: no permutations in queue. Recommend calling reserve().
+NOTE: no permutations in queue. Recommend calling reserve().
+[=SW]          Overall 218.9    sec

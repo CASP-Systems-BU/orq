@@ -1,0 +1,170 @@
+#!/bin/bash
+
+readonly LOCAL_EXEC_MODE=0
+readonly REMOTE_EXEC_MODE=1
+exit_code=0
+
+# Print usage
+usage() {
+    echo "Usage: $0 -n <number_of_processes> [-h <host_list>] [-s] <command>"
+    exit 1
+}
+
+# Cleanup function to handle lingering processes
+cleanup() {
+    # Cleanup local processes
+    pkill -f "$COMMAND >/dev/null 2>&1"
+
+    # Cleanup remote processes, if any
+    if [ -n "$HOST_STRING" ]; then
+        IFS=',' read -r -a HOSTS <<< "$HOST_STRING"
+        for host in "${HOSTS[@]}"; do
+            ssh "$host" "nohup pkill -f '$COMMAND' >/dev/null 2>&1 &" &
+        done
+        wait
+    fi
+}
+
+# Local Execution
+# Run binary in a local child process
+local_execution() {
+    local command=$1
+    local base_port=$2
+    local host_count=$3
+    local host_rank=$4
+
+    # echo "Local | $command | $base_port"
+
+    # Set env vars for startmpc connection setup
+    export STARTMPC_EXEC_MODE=$LOCAL_EXEC_MODE
+    export STARTMPC_BASE_PORT=$base_port
+    export STARTMPC_HOST_COUNT=$host_count
+    export STARTMPC_HOST_RANK=$host_rank
+
+    ## (Debugging Commands)
+    ## Mac
+    # stdbuf -oL -eL lldb -b -o 'run' -k 'thread backtrace all' -o 'quit' $command
+    ## Linux
+    # stdbuf -oL -eL gdb --quiet -ex 'run' -ex 'bt' --args $command
+    ## ASAN/TSAN
+    # export ASAN_OPTIONS=new_delete_type_mismatch=0
+    # LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.6 stdbuf -oL -eL $command
+    ## Normal
+
+    stdbuf -oL -eL $command || (echo "failed; pkill $COMMAND"; sleep 1; pkill startmpc)
+
+    return $?
+}
+
+# Remote Execution
+# Run binary on specified host machine using SSH
+remote_execution() {
+    local host=$1
+    local command=$2
+    local base_port=$3
+    local host_count=$4
+    local host_rank=$5
+    local host_list=$6
+    local scp_flag=$7
+
+    local_dir=$(pwd)
+
+    # echo "Remote | $host_rank: $command | $base_port"
+
+    file_to_scp=$(echo "$command" | awk '{print $1}' | sed 's|./||')
+    if [ "$scp_flag" -eq 1 ] && [ "$host" != "localhost" ] && [ "$host" != "127.0.0.1" ]; then
+        scp "$local_dir/$file_to_scp" "$host":"$local_dir"
+    fi
+
+    # Create var with the required envs
+    local env_settings="export STARTMPC_EXEC_MODE='$REMOTE_EXEC_MODE';"
+    env_settings+="export STARTMPC_BASE_PORT='$base_port';"
+    env_settings+="export STARTMPC_HOST_COUNT='$host_count';"
+    env_settings+="export STARTMPC_HOST_RANK='$host_rank';"
+    env_settings+="export STARTMPC_HOST_LIST='$host_list';"
+
+    # Run command on host
+    ssh "$host" "$env_settings cd '$local_dir' && stdbuf -oL -eL $command" || (echo "SSH exited: $?"; sleep 1; cleanup)
+
+    return $?
+}
+
+# Parse CLI params
+NUM_PROCESSES=''
+HOST_STRING=''
+SCP_FLAG=0
+while getopts "n:h:s" opt; do
+    case "$opt" in
+        n) NUM_PROCESSES=$OPTARG ;;
+        h) HOST_STRING=$OPTARG ;;
+        s) SCP_FLAG=1 ;;
+        ?) usage ;;
+    esac
+done
+
+# Remove processed options/args
+shift $((OPTIND -1))
+
+# Remaining args assumed to be the command
+COMMAND="$@"
+
+# Check for required params
+if [ -z "$NUM_PROCESSES" ] || [ -z "$COMMAND" ]; then
+    echo "Error: Missing required arguments"
+    usage
+fi
+
+# Sockets are not immediately reusable after closing, hence the random base port
+# Not very elegant, but works for now. TODO: Figure out something better
+BASE_PORT=$((RANDOM % (50000 - 10000 + 1) + 10000))
+
+# Cleanup on exit
+trap cleanup EXIT
+
+# Either run locally or on remote hosts depending on input
+pids=()
+if [ -n "$HOST_STRING" ]; then
+    IFS=',' read -r -a HOSTS <<< "$HOST_STRING"
+
+    # Host count check
+    if [ ${#HOSTS[@]} -lt "$NUM_PROCESSES" ]; then
+        missing_hosts=$((NUM_PROCESSES - ${#HOSTS[@]}))
+        # Add "localhost" for each missing host
+        for ((i=0; i<$missing_hosts; i++)); do
+            HOST_STRING="localhost,$HOST_STRING"
+        done
+
+        IFS=',' read -r -a HOSTS <<< "$HOST_STRING"  # Reset HOSTS
+        echo -e "Not enough hosts, running as: $HOST_STRING\n"
+    fi
+
+    if [ ${#HOSTS[@]} -ne "$NUM_PROCESSES" ]; then
+        echo "Error: The number of hosts does not match the number of processes"
+        exit 1
+    fi
+
+    # Remote execution
+    for ((i=0; i<NUM_PROCESSES; i++)); do
+        (remote_execution "${HOSTS[i]}" "$COMMAND" "$BASE_PORT" "$NUM_PROCESSES" "$i" "$HOST_STRING" "$SCP_FLAG") &
+        pids+=($!)
+    done
+else
+    # Local execution
+    for ((i=0; i<NUM_PROCESSES; i++)); do
+        (local_execution "$COMMAND" "$BASE_PORT" "$NUM_PROCESSES" "$i") &
+        pids+=($!)
+    done
+fi
+
+# Wait for child processes to complete
+for pid in "${pids[@]}"; do
+    wait $pid
+    status=$?
+    if [ $status -ne 0 ] && [ $exit_code -eq 0 ]; then
+        # echo "Error: PID $pid failed with exit status $status"
+        exit_code=$status
+    fi
+done
+
+# Exit with the appropriate code
+exit $exit_code

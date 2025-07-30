@@ -1,0 +1,231 @@
+==== 1048576 rows; 4 threads ====
+[ SW]        Quicksort 6.37     sec
+[ SW]       Radix Sort 8.31     sec
+[ SW]        Quicksort 6.11     sec
+[ SW]       Radix Sort 8.282    sec
+[ SW]        Quicksort 5.974    sec
+[ SW]       Radix Sort 7.889    sec
+[ SW]        Quicksort 6.146    sec
+[ SW]       Radix Sort 8.277    sec
+[ SW]        Quicksort 6.23     sec
+[ SW]       Radix Sort 8.167    sec
+==== 1048576 rows; 6 threads ====
+[ SW]        Quicksort 5.692    sec
+[ SW]       Radix Sort 6.149    sec
+[ SW]        Quicksort 5.496    sec
+[ SW]       Radix Sort 6.35     sec
+[ SW]        Quicksort 5.553    sec
+[ SW]       Radix Sort 6.109    sec
+[ SW]        Quicksort 5.722    sec
+[ SW]       Radix Sort 6.12     sec
+[ SW]        Quicksort 5.911    sec
+[ SW]       Radix Sort 6.444    sec
+==== 1048576 rows; 8 threads ====
+[ SW]        Quicksort 5.207    sec
+[ SW]       Radix Sort 5.448    sec
+[ SW]        Quicksort 5.281    sec
+[ SW]       Radix Sort 5.506    sec
+[ SW]        Quicksort 5.316    sec
+[ SW]       Radix Sort 5.509    sec
+[ SW]        Quicksort 5.421    sec
+[ SW]       Radix Sort 5.578    sec
+[ SW]        Quicksort 5.359    sec
+[ SW]       Radix Sort 5.858    sec
+==== 1048576 rows; 10 threads ====
+[ SW]        Quicksort 5.041    sec
+[ SW]       Radix Sort 4.973    sec
+[ SW]        Quicksort 5.074    sec
+[ SW]       Radix Sort 5.008    sec
+[ SW]        Quicksort 5.637    sec
+[ SW]       Radix Sort 5.043    sec
+[ SW]        Quicksort 4.959    sec
+[ SW]       Radix Sort 5.017    sec
+[ SW]        Quicksort 4.913    sec
+[ SW]       Radix Sort 4.998    sec
+==== 1048576 rows; 12 threads ====
+[ SW]        Quicksort 5.501    sec
+[ SW]       Radix Sort 4.589    sec
+[ SW]        Quicksort 5.103    sec
+[ SW]       Radix Sort 4.585    sec
+[ SW]        Quicksort 4.908    sec
+[ SW]       Radix Sort 4.594    sec
+[ SW]        Quicksort 4.982    sec
+[ SW]       Radix Sort 4.592    sec
+[ SW]        Quicksort 5.115    sec
+[ SW]       Radix Sort 4.604    sec
+==== 1048576 rows; 14 threads ====
+[ SW]        Quicksort 5.542    sec
+[ SW]       Radix Sort 4.563    sec
+[ SW]        Quicksort 4.93     sec
+[ SW]       Radix Sort 4.619    sec
+[ SW]        Quicksort 5.112    sec
+[ SW]       Radix Sort 4.694    sec
+[ SW]        Quicksort 4.806    sec
+[ SW]       Radix Sort 4.493    sec
+[ SW]        Quicksort 5.038    sec
+[ SW]       Radix Sort 4.786    sec
+==== 1048576 rows; 16 threads ====
+[ SW]        Quicksort 4.96     sec
+[ SW]       Radix Sort 4.479    sec
+[ SW]        Quicksort 4.958    sec
+[ SW]       Radix Sort 4.48     sec
+[ SW]        Quicksort 4.853    sec
+[ SW]       Radix Sort 4.487    sec
+[ SW]        Quicksort 4.895    sec
+[ SW]       Radix Sort 4.48     sec
+[ SW]        Quicksort 5.085    sec
+[ SW]       Radix Sort 4.513    sec
+==== 1048576 rows; 18 threads ====
+[ SW]        Quicksort 4.911    sec
+[ SW]       Radix Sort 4.331    sec
+[ SW]        Quicksort 5.388    sec
+[ SW]       Radix Sort 4.17     sec
+[ SW]        Quicksort 4.753    sec
+[ SW]       Radix Sort 4.228    sec
+[ SW]        Quicksort 4.845    sec
+[ SW]       Radix Sort 4.255    sec
+[ SW]        Quicksort 4.929    sec
+[ SW]       Radix Sort 4.167    sec
+==== 1048576 rows; 20 threads ====
+[ SW]        Quicksort 4.979    sec
+[ SW]       Radix Sort 4.144    sec
+[ SW]        Quicksort 4.995    sec
+[ SW]       Radix Sort 4.19     sec
+[ SW]        Quicksort 4.804    sec
+[ SW]       Radix Sort 4.238    sec
+[ SW]        Quicksort 5.09     sec
+[ SW]       Radix Sort 4.208    sec
+[ SW]        Quicksort 4.748    sec
+[ SW]       Radix Sort 4.154    sec
+==== 1048576 rows; 22 threads ====
+[ SW]        Quicksort 5.007    sec
+[ SW]       Radix Sort 4.185    sec
+[ SW]        Quicksort 5.152    sec
+[ SW]       Radix Sort 4.385    sec
+[ SW]        Quicksort 5.132    sec
+[ SW]       Radix Sort 4.169    sec
+[ SW]        Quicksort 5.082    sec
+[ SW]       Radix Sort 4.167    sec
+[ SW]        Quicksort 4.804    sec
+[ SW]       Radix Sort 4.267    sec
+==== 1048576 rows; 24 threads ====
+[ SW]        Quicksort 5.324    sec
+[ SW]       Radix Sort 4.316    sec
+[ SW]        Quicksort 5.499    sec
+[ SW]       Radix Sort 4.332    sec
+[ SW]        Quicksort 5.155    sec
+[ SW]       Radix Sort 4.412    sec
+[ SW]        Quicksort 5.316    sec
+[ SW]       Radix Sort 4.314    sec
+[ SW]        Quicksort 5.594    sec
+[ SW]       Radix Sort 4.303    sec
+==== 1048576 rows; 26 threads ====
+[ SW]        Quicksort 5.153    sec
+[ SW]       Radix Sort 4.448    sec
+[ SW]        Quicksort 5.375    sec
+[ SW]       Radix Sort 4.418    sec
+[ SW]        Quicksort 4.978    sec
+[ SW]       Radix Sort 4.387    sec
+[ SW]        Quicksort 4.941    sec
+[ SW]       Radix Sort 4.423    sec
+[ SW]        Quicksort 5.154    sec
+[ SW]       Radix Sort 4.359    sec
+==== 1048576 rows; 28 threads ====
+[ SW]        Quicksort 5.214    sec
+[ SW]       Radix Sort 4.561    sec
+[ SW]        Quicksort 5.252    sec
+[ SW]       Radix Sort 4.409    sec
+[ SW]        Quicksort 4.99     sec
+[ SW]       Radix Sort 4.447    sec
+[ SW]        Quicksort 4.977    sec
+[ SW]       Radix Sort 4.442    sec
+[ SW]        Quicksort 5.251    sec
+[ SW]       Radix Sort 4.384    sec
+==== 1048576 rows; 30 threads ====
+[ SW]        Quicksort 5.207    sec
+[ SW]       Radix Sort 4.599    sec
+[ SW]        Quicksort 5.233    sec
+[ SW]       Radix Sort 4.357    sec
+[ SW]        Quicksort 4.875    sec
+[ SW]       Radix Sort 4.394    sec
+[ SW]        Quicksort 5.011    sec
+[ SW]       Radix Sort 4.33     sec
+[ SW]        Quicksort 5.449    sec
+[ SW]       Radix Sort 4.418    sec
+==== 1048576 rows; 32 threads ====
+[ SW]        Quicksort 5.344    sec
+[ SW]       Radix Sort 4.48     sec
+[ SW]        Quicksort 6.305    sec
+[ SW]       Radix Sort 4.468    sec
+[ SW]        Quicksort 5.971    sec
+[ SW]       Radix Sort 4.539    sec
+[ SW]        Quicksort 5.625    sec
+[ SW]       Radix Sort 4.515    sec
+[ SW]        Quicksort 5.931    sec
+[ SW]       Radix Sort 4.506    sec
+==== 1048576 rows; 34 threads ====
+[ SW]        Quicksort 5.11     sec
+[ SW]       Radix Sort 4.129    sec
+[ SW]        Quicksort 5.537    sec
+[ SW]       Radix Sort 4.12     sec
+[ SW]        Quicksort 5.488    sec
+[ SW]       Radix Sort 4.084    sec
+[ SW]        Quicksort 5.579    sec
+[ SW]       Radix Sort 4.142    sec
+[ SW]        Quicksort 5.124    sec
+[ SW]       Radix Sort 4.159    sec
+==== 1048576 rows; 36 threads ====
+[ SW]        Quicksort 5.406    sec
+[ SW]       Radix Sort 4.392    sec
+[ SW]        Quicksort 5.882    sec
+[ SW]       Radix Sort 4.169    sec
+[ SW]        Quicksort 5.818    sec
+[ SW]       Radix Sort 4.324    sec
+[ SW]        Quicksort 5.328    sec
+[ SW]       Radix Sort 4.124    sec
+[ SW]        Quicksort 5.561    sec
+[ SW]       Radix Sort 4.204    sec
+==== 1048576 rows; 38 threads ====
+[ SW]        Quicksort 4.877    sec
+[ SW]       Radix Sort 4.158    sec
+[ SW]        Quicksort 5.119    sec
+[ SW]       Radix Sort 4.395    sec
+[ SW]        Quicksort 5.636    sec
+[ SW]       Radix Sort 4.16     sec
+[ SW]        Quicksort 5.682    sec
+[ SW]       Radix Sort 4.228    sec
+[ SW]        Quicksort 5.703    sec
+[ SW]       Radix Sort 4.428    sec
+==== 1048576 rows; 40 threads ====
+[ SW]        Quicksort 5.611    sec
+[ SW]       Radix Sort 4.451    sec
+[ SW]        Quicksort 5.604    sec
+[ SW]       Radix Sort 4.198    sec
+[ SW]        Quicksort 5.505    sec
+[ SW]       Radix Sort 4.209    sec
+[ SW]        Quicksort 5.521    sec
+[ SW]       Radix Sort 4.449    sec
+[ SW]        Quicksort 5.765    sec
+[ SW]       Radix Sort 4.208    sec
+==== 1048576 rows; 42 threads ====
+[ SW]        Quicksort 5.767    sec
+[ SW]       Radix Sort 4.295    sec
+[ SW]        Quicksort 5.772    sec
+[ SW]       Radix Sort 4.357    sec
+[ SW]        Quicksort 5.653    sec
+[ SW]       Radix Sort 4.345    sec
+[ SW]        Quicksort 5.826    sec
+[ SW]       Radix Sort 4.456    sec
+[ SW]        Quicksort 5.607    sec
+[ SW]       Radix Sort 4.319    sec
+==== 1048576 rows; 44 threads ====
+[ SW]        Quicksort 5.671    sec
+[ SW]       Radix Sort 4.303    sec
+[ SW]        Quicksort 6.038    sec
+[ SW]       Radix Sort 4.407    sec
+[ SW]        Quicksort 5.417    sec
+[ SW]       Radix Sort 4.366    sec
+[ SW]        Quicksort 6.396    sec
+[ SW]       Radix Sort 4.313    sec
+[ SW]        Quicksort 5.815    sec
+[ SW]       Radix Sort 4.611    sec

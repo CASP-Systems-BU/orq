@@ -1,0 +1,98 @@
+Timestamp: Mon Sep  9 04:52:14 UTC 2024
+
+Git commit: 3dd262c53fa9472056bbf974f3950494e02d87d6
+
+Git status: On branch eb/only-remove-batching
+Your branch is up to date with 'origin/eb/only-remove-batching'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   ../include/service/mpi/setup.h
+	new file:   cluster-wan-sim.sh
+	modified:   orchestration/deploy.sh
+	new file:   primitive-experiments.sh
+	new file:   primitive-multithreaded.sh
+	modified:   run_experiment.sh
+	new file:   wan-sim.py
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   primitive-experiments.sh
+
+Command line: ../scripts/primitive-experiments.sh 
+
+Args:
+REPS=3
+INPUT_SIZES=13,14,16,17,20,23,24,26,27,29
+CMAKE=-DDEFAULT_BITWIDTH=32
+ENVIRO=lan
+
+Hostnames: ip-172-31-10-77; node0 
+
+Network status:
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute 
+       valid_lft forever preferred_lft forever
+2: ens5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9001 qdisc mq state UP group default qlen 1000
+    link/ether 02:18:ba:1b:09:27 brd ff:ff:ff:ff:ff:ff
+    altname enp0s5
+    inet 172.31.10.77/20 metric 100 brd 172.31.15.255 scope global dynamic ens5
+       valid_lft 2959sec preferred_lft 2959sec
+    inet6 fe80::18:baff:fe1b:927/64 scope link 
+       valid_lft forever preferred_lft forever
+
+Simulator status:
+qdisc noqueue 0: dev lo root refcnt 2 
+qdisc mq 0: dev ens5 root 
+qdisc pfifo_fast 0: dev ens5 parent :8 bands 3 priomap 1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: dev ens5 parent :7 bands 3 priomap 1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: dev ens5 parent :6 bands 3 priomap 1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: dev ens5 parent :5 bands 3 priomap 1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: dev ens5 parent :4 bands 3 priomap 1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: dev ens5 parent :3 bands 3 priomap 1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: dev ens5 parent :2 bands 3 priomap 1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: dev ens5 parent :1 bands 3 priomap 1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+
+CPU: (ip-172-31-10-77)
+Architecture:                         x86_64
+CPU op-mode(s):                       32-bit, 64-bit
+Address sizes:                        46 bits physical, 48 bits virtual
+Byte Order:                           Little Endian
+CPU(s):                               32
+On-line CPU(s) list:                  0-31
+Vendor ID:                            GenuineIntel
+Model name:                           Intel(R) Xeon(R) Platinum 8259CL CPU @ 2.50GHz
+CPU family:                           6
+Model:                                85
+Thread(s) per core:                   2
+Core(s) per socket:                   16
+Socket(s):                            1
+Stepping:                             7
+BogoMIPS:                             4999.99
+Flags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch pti fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid mpx avx512f avx512dq rdseed adx smap clflushopt clwb avx512cd avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves ida arat pku ospke
+Hypervisor vendor:                    KVM
+Virtualization type:                  full
+L1d cache:                            512 KiB (16 instances)
+L1i cache:                            512 KiB (16 instances)
+L2 cache:                             16 MiB (16 instances)
+L3 cache:                             35.8 MiB (1 instance)
+NUMA node(s):                         1
+NUMA node0 CPU(s):                    0-31
+Vulnerability Gather data sampling:   Unknown: Dependent on hypervisor status
+Vulnerability Itlb multihit:          KVM: Mitigation: VMX unsupported
+Vulnerability L1tf:                   Mitigation; PTE Inversion
+Vulnerability Mds:                    Vulnerable: Clear CPU buffers attempted, no microcode; SMT Host state unknown
+Vulnerability Meltdown:               Mitigation; PTI
+Vulnerability Mmio stale data:        Vulnerable: Clear CPU buffers attempted, no microcode; SMT Host state unknown
+Vulnerability Reg file data sampling: Not affected
+Vulnerability Retbleed:               Vulnerable
+Vulnerability Spec rstack overflow:   Not affected
+Vulnerability Spec store bypass:      Vulnerable
+Vulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+Vulnerability Spectre v2:             Mitigation; Retpolines; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Retpoline
+Vulnerability Srbds:                  Not affected
+Vulnerability Tsx async abort:        Not affected

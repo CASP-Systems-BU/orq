@@ -1,0 +1,210 @@
+Common interface: ens5
+Compiler flags: -O3 -g -pthread -D PROTOCOL_NUM=4 -mbmi -march=native -DCOMMUNICATOR_NUM=MPI_COMMUNICATOR
+-- Configuring done (2.6s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/ubuntu/secrecy-private/build
+[ 50%] Building CXX object CMakeFiles/micro_primitives.dir/src/micro/micro_primitives.cpp.o
+[100%] Linking CXX executable micro_primitives
+[100%] Built target micro_primitives
+==== 8192 rows; 1 threads ====
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.001446 sec
+[ SW]               EQ 0.006397 sec
+[ SW]               GR 0.008597 sec
+[ SW]              RCA 0.01383  sec
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.00136  sec
+[ SW]               EQ 0.007187 sec
+[ SW]               GR 0.009936 sec
+[ SW]              RCA 0.01782  sec
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.001165 sec
+[ SW]               EQ 0.007434 sec
+[ SW]               GR 0.00963  sec
+[ SW]              RCA 0.01558  sec
+==== 16384 rows; 1 threads ====
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.002876 sec
+[ SW]               EQ 0.01452  sec
+[ SW]               GR 0.01888  sec
+[ SW]              RCA 0.01802  sec
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.003826 sec
+[ SW]               EQ 0.01457  sec
+[ SW]               GR 0.0185   sec
+[ SW]              RCA 0.02066  sec
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.002992 sec
+[ SW]               EQ 0.01489  sec
+[ SW]               GR 0.02115  sec
+[ SW]              RCA 0.01865  sec
+==== 65536 rows; 1 threads ====
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.01107  sec
+[ SW]               EQ 0.04371  sec
+[ SW]               GR 0.05488  sec
+[ SW]              RCA 0.04663  sec
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.01059  sec
+[ SW]               EQ 0.04607  sec
+[ SW]               GR 0.05659  sec
+[ SW]              RCA 0.04445  sec
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.01081  sec
+[ SW]               EQ 0.04462  sec
+[ SW]               GR 0.05633  sec
+[ SW]              RCA 0.04657  sec
+==== 131072 rows; 1 threads ====
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.01947  sec
+[ SW]               EQ 0.08477  sec
+[ SW]               GR 0.1074   sec
+[ SW]              RCA 0.08031  sec
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.02058  sec
+[ SW]               EQ 0.08429  sec
+[ SW]               GR 0.1061   sec
+[ SW]              RCA 0.08007  sec
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.0202   sec
+[ SW]               EQ 0.08606  sec
+[ SW]               GR 0.1063   sec
+[ SW]              RCA 0.08441  sec
+==== 1048576 rows; 1 threads ====
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 0.1524   sec
+[ SW]               EQ 0.7063   sec
+[ SW]               GR 0.9087   sec
+[ SW]              RCA 0.6164   sec
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 0.1543   sec
+[ SW]               EQ 0.7159   sec
+[ SW]               GR 0.9293   sec
+[ SW]              RCA 0.6184   sec
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 0.1539   sec
+[ SW]               EQ 0.9168   sec
+[ SW]               GR 0.919    sec
+[ SW]              RCA 0.612    sec
+==== 8388608 rows; 1 threads ====
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 1.398    sec
+[ SW]               EQ 8.696    sec
+[ SW]               GR 11.76    sec
+[ SW]              RCA 4.752    sec
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 1.391    sec
+[ SW]               EQ 8.666    sec
+[ SW]               GR 11.71    sec
+[ SW]              RCA 4.766    sec
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 1.392    sec
+[ SW]               EQ 8.677    sec
+[ SW]               GR 11.76    sec
+[ SW]              RCA 4.767    sec
+==== 16777216 rows; 1 threads ====
+Vector 16777216 x 32b
+[=SW]            Start
+[ SW]              AND 2.771    sec
+[ SW]               EQ 17.4     sec
+[ SW]               GR 23.64    sec
+[ SW]              RCA 9.552    sec
+Vector 16777216 x 32b
+[=SW]            Start
+[ SW]              AND 2.767    sec
+[ SW]               EQ 17.39    sec
+[ SW]               GR 23.61    sec
+[ SW]              RCA 9.536    sec
+Vector 16777216 x 32b
+[=SW]            Start
+[ SW]              AND 2.759    sec
+[ SW]               EQ 17.4     sec
+[ SW]               GR 23.66    sec
+[ SW]              RCA 9.563    sec
+==== 67108864 rows; 1 threads ====
+Vector 67108864 x 32b
+[=SW]            Start
+[ SW]              AND 10.95    sec
+[ SW]               EQ 69.56    sec
+[ SW]               GR 94.54    sec
+[ SW]              RCA 41.52    sec
+Vector 67108864 x 32b
+[=SW]            Start
+[ SW]              AND 10.92    sec
+[ SW]               EQ 69.49    sec
+[ SW]               GR 94.43    sec
+[ SW]              RCA 41.88    sec
+Vector 67108864 x 32b
+[=SW]            Start
+[ SW]              AND 11.09    sec
+[ SW]               EQ 69.7     sec
+[ SW]               GR 94.86    sec
+[ SW]              RCA 41.57    sec
+==== 134217728 rows; 1 threads ====
+Vector 134217728 x 32b
+[=SW]            Start
+[ SW]              AND 22.02    sec
+[ SW]               EQ 141.3    sec
+[ SW]               GR 189.1    sec
+[ SW]              RCA 83.01    sec
+Vector 134217728 x 32b
+[=SW]            Start
+[ SW]              AND 21.84    sec
+[ SW]               EQ 139.5    sec
+[ SW]               GR 192.7    sec
+[ SW]              RCA 83.28    sec
+Vector 134217728 x 32b
+[=SW]            Start
+[ SW]              AND 22.17    sec
+[ SW]               EQ 141.7    sec
+[ SW]               GR 191.3    sec
+[ SW]              RCA 83.38    sec
+==== 536870912 rows; 1 threads ====
+Vector 536870912 x 32b
+[=SW]            Start
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 3 with PID 22071 on node node3 exited on signal 11 (Segmentation fault).
+--------------------------------------------------------------------------
+3 total processes killed (some possibly by mpirun during cleanup)
+Vector 536870912 x 32b
+[=SW]            Start
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 3 with PID 22132 on node node3 exited on signal 11 (Segmentation fault).
+--------------------------------------------------------------------------
+3 total processes killed (some possibly by mpirun during cleanup)
+Vector 536870912 x 32b
+[=SW]            Start
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 3 with PID 22193 on node node3 exited on signal 11 (Segmentation fault).
+--------------------------------------------------------------------------
+3 total processes killed (some possibly by mpirun during cleanup)

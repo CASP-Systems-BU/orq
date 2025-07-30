@@ -1,0 +1,124 @@
+Common interface: enp65s0f0np0
+Compiler flags: -O3 -g -pthread -D PROTOCOL_NUM=3 -mbmi -march=native -DCOMMUNICATOR_NUM=MPI_COMMUNICATOR
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /users/elibaum/secrecy-private/build
+Consolidate compiler generated dependencies of target micro_primitives
+[ 50%] Building CXX object CMakeFiles/micro_primitives.dir/src/micro/micro_primitives.cpp.o
+[100%] Linking CXX executable micro_primitives
+[100%] Built target micro_primitives
+prefix: mpirun --mca btl_tcp_if_include enp65s0f0np0 --mca oob_tcp_if_include enp65s0f0np0 -n 3 --host node0,node1,node2
+==== 8192 rows; 1 threads ====
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.1209   sec
+[ SW]               EQ 0.246    sec
+[ SW]               GR 0.3203   sec
+[ SW]              RCA 1.253    sec
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.1208   sec
+[ SW]               EQ 0.2457   sec
+[ SW]               GR 0.3202   sec
+[ SW]              RCA 1.252    sec
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.121    sec
+[ SW]               EQ 0.2448   sec
+[ SW]               GR 0.3208   sec
+[ SW]              RCA 1.251    sec
+==== 16384 rows; 1 threads ====
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.1613   sec
+[ SW]               EQ 0.4451   sec
+[ SW]               GR 0.5299   sec
+[ SW]              RCA 1.291    sec
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.1611   sec
+[ SW]               EQ 0.4461   sec
+[ SW]               GR 0.53     sec
+[ SW]              RCA 1.29     sec
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.1609   sec
+[ SW]               EQ 0.4449   sec
+[ SW]               GR 0.5294   sec
+[ SW]              RCA 1.29     sec
+==== 65536 rows; 1 threads ====
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.4837   sec
+[ SW]               EQ 1.589    sec
+[ SW]               GR 1.992    sec
+[ SW]              RCA 1.308    sec
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.4837   sec
+[ SW]               EQ 1.586    sec
+[ SW]               GR 1.993    sec
+[ SW]              RCA 1.307    sec
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.4438   sec
+[ SW]               EQ 1.628    sec
+[ SW]               GR 1.99     sec
+[ SW]              RCA 1.309    sec
+==== 131072 rows; 1 threads ====
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.8063   sec
+[ SW]               EQ 3.209    sec
+[ SW]               GR 3.981    sec
+[ SW]              RCA 1.282    sec
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.7671   sec
+[ SW]               EQ 3.245    sec
+[ SW]               GR 3.939    sec
+[ SW]              RCA 1.319    sec
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.7678   sec
+[ SW]               EQ 3.249    sec
+[ SW]               GR 3.943    sec
+[ SW]              RCA 1.321    sec
+==== 1048576 rows; 1 threads ====
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 5.343    sec
+[ SW]               EQ 26.09    sec
+[ SW]               GR 31.42    sec
+[ SW]              RCA 5.439    sec
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 5.333    sec
+[ SW]               EQ 25.94    sec
+[ SW]               GR 31.4     sec
+[ SW]              RCA 5.443    sec
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 5.299    sec
+[ SW]               EQ 25.95    sec
+[ SW]               GR 31.35    sec
+[ SW]              RCA 5.41     sec
+==== 8388608 rows; 1 threads ====
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 41.67    sec
+[ SW]               EQ 208.9    sec
+[ SW]               GR 252.3    sec
+[ SW]              RCA 43.39    sec
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 41.6     sec
+[ SW]               EQ 207.6    sec
+[ SW]               GR 252      sec
+[ SW]              RCA 43.34    sec
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 41.62    sec
+[ SW]               EQ 209.3    sec
+[ SW]               GR 253      sec
+[ SW]              RCA 43.38    sec

@@ -1,0 +1,468 @@
+Compiler flags: -O3 -g -pthread -D PROTOCOL_NUM=3 -mbmi -march=native -DCOMMUNICATOR_NUM=MPI_COMMUNICATOR
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /users/elibaum/secrecy-private/build
+Consolidate compiler generated dependencies of target micro_primitives
+[  0%] Building CXX object CMakeFiles/micro_primitives.dir/src/micro/micro_primitives.cpp.o
+[100%] Linking CXX executable micro_primitives
+[100%] Built target micro_primitives
+==== 8192 rows; 1 threads ====
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.0006404 sec
+[ SW]           AND_EQ 0.0002781 sec
+[ SW]    AND_NO_ASSIGN 0.0002044 sec
+--
+[ SW]               EQ 0.001947 sec
+[ SW]     EQ_NO_ASSIGN 0.00178  sec
+--
+[ SW]               GR 0.003088 sec
+[ SW]     GR_NO_ASSIGN 0.003064 sec
+[ SW]              LEQ 0.003144 sec
+--
+[ SW]              RCA 0.005962 sec
+[ SW]    RCA_NO_ASSIGN 0.005901 sec
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.0007587 sec
+[ SW]           AND_EQ 0.0002257 sec
+[ SW]    AND_NO_ASSIGN 0.0002367 sec
+--
+[ SW]               EQ 0.00192  sec
+[ SW]     EQ_NO_ASSIGN 0.00186  sec
+--
+[ SW]               GR 0.003107 sec
+[ SW]     GR_NO_ASSIGN 0.003027 sec
+[ SW]              LEQ 0.003169 sec
+--
+[ SW]              RCA 0.00589  sec
+[ SW]    RCA_NO_ASSIGN 0.005747 sec
+Vector 8192 x 32b
+[=SW]            Start
+[ SW]              AND 0.0006056 sec
+[ SW]           AND_EQ 0.0002402 sec
+[ SW]    AND_NO_ASSIGN 0.0001803 sec
+--
+[ SW]               EQ 0.002016 sec
+[ SW]     EQ_NO_ASSIGN 0.001843 sec
+--
+[ SW]               GR 0.003144 sec
+[ SW]     GR_NO_ASSIGN 0.003052 sec
+[ SW]              LEQ 0.003125 sec
+--
+[ SW]              RCA 0.005944 sec
+[ SW]    RCA_NO_ASSIGN 0.005817 sec
+==== 16384 rows; 1 threads ====
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.0009185 sec
+[ SW]           AND_EQ 0.0004234 sec
+[ SW]    AND_NO_ASSIGN 0.0004393 sec
+--
+[ SW]               EQ 0.003683 sec
+[ SW]     EQ_NO_ASSIGN 0.003484 sec
+--
+[ SW]               GR 0.005766 sec
+[ SW]     GR_NO_ASSIGN 0.005709 sec
+[ SW]              LEQ 0.005977 sec
+--
+[ SW]              RCA 0.008582 sec
+[ SW]    RCA_NO_ASSIGN 0.008213 sec
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.001089 sec
+[ SW]           AND_EQ 0.0004019 sec
+[ SW]    AND_NO_ASSIGN 0.0004098 sec
+--
+[ SW]               EQ 0.003621 sec
+[ SW]     EQ_NO_ASSIGN 0.003386 sec
+--
+[ SW]               GR 0.005805 sec
+[ SW]     GR_NO_ASSIGN 0.005646 sec
+[ SW]              LEQ 0.005852 sec
+--
+[ SW]              RCA 0.008501 sec
+[ SW]    RCA_NO_ASSIGN 0.008126 sec
+Vector 16384 x 32b
+[=SW]            Start
+[ SW]              AND 0.001102 sec
+[ SW]           AND_EQ 0.0004475 sec
+[ SW]    AND_NO_ASSIGN 0.0003651 sec
+--
+[ SW]               EQ 0.003735 sec
+[ SW]     EQ_NO_ASSIGN 0.003402 sec
+--
+[ SW]               GR 0.005679 sec
+[ SW]     GR_NO_ASSIGN 0.005604 sec
+[ SW]              LEQ 0.005766 sec
+--
+[ SW]              RCA 0.008351 sec
+[ SW]    RCA_NO_ASSIGN 0.008155 sec
+==== 65536 rows; 1 threads ====
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.002719 sec
+[ SW]           AND_EQ 0.00169  sec
+[ SW]    AND_NO_ASSIGN 0.0017   sec
+--
+[ SW]               EQ 0.01408  sec
+[ SW]     EQ_NO_ASSIGN 0.01406  sec
+--
+[ SW]               GR 0.023    sec
+[ SW]     GR_NO_ASSIGN 0.02254  sec
+[ SW]              LEQ 0.02337  sec
+--
+[ SW]              RCA 0.02246  sec
+[ SW]    RCA_NO_ASSIGN 0.02223  sec
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.002703 sec
+[ SW]           AND_EQ 0.001728 sec
+[ SW]    AND_NO_ASSIGN 0.001827 sec
+--
+[ SW]               EQ 0.01429  sec
+[ SW]     EQ_NO_ASSIGN 0.01407  sec
+--
+[ SW]               GR 0.02307  sec
+[ SW]     GR_NO_ASSIGN 0.02273  sec
+[ SW]              LEQ 0.02308  sec
+--
+[ SW]              RCA 0.02235  sec
+[ SW]    RCA_NO_ASSIGN 0.0223   sec
+Vector 65536 x 32b
+[=SW]            Start
+[ SW]              AND 0.002701 sec
+[ SW]           AND_EQ 0.001594 sec
+[ SW]    AND_NO_ASSIGN 0.001758 sec
+--
+[ SW]               EQ 0.01381  sec
+[ SW]     EQ_NO_ASSIGN 0.01389  sec
+--
+[ SW]               GR 0.02221  sec
+[ SW]     GR_NO_ASSIGN 0.02188  sec
+[ SW]              LEQ 0.0226   sec
+--
+[ SW]              RCA 0.02218  sec
+[ SW]    RCA_NO_ASSIGN 0.02197  sec
+==== 131072 rows; 1 threads ====
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.004521 sec
+[ SW]           AND_EQ 0.003133 sec
+[ SW]    AND_NO_ASSIGN 0.003245 sec
+--
+[ SW]               EQ 0.02667  sec
+[ SW]     EQ_NO_ASSIGN 0.02697  sec
+--
+[ SW]               GR 0.04365  sec
+[ SW]     GR_NO_ASSIGN 0.04302  sec
+[ SW]              LEQ 0.04422  sec
+--
+[ SW]              RCA 0.04022  sec
+[ SW]    RCA_NO_ASSIGN 0.04035  sec
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.004745 sec
+[ SW]           AND_EQ 0.003352 sec
+[ SW]    AND_NO_ASSIGN 0.003331 sec
+--
+[ SW]               EQ 0.02704  sec
+[ SW]     EQ_NO_ASSIGN 0.02789  sec
+--
+[ SW]               GR 0.04409  sec
+[ SW]     GR_NO_ASSIGN 0.04313  sec
+[ SW]              LEQ 0.04424  sec
+--
+[ SW]              RCA 0.04049  sec
+[ SW]    RCA_NO_ASSIGN 0.04057  sec
+Vector 131072 x 32b
+[=SW]            Start
+[ SW]              AND 0.00438  sec
+[ SW]           AND_EQ 0.00313  sec
+[ SW]    AND_NO_ASSIGN 0.003305 sec
+--
+[ SW]               EQ 0.02704  sec
+[ SW]     EQ_NO_ASSIGN 0.02747  sec
+--
+[ SW]               GR 0.04366  sec
+[ SW]     GR_NO_ASSIGN 0.04273  sec
+[ SW]              LEQ 0.0441   sec
+--
+[ SW]              RCA 0.04014  sec
+[ SW]    RCA_NO_ASSIGN 0.04033  sec
+==== 1048576 rows; 1 threads ====
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 0.02913  sec
+[ SW]           AND_EQ 0.02319  sec
+[ SW]    AND_NO_ASSIGN 0.0264   sec
+--
+[ SW]               EQ 0.2088   sec
+[ SW]     EQ_NO_ASSIGN 0.2117   sec
+--
+[ SW]               GR 0.3388   sec
+[ SW]     GR_NO_ASSIGN 0.333    sec
+[ SW]              LEQ 0.3442   sec
+--
+[ SW]              RCA 0.3068   sec
+[ SW]    RCA_NO_ASSIGN 0.3067   sec
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 0.0299   sec
+[ SW]           AND_EQ 0.02373  sec
+[ SW]    AND_NO_ASSIGN 0.02657  sec
+--
+[ SW]               EQ 0.211    sec
+[ SW]     EQ_NO_ASSIGN 0.2151   sec
+--
+[ SW]               GR 0.3433   sec
+[ SW]     GR_NO_ASSIGN 0.337    sec
+[ SW]              LEQ 0.3478   sec
+--
+[ SW]              RCA 0.3078   sec
+[ SW]    RCA_NO_ASSIGN 0.3043   sec
+Vector 1048576 x 32b
+[=SW]            Start
+[ SW]              AND 0.03028  sec
+[ SW]           AND_EQ 0.02395  sec
+[ SW]    AND_NO_ASSIGN 0.02711  sec
+--
+[ SW]               EQ 0.2108   sec
+[ SW]     EQ_NO_ASSIGN 0.2153   sec
+--
+[ SW]               GR 0.3404   sec
+[ SW]     GR_NO_ASSIGN 0.3371   sec
+[ SW]              LEQ 0.344    sec
+--
+[ SW]              RCA 0.3058   sec
+[ SW]    RCA_NO_ASSIGN 0.3023   sec
+==== 4194304 rows; 1 threads ====
+Vector 4194304 x 32b
+[=SW]            Start
+[ SW]              AND 0.1154   sec
+[ SW]           AND_EQ 0.09329  sec
+[ SW]    AND_NO_ASSIGN 0.1055   sec
+--
+[ SW]               EQ 0.8304   sec
+[ SW]     EQ_NO_ASSIGN 0.8453   sec
+--
+[ SW]               GR 1.348    sec
+[ SW]     GR_NO_ASSIGN 1.331    sec
+[ SW]              LEQ 1.371    sec
+--
+[ SW]              RCA 1.21     sec
+[ SW]    RCA_NO_ASSIGN 1.201    sec
+Vector 4194304 x 32b
+[=SW]            Start
+[ SW]              AND 0.115    sec
+[ SW]           AND_EQ 0.09311  sec
+[ SW]    AND_NO_ASSIGN 0.1053   sec
+--
+[ SW]               EQ 0.8319   sec
+[ SW]     EQ_NO_ASSIGN 0.8417   sec
+--
+[ SW]               GR 1.354    sec
+[ SW]     GR_NO_ASSIGN 1.334    sec
+[ SW]              LEQ 1.375    sec
+--
+[ SW]              RCA 1.209    sec
+[ SW]    RCA_NO_ASSIGN 1.203    sec
+Vector 4194304 x 32b
+[=SW]            Start
+[ SW]              AND 0.1156   sec
+[ SW]           AND_EQ 0.09339  sec
+[ SW]    AND_NO_ASSIGN 0.1062   sec
+--
+[ SW]               EQ 0.833    sec
+[ SW]     EQ_NO_ASSIGN 0.8425   sec
+--
+[ SW]               GR 1.35     sec
+[ SW]     GR_NO_ASSIGN 1.336    sec
+[ SW]              LEQ 1.378    sec
+--
+[ SW]              RCA 1.213    sec
+[ SW]    RCA_NO_ASSIGN 1.211    sec
+==== 8388608 rows; 1 threads ====
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 0.2297   sec
+[ SW]           AND_EQ 0.1874   sec
+[ SW]    AND_NO_ASSIGN 0.2128   sec
+--
+[ SW]               EQ 1.82     sec
+[ SW]     EQ_NO_ASSIGN 1.803    sec
+--
+[ SW]               GR 2.933    sec
+[ SW]     GR_NO_ASSIGN 2.928    sec
+[ SW]              LEQ 3.016    sec
+--
+[ SW]              RCA 2.467    sec
+[ SW]    RCA_NO_ASSIGN 2.456    sec
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 0.2309   sec
+[ SW]           AND_EQ 0.1881   sec
+[ SW]    AND_NO_ASSIGN 0.2132   sec
+--
+[ SW]               EQ 1.835    sec
+[ SW]     EQ_NO_ASSIGN 1.813    sec
+--
+[ SW]               GR 2.943    sec
+[ SW]     GR_NO_ASSIGN 2.924    sec
+[ SW]              LEQ 3        sec
+--
+[ SW]              RCA 2.473    sec
+[ SW]    RCA_NO_ASSIGN 2.44     sec
+Vector 8388608 x 32b
+[=SW]            Start
+[ SW]              AND 0.2268   sec
+[ SW]           AND_EQ 0.1844   sec
+[ SW]    AND_NO_ASSIGN 0.2086   sec
+--
+[ SW]               EQ 1.803    sec
+[ SW]     EQ_NO_ASSIGN 1.788    sec
+--
+[ SW]               GR 2.906    sec
+[ SW]     GR_NO_ASSIGN 2.89     sec
+[ SW]              LEQ 2.978    sec
+--
+[ SW]              RCA 2.464    sec
+[ SW]    RCA_NO_ASSIGN 2.421    sec
+==== 67108864 rows; 1 threads ====
+Vector 67108864 x 32b
+[=SW]            Start
+[ SW]              AND 1.87     sec
+[ SW]           AND_EQ 1.537    sec
+[ SW]    AND_NO_ASSIGN 1.732    sec
+--
+[ SW]               EQ 14.67    sec
+[ SW]     EQ_NO_ASSIGN 14.54    sec
+--
+[ SW]               GR 23.51    sec
+[ SW]     GR_NO_ASSIGN 23.3     sec
+[ SW]              LEQ 24.02    sec
+--
+[ SW]              RCA 19.52    sec
+[ SW]    RCA_NO_ASSIGN 19.26    sec
+Vector 67108864 x 32b
+[=SW]            Start
+[ SW]              AND 1.855    sec
+[ SW]           AND_EQ 1.526    sec
+[ SW]    AND_NO_ASSIGN 1.706    sec
+--
+[ SW]               EQ 14.57    sec
+[ SW]     EQ_NO_ASSIGN 14.45    sec
+--
+[ SW]               GR 23.41    sec
+[ SW]     GR_NO_ASSIGN 23.47    sec
+[ SW]              LEQ 24.09    sec
+--
+[ SW]              RCA 19.63    sec
+[ SW]    RCA_NO_ASSIGN 19.43    sec
+Vector 67108864 x 32b
+[=SW]            Start
+[ SW]              AND 1.819    sec
+[ SW]           AND_EQ 1.49     sec
+[ SW]    AND_NO_ASSIGN 1.683    sec
+--
+[ SW]               EQ 14.41    sec
+[ SW]     EQ_NO_ASSIGN 14.31    sec
+--
+[ SW]               GR 23.35    sec
+[ SW]     GR_NO_ASSIGN 23.19    sec
+[ SW]              LEQ 23.91    sec
+--
+[ SW]              RCA 19.59    sec
+[ SW]    RCA_NO_ASSIGN 19.4     sec
+==== 134217728 rows; 1 threads ====
+Vector 134217728 x 32b
+[=SW]            Start
+[ SW]              AND 3.642    sec
+[ SW]           AND_EQ 2.948    sec
+[ SW]    AND_NO_ASSIGN 3.334    sec
+--
+[ SW]               EQ 28.68    sec
+[ SW]     EQ_NO_ASSIGN 28.36    sec
+--
+[ SW]               GR 46.19    sec
+[ SW]     GR_NO_ASSIGN 45.8     sec
+[ SW]              LEQ 47.22    sec
+--
+[ SW]              RCA 39.28    sec
+[ SW]    RCA_NO_ASSIGN 38.76    sec
+Vector 134217728 x 32b
+[=SW]            Start
+[ SW]              AND 3.675    sec
+[ SW]           AND_EQ 2.991    sec
+[ SW]    AND_NO_ASSIGN 3.378    sec
+--
+[ SW]               EQ 28.85    sec
+[ SW]     EQ_NO_ASSIGN 28.58    sec
+--
+[ SW]               GR 46.42    sec
+[ SW]     GR_NO_ASSIGN 46       sec
+[ SW]              LEQ 47.49    sec
+--
+[ SW]              RCA 39.26    sec
+[ SW]    RCA_NO_ASSIGN 38.87    sec
+Vector 134217728 x 32b
+[=SW]            Start
+[ SW]              AND 3.72     sec
+[ SW]           AND_EQ 3.065    sec
+[ SW]    AND_NO_ASSIGN 3.454    sec
+--
+[ SW]               EQ 29.16    sec
+[ SW]     EQ_NO_ASSIGN 28.89    sec
+--
+[ SW]               GR 46.54    sec
+[ SW]     GR_NO_ASSIGN 46.43    sec
+[ SW]              LEQ 47.87    sec
+--
+[ SW]              RCA 39.49    sec
+[ SW]    RCA_NO_ASSIGN 39.05    sec
+==== 536870912 rows; 1 threads ====
+Vector 536870912 x 32b
+[=SW]            Start
+[ SW]              AND 14.95    sec
+[ SW]           AND_EQ 12.49    sec
+[ SW]    AND_NO_ASSIGN 13.93    sec
+--
+[ SW]               EQ 117      sec
+[ SW]     EQ_NO_ASSIGN 116.6    sec
+--
+[ SW]               GR 187.3    sec
+[ SW]     GR_NO_ASSIGN 185.4    sec
+[ SW]              LEQ 191.4    sec
+--
+[ SW]              RCA 157.4    sec
+[ SW]    RCA_NO_ASSIGN 155      sec
+Vector 536870912 x 32b
+[=SW]            Start
+[ SW]              AND 14.7     sec
+[ SW]           AND_EQ 11.89    sec
+[ SW]    AND_NO_ASSIGN 13.45    sec
+--
+[ SW]               EQ 115.7    sec
+[ SW]     EQ_NO_ASSIGN 114.2    sec
+--
+[ SW]               GR 185.7    sec
+[ SW]     GR_NO_ASSIGN 184.2    sec
+[ SW]              LEQ 189.9    sec
+--
+[ SW]              RCA 157.2    sec
+[ SW]    RCA_NO_ASSIGN 155.2    sec
+Vector 536870912 x 32b
+[=SW]            Start
+[ SW]              AND 14.73    sec
+[ SW]           AND_EQ 12.2     sec
+[ SW]    AND_NO_ASSIGN 13.66    sec
+--
+[ SW]               EQ 117.1    sec
+[ SW]     EQ_NO_ASSIGN 115.3    sec
+--
+[ SW]               GR 187.6    sec
+[ SW]     GR_NO_ASSIGN 186      sec
+[ SW]              LEQ 192.8    sec
+--
+[ SW]              RCA 157.5    sec
+[ SW]    RCA_NO_ASSIGN 155.7    sec

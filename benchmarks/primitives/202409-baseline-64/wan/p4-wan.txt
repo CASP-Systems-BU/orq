@@ -1,0 +1,116 @@
+Common interface: enp65s0f0np0
+Compiler flags: -O3 -g -pthread -D PROTOCOL_NUM=4 -mbmi -march=native -DCOMMUNICATOR_NUM=MPI_COMMUNICATOR
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /users/elibaum/secrecy-private/build
+Consolidate compiler generated dependencies of target micro_primitives
+[ 50%] Building CXX object CMakeFiles/micro_primitives.dir/src/micro/micro_primitives.cpp.o
+[100%] Linking CXX executable micro_primitives
+[100%] Built target micro_primitives
+prefix: mpirun --mca btl_tcp_if_include enp65s0f0np0 --mca oob_tcp_if_include enp65s0f0np0 -n 4 --host node0,node1,node2,node3
+==== 8192 rows; 1 threads ====
+Vector 8192 x 64b
+[=SW]            Start
+[ SW]              AND 0.6435   sec
+[ SW]               EQ 7.587    sec
+[ SW]               GR 9.392    sec
+[ SW]              RCA 8.99     sec
+Vector 8192 x 64b
+[=SW]            Start
+[ SW]              AND 0.6431   sec
+[ SW]               EQ 7.428    sec
+[ SW]               GR 9.393    sec
+[ SW]              RCA 8.991    sec
+Vector 8192 x 64b
+[=SW]            Start
+[ SW]              AND 0.6436   sec
+[ SW]               EQ 7.425    sec
+[ SW]               GR 9.39     sec
+[ SW]              RCA 8.992    sec
+==== 16384 rows; 1 threads ====
+Vector 16384 x 64b
+[=SW]            Start
+[ SW]              AND 2.008    sec
+[ SW]               EQ 14.93    sec
+[ SW]               GR 18.1     sec
+[ SW]              RCA 9.001    sec
+Vector 16384 x 64b
+[=SW]            Start
+[ SW]              AND 1.847    sec
+[ SW]               EQ 14.93    sec
+[ SW]               GR 18.1     sec
+[ SW]              RCA 8.999    sec
+Vector 16384 x 64b
+[=SW]            Start
+[ SW]              AND 2.008    sec
+[ SW]               EQ 14.93    sec
+[ SW]               GR 18.1     sec
+[ SW]              RCA 9.003    sec
+==== 65536 rows; 1 threads ====
+Vector 65536 x 64b
+[=SW]            Start
+[ SW]              AND 9.313    sec
+[ SW]               EQ 59.72    sec
+[ SW]               GR 70.37    sec
+[ SW]              RCA 9.05     sec
+Vector 65536 x 64b
+[=SW]            Start
+[ SW]              AND 9.308    sec
+[ SW]               EQ 59.69    sec
+[ SW]               GR 70.34    sec
+[ SW]              RCA 9.042    sec
+Vector 65536 x 64b
+[=SW]            Start
+[ SW]              AND 9.31     sec
+[ SW]               EQ 59.71    sec
+[ SW]               GR 70.35    sec
+[ SW]              RCA 9.046    sec
+==== 131072 rows; 1 threads ====
+Vector 131072 x 64b
+[=SW]            Start
+[ SW]              AND 19.26    sec
+[ SW]               EQ 119.4    sec
+[ SW]               GR 140.1    sec
+[ SW]              RCA 9.192    sec
+Vector 131072 x 64b
+[=SW]            Start
+[ SW]              AND 19.42    sec
+[ SW]               EQ 119.4    sec
+[ SW]               GR 140      sec
+[ SW]              RCA 9.19     sec
+Vector 131072 x 64b
+[=SW]            Start
+[ SW]              AND 19.26    sec
+[ SW]               EQ 119.4    sec
+[ SW]               GR 140.1    sec
+[ SW]              RCA 9.192    sec
+==== 1048576 rows; 1 threads ====
+Vector 1048576 x 64b
+[=SW]            Start
+[ SW]              AND 158.7    sec
+[ SW]               EQ 955      sec
+[ SW]               GR 1117     sec
+[ SW]              RCA 170      sec
+Vector 1048576 x 64b
+[=SW]            Start
+[ SW]              AND 158.7    sec
+[ SW]               EQ 955.4    sec
+[ SW]               GR 1117     sec
+[ SW]              RCA 159.9    sec
+Vector 1048576 x 64b
+[=SW]            Start
+[ SW]              AND 158.7    sec
+[ SW]               EQ 955.3    sec
+[node3][[26765,1],3][../../../../../../opal/mca/btl/tcp/btl_tcp.c:559:mca_btl_tcp_recv_blocking] recv(20) failed: Connection reset by peer (104)
+[ SW]               GR 1117     sec
+[ SW]              RCA 159.9    sec
+==== 8388608 rows; 1 threads ====
+Vector 8388608 x 64b
+[=SW]            Start
+[ SW]              AND 1273     sec
+[ SW]               EQ 7643     sec
+[ SW]               GR 8940     sec
+[ SW]              RCA 1293     sec
+Vector 8388608 x 64b
+[=SW]            Start
+[ SW]              AND 1273     sec

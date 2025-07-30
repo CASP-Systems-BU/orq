@@ -1,0 +1,9 @@
+from Compiler.library import *
+import Compiler
+
+# Usage example
+n = int(program.args[1])
+
+v = sint.Array(n)
+
+v.sort()

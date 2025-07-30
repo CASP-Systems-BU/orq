@@ -1,0 +1,150 @@
+Timestamp: Fri Sep  6 08:59:29 PM MDT 2024
+
+Git commit: 63924114f1b28b7dab1db48b7e44d8270a7525aa
+
+Git status: On branch eb/sep-24-experiments
+Your branch is up to date with 'origin/eb/sep-24-experiments'.
+
+nothing to commit, working tree clean
+
+Command line: ./scripts/primitive-experiments.sh 
+
+CPU: (node0.elibaum-216086.bu-secrecy-pg0.utah.cloudlab.us)
+Architecture:                       x86_64
+CPU op-mode(s):                     32-bit, 64-bit
+Address sizes:                      43 bits physical, 48 bits virtual
+Byte Order:                         Little Endian
+CPU(s):                             32
+On-line CPU(s) list:                0-31
+Vendor ID:                          AuthenticAMD
+Model name:                         AMD EPYC 7302P 16-Core Processor
+CPU family:                         23
+Model:                              49
+Thread(s) per core:                 2
+Core(s) per socket:                 16
+Socket(s):                          1
+Stepping:                           0
+BogoMIPS:                           5988.28
+Flags:                              fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sme sev sev_es
+Virtualization:                     AMD-V
+L1d cache:                          512 KiB (16 instances)
+L1i cache:                          512 KiB (16 instances)
+L2 cache:                           8 MiB (16 instances)
+L3 cache:                           128 MiB (8 instances)
+NUMA node(s):                       1
+NUMA node0 CPU(s):                  0-31
+Vulnerability Gather data sampling: Not affected
+Vulnerability Itlb multihit:        Not affected
+Vulnerability L1tf:                 Not affected
+Vulnerability Mds:                  Not affected
+Vulnerability Meltdown:             Not affected
+Vulnerability Mmio stale data:      Not affected
+Vulnerability Retbleed:             Mitigation; untrained return thunk; SMT enabled with STIBP protection
+Vulnerability Spec rstack overflow: Mitigation; safe RET
+Vulnerability Spec store bypass:    Mitigation; Speculative Store Bypass disabled via prctl and seccomp
+Vulnerability Spectre v1:           Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+Vulnerability Spectre v2:           Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected
+Vulnerability Srbds:                Not affected
+Vulnerability Tsx async abort:      Not affected
+
+Network status:
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eno33np0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 1c:34:da:75:8c:fa brd ff:ff:ff:ff:ff:ff
+    altname enp1s0f0np0
+    inet 128.110.219.85/21 metric 1024 brd 128.110.223.255 scope global eno33np0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::1e34:daff:fe75:8cfa/64 scope link 
+       valid_lft forever preferred_lft forever
+3: eno34np1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 1c:34:da:75:8c:fb brd ff:ff:ff:ff:ff:ff
+    altname enp1s0f1np1
+4: enp65s0f0np0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 0c:42:a1:dd:5f:e8 brd ff:ff:ff:ff:ff:ff
+    inet 10.10.1.1/24 brd 10.10.1.255 scope global enp65s0f0np0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::e42:a1ff:fedd:5fe8/64 scope link 
+       valid_lft forever preferred_lft forever
+5: enp65s0f1np1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 0c:42:a1:dd:5f:e9 brd ff:ff:ff:ff:ff:ff
+
+Simulator status:
+qdisc noqueue 0: dev lo root refcnt 2 
+qdisc mq 0: dev eno33np0 root 
+qdisc fq_codel 0: dev eno33np0 parent :20 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :1f limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :1e limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :1d limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :1c limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :1b limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :1a limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :19 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :18 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :17 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :16 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :15 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :14 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :13 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :12 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :11 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :10 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :f limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :e limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :d limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :c limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :b limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :a limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :9 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :8 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :7 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :6 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :5 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :4 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :3 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :2 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev eno33np0 parent :1 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc mq 0: dev enp65s0f0np0 root 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :20 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :1f limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :1e limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :1d limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :1c limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :1b limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :1a limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :19 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :18 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :17 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :16 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :15 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :14 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :13 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :12 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :11 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :10 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :f limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :e limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :d limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :c limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :b limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :a limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :9 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :8 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :7 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :6 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :5 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :4 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :3 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :2 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+qdisc fq_codel 0: dev enp65s0f0np0 parent :1 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64 
+
+Args:
+REPS=3
+INPUT_SIZES=13,14,16,17,20,23,24,26,27,29
+HOSTS=node0,node1,node2,node3
+ENVIRO=same
+CMAKE=-DDEFAULT_BITWIDTH=64
