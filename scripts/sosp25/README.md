@@ -27,7 +27,7 @@ We will provide AWS access information (SSH keypairs and IP addresses) on HotCRP
 > [!IMPORTANT]
 > All experiments run on AWS. To simplify artifact evaluation, we are providing reviewers with an AWS environment:
 > * Access information to the AWS clusters (SSH keypairs, IP addresses) is availalbe on HotCRP. *Please do not share them outside the AEC*.
-> * Remember to freeze or turn off the cluster when you're done, as this evaluation is expensive! If you do not know how, ask us via HotCRP—thank you!
+> * This evaluation is expensive! Remember to tell us when you are finished so we can shut down the clusters.
 
 From your local machine, SSH into the AWS cluster and start a tmux session. A helpful `tmux` reference is available [here](https://tmuxcheatsheet.com/).
 
@@ -340,8 +340,7 @@ To run the script, execute the commands below.
 
 ```bash
 $ cd ~/orq/scripts/sosp25/mpspdz/reproducibility/
-# we recommend using tmux or screen since this will take a while
-$ screen -S mpspdz
+# Make sure to run inside tmux or screen
 $ ./full-experiment.sh
 ```
 
@@ -362,7 +361,6 @@ The script takes an optional parameter of the maximum power of two input size. B
 
 ```bash
 $ cd ~/orq/scripts/sosp25/sorting-main/
-$ screen -S sorting-main
 # runs input sizes from 2^20 up to and including 2^25
 $ ./sorting-main.sh 25
 ```
