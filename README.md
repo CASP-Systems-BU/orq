@@ -10,7 +10,7 @@ This repository is organized as follows:
 - `src/`: source code for queries and benchmarks
 - `tests/`: the test suite
 
-## Artifact Replication
+## Artifact Evaluation
 
 See [here](./scripts/sosp25/README.md) for instructions on artifact replication.
 
@@ -61,13 +61,12 @@ All dependencies are installed automatically with the `setup.sh` or `deploy.sh` 
 To build ORQ, you will need:
 - C++ 20 or newer
 - [libsodium](https://libsodium.gitbook.io/doc/installation)
-- (TODO) Your platform's threading library (should be installed by default)
 - `sqlite`, for optional correctness tests for queries.
 
 Not all dependencies are required for all operations. For the offline phase of the two-party setting, we have the following additional dependencies.
 
-- [libOTe](https://github.com/osu-crypto/libOTe) for **secure Beaver triples**
-- [secure-join](https://github.com/Visa-Research/secure-join) for a **two-party oblivious pseudorandom function (OPRF) with secret-shared output**
+- [libOTe](https://github.com/osu-crypto/libOTe) for secure Beaver triples
+- [secure-join](https://github.com/Visa-Research/secure-join) for a two-party oblivious pseudorandom function (OPRF) with secret-shared output
 
 > Note: for artifact replication, we do not install these dependencies, since we only present benchmarks of the online phase.
 
