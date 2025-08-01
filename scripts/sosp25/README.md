@@ -354,7 +354,7 @@ The results will be available in the `~/results/` directory. Here is an example 
 
 _Time: 5-36 hours (flexible)_
 
-The large ORQ sorting experiment tests our sorting protocols with input sizes up to $2^{29}$ (~0.5B) elements. There is a large overlap between this experiment and the comparison with MP-SPDZ. Only input sizes above $2^{22}$ for 2PC, $2^{25}$ for 3PC, and $2^{20}$ for 4PC are unique to this experiment and not contained in the MP-SPDZ experiment. Due to this overlap and the fact that the full experiment takes over a day, we recommend prioritizing other experiments over this one and running the large sorting experiment if time permits.
+The large ORQ sorting experiment tests our sorting protocols with input sizes from $2^{20}$ up to $2^{29}$ (~0.5B) elements. There is a large overlap between this experiment and the comparison with MP-SPDZ. Only input sizes above $2^{22}$ for 2PC, $2^{25}$ for 3PC, and $2^{20}$ for 4PC are unique to this experiment and not contained in the MP-SPDZ experiment. Due to this overlap and the fact that the full experiment takes over a day, we recommend prioritizing other experiments over this one and running the large sorting experiment if time permits.
 
 The largest two input sizes require machines with additional RAM. If you wish to run the full experiment with all input sizes, let us know and we can configure a cluster of `c7a.24xlarge` AWS instances. We recommend running this experiment with a maximum input size of $2^{27}$ or lower rather than the full $2^{29}$ shown in the paper. Doing so will allow the experiment to complete quicker and will prevent the need to switch to another cluster.
 
@@ -363,7 +363,7 @@ The script takes an optional parameter of the maximum power of two input size. B
 ```bash
 $ cd ~/orq/scripts/sosp25/sorting-main/
 $ screen -S sorting-main
-# runs input sizes up to and including 2^25
+# runs input sizes from 2^20 up to and including 2^25
 $ ./sorting-main.sh 25
 ```
 
