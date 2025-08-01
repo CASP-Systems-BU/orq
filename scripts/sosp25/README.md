@@ -3,13 +3,9 @@
 ## Overview
 
 We target all three artifact badges:
-- **Available**: we publish ORQ on [Github](https://github.com/CASP-Systems-BU/orq), and once reviewers are otherwise satisfied, will publish to Zenodo.
-- **Functional**: we provide instructions for running a simple test query.
-- **Reproduced**: our main results -- Figures 4, 5, 6 and 7 -- are reproducible. Figure 10 is reproducible but is optional, because the largest two data points require other machines with larger RAM, and there is significant overlap with other experiments.
-
-> [!warning]
->
-> These experiments take a long time: a few hours up to a few days to run all experiments. You should use a terminal multiplexer such as `tmux` or `screen` to prevent your SSH connection from dropping and killing the experiment. We provide instructions below using `tmux`; a helpful reference is available [here](https://tmuxcheatsheet.com/).
+- [Available](#available): we publish ORQ on [Github](https://github.com/CASP-Systems-BU/orq), and once reviewers are otherwise satisfied, will publish to Zenodo.
+- [Functional](#functional): we provide instructions for running a simple test query.
+- [Reproduced](#reproduced): reviewers are expected to reproduce key results of Section 5 of the paper. Our main results -- Figures 4, 5, 6 and 7 -- are reproducible. Figure 10 is also reproducible but is optional.
 
 We run all experiments on `c7a.16xlarge` AWS instances with Ubuntu 22.04.5
 LTS and gcc 11.4.0.
@@ -17,48 +13,52 @@ LTS and gcc 11.4.0.
 Here we summarize the experiments outlined in this document, including their approximate running time.
 - TPC-H and other queries (Figure 4), 3-45 hours (flexible)
 - Comparison with Secrecy (Figure 5a), 8.5 hours
-- Comparison with SecretFlow queries (Figure 5b), TODO
-- Comparison with SecretFlow sorting (Figure 6), TODO
+- Comparison with SecretFlow queries (Figure 5b), 3 hours
+- Comparison with SecretFlow sorting (Figure 6), 2 hours
 - Comparison with MP-SPDZ sorting (Figure 7), 1 day
 - (Optional) ORQ sorting (Figure 10), 5-36 hours
 
-In total, we expect the experiments to take between 36 (+ secretflow) hours and 114 (+ secretflow) hours (approximately 5 days). If needed, we can set up additional clusters to run experiments in parallel (additional clusters will be needed for SecretFlow anyway).
+In total, we expect the experiments to take between 41 hours and 119 hours (approximately 5 days). If needed, we can set up additional clusters to run experiments in parallel. Our scripts also enable running subsets of the queries that the evaluators can choose if they would like.
 
-## Tips and Common Mistakes
-
-We will make every effort to prevent any common mistakes, but we list them here in case they arise anyway.
-
-1) All machines should be up to date (achievable with `sudo apt update && sudo apt upgrade`). We will ensure all machines provided have been updated.
-2) You may be prompted to upgrade your kernel after beginning a script if the script involves installing additional dependencies. If this occurs, all experiments will be blocked until you interact with the popup. We recommend checking after beginning an experiment to see that the data collection has begun. If it seems like no data is being produced to the specified output folder, it is likely that the `tmux` or `screen` session has opened the popup.
-3) 4PC sorting results may be slower than expected if run with the wrong 4PC configuration. We have automated the configuration selection. If the numbers appear to be approximately 1.5x-2x slower than expected, let us know, as the configuration may have been set incorrectly.
-
-## Access
+## Getting Started
 
 We will provide AWS access information (SSH keypairs and IP addresses) on HotCRP.
 
-> [!important]
-> All experiments run on AWS. To simplify artifact evaluation, we are providing an AWS environment to reviewers. Please be mindful that this environment is expensive and should be shut down when not in use. Let us know via HotCRP when you are done using a cluster and we can pause the instances.
+> [!IMPORTANT]
+> All experiments run on AWS. To simplify artifact evaluation, we are providing reviewers with an AWS environment:
+> * Access information to the AWS clusters (SSH keypairs, IP addresses) is availalbe on HotCRP. *Please do not share them outside the AEC*.
+> * Remember to freeze or turn off the cluster when you're done, as this evaluation is expensive! If you do not know how, ask us via HotCRP—thank you!
 
-From your local machine, SSH into the AWS cluster and start a tmux session.
+From your local machine, SSH into the AWS cluster and start a tmux session. A helpful `tmux` reference is available [here](https://tmuxcheatsheet.com/).
 
 ```bash
 $ ssh ubuntu@[CLUSTER-IP]
-# first time: start a tmux session
+# run tmux and clone the repo
 $ tmux
-# or if you are returning, re-attach
-$ tmux a
-# clone the repo
 $ git clone https://github.com/CASP-Systems-BU/orq
 $ cd orq
+# if you are returning after the first time, you can simply run `tmux -a`
 ```
 
 To _detach_ from a running `tmux` session, press `Ctrl-b D`.
+
+Let us know when you are done testing (or just taking a break) so we can pause instances. Reach out to us on HotCRP with any questions.
 
 ## Available
 
 _Time: 5 minutes_
 
-All code for ORQ is contained in our public repository. Important components to highlight:
+ORQ is available on [Github](https://github.com/CASP-Systems-BU/orq), and it will be available on Zenodo once the reviewers are satisfied.
+
+ORQ is licenced with the AGPLv3 license ([here](https://github.com/CASP-Systems-BU/orq/blob/main/LICENSE)), an open source license which allows comparison and extension.
+
+ORQ has a [README file](https://github.com/CASP-Systems-BU/orq/blob/main/README.md) that references the SOSP'25 paper.
+
+## Functional
+
+_Time: 10 minutes_
+
+We begin by giving a description of each artifact component and its relation to the paper. All code for ORQ is contained in our public repository. Important components to highlight:
 - `scripts/`
     - `sosp25`: all scripts for reproducing our experiments
     - `orchestration/aws`: scripts for launching an AWS cluster (we have run this for you)
@@ -71,11 +71,24 @@ All code for ORQ is contained in our public repository. Important components to 
 - `src/`: source code for all queries profiled in ORQ
 - `tests/`: a test suite for our framework
 
-## Functional
+We run all experiments on `c7a.16xlarge` AWS instances with Ubuntu 22.04.5 LTS and gcc 11.4.0. No part of the system deliberately performs malicious or destructive operations.
 
-_Time: 10 minutes_
+We include a comprehensive list of dependencies in the repository's [main README](https://github.com/CASP-Systems-BU/orq/blob/main/README.md). All dependencies are installed by our main setup and deployment scripts (described below). If you wish to install dependencies manually, see further instructions in the [main README](https://github.com/CASP-Systems-BU/orq/blob/main/README.md).
 
-In this section we give instructions for running a single query. Execute the following commands on the AWS cluster:
+### Minimal Working Example
+
+In this section we give instructions for running a single query. To begin, we need to run a deployment script to connect all servers. To run a one-time setup across all nodes in the system, execute the deployment script as follows.
+
+```bash
+$ cd ~/orq/
+$ ./scripts/orchestration/deploy.sh ~/orq/ node0 node1 node2 node3
+```
+
+> [!warning]
+>
+> Failure to deploy (by running the deploy script) will cause issues. Most experiments in the reproducible section automatically deploy, and those that do not are clearly labeled.
+
+To compile and run the example query, execute the following commands on the AWS cluster:
 
 ```bash
 $ cd ~/orq/build
@@ -148,22 +161,45 @@ O size: 150000
 
 The first half of the output is just network configuration (specifically, confirming that the WAN simulator is not running; the `qdisc` errors are expected and safe to ignore). Query execution begins on the line `==== 0.1 SF; 16 threads ====`. The output `30 rows OK` signifies that ORQ's output from the oblivious execution was compared against a plaintext (SQLite) execution and matched.
 
-> [Optional] To run the test suite, you can use the following commands:
-> 
-> ```bash
-> $ cd ~/orq/build
-> $ ../scripts/run_multithreaded_test.sh 3 1
-> ```
-> 
-> Note: while this is not part of the artifact, it may be helpful for debugging. If at any time you run into issues -- or if any execution fails -- reach out to us on HotCRP.
+<details>
+<summary>(Optional) Running an Example Locally (without AWS access)</summary>
+
+If the reviewer wishes to run an example on a local machine where each party is run in a separate process, run the following commands after cloning the repository. We emphasize that this is not required, but we present it as an option to demonstrate the functionality of the repository.
+
+```bash
+cd orq/
+mkdir build
+cd build/
+# run the setup script
+../scripts/setup.sh
+# make the target
+cmake .. -DPROTOCOL=3
+make q1  # or any other query
+# runs TPC-H Q1 with 1 thread at Scale Factor 0.01 (takes about a minute)
+startmpc -n 3 ./q1
+```
+
+> Note: The setup procedure assumes that we have `apt` as a package manager (e.g., Ubuntu). While the above steps may work in additional environments, they have not been thoroughly tested. Additionally, the default nocopy communicator may cause problems if running on MacOS.
+
+</details>
 
 ## Reproduced
 
-### TPC-H & other queries (Fig. 4)
+Each subsection below describes how to run and obtain results for a single experiment. Each experiment either contains a single script or one script for ORQ and one for the competitor system. The experiments can be run in any order, and running the same experiment multiple times will not cause any issues. All scripts that require additional arguments clearly document the arguments and provide a reasonable default argument if one exists.
+
+Each experiment additionally contains a script to plot the results in a manner that closely matches the paper's figures. We include an example of a reasonable output plot, although exact details may vary depending on whether you choose to run the full experiment or a subset of the experiment.
+
+> Note: You will need additional clusters to run the SecretFlow experiments, as we have observed that the setup for the two Secretflow experiments can interfere with one another and can occasionally interfere with ORQ and skew results.
+
+> [!warning]
+>
+> These experiments take a long time: a few hours up to a few days to run all experiments. You should use a terminal multiplexer such as `tmux` or `screen` to prevent your SSH connection from dropping and killing the experiment. We provide instructions below using `tmux`; a helpful reference is available [here](https://tmuxcheatsheet.com/). The scripts allow the evaluator to run a subset of queries in some experiments to decrease the amount of time required.
+
+### 1) TPC-H & other queries (Fig. 4)
 
 _Time: 3-45 hours (flexible)_
 
-To reproduce the TPC-H experiments, use these commands:
+If you wish to reproduce the entirety of the TPC-H experiments, use the following commands. We emphasize that the following runs _all_ queries in _all_ settings, which you may not wish to do in the interest of time.
 
 ```bash
 $ cd ~/orq
@@ -171,8 +207,20 @@ $ cd ~/orq
 # 2 = SH-DM
 # 3 = SH-HM
 # 4 = Mal-HM
+# any of the following commands can be skipped in the interest of time
+$
+# two party lan and wan
+$ ./scripts/sosp25/artifact-tpch.sh 2 lan # ~ 3.5 hr
+$ ./scripts/sosp25/artifact-tpch.sh 2 wan # ~ 9 hr
+$
+# three party lan and wan
 $ ./scripts/sosp25/artifact-tpch.sh 3 lan # ~ 3 hr
+$ ./scripts/sosp25/artifact-tpch.sh 3 wan # ~ 6.5 hr
+$
+# four party lan and wan
+$ ./scripts/sosp25/artifact-tpch.sh 4 lan # ~ 6.5 hr
 $ ./scripts/sosp25/artifact-tpch.sh 4 wan # ~ 16 hr
+$
 # once you've run the experiments you want to run, generate a plot
 $ ./scripts/sosp25/artifact-tpch.sh plot
 ```
@@ -185,13 +233,11 @@ The full experiments take a long time. We estimate that running all 31 queries e
 | 3PC (SH-HM)  | 3   hr | 6.5 hr |
 | 4PC (Mal-HM) | 6.5 hr | 16  hr |
 
-You do not need to run all experiments to generate a partial plot. The plotting script can be re-run any time, and will ingest any new data generated. Here is an example of the output:
+You do not need to run all experiments to generate a partial plot. The plotting script can be re-run any time, and will ingest any new data generated. Here is an example of the output that is produced if we run the script for two parties in LAN and WAN, for three parties in LAN (skipping 3PC WAN), and for four parties in WAN (skipping 4PC LAN):
 
-![](img/plot-tpch-example.png)
+<img src="img/plot-tpch-example.png" width="800">
 
-In this case we ran `2 lan`, `2 wan`, `3 lan`, and `4 wan`.
-
-> [Optional] Reproducing the entirety of Figure 4 would take around 45 hours. We have added support for optionally running only a _subset_ of the TPC-H queries. You can specify either a list of a range of queries as the optional final argument to the script:
+> Note: Reproducing the entirety of Figure 4 would take around 45 hours. We have added support for optionally running only a _subset_ of the TPC-H queries. You can specify either a list of a range of queries as the optional final argument to the script:
 >
 > ```bash
 > # run queries Q1, Q9, and Q17 in 3PC LAN
@@ -202,13 +248,13 @@ In this case we ran `2 lan`, `2 wan`, `3 lan`, and `4 wan`.
 > 
 > Note that when running a subset of TPC-H queries, we still run all `Other` queries, since these complete quickly, even in the slowest setting.
 
-> [!Warning]
-> 
-> The TPC-H script runs some installation and setup on first execution. **You must run** TPC-H first before attempting other experiments.
-
-### Secrecy (Fig. 5a)
+### 2) Comparison with Secrecy (Fig. 5a)
 
 _Time: 8.5 hours_
+
+> [!Warning]
+>
+> If this is the first experiment you run, and you did not run the `deploy.sh` script in the [Functional section](#functional), do so now.
 
 To replicate the Secrecy comparison, run the script for both Secrecy and ORQ:
 
@@ -222,55 +268,71 @@ $ ./scripts/sosp25/secrecy/run_orq.sh
 $ ./scripts/sosp25/secrecy/plot_comparison.py
 ```
 
-Due to a vartiety of factors which we improve on in our work, the Secrecy experiments take a long time (**8+ hours**). ORQ will take about five minutes. The output plot will look like this:
+The output plot is placed in `scripts/sosp25/secrecy/`.
+
+The Secrecy experiments take a long time (**8+ hours**). ORQ will take about five minutes. The output plot will look like this:
 
 > Note: due to the large speedups of ORQ compared to Secrecy on some complex queries, the exact ratios may differ slightly.
 
 Here is an example plot from this experiment:
 
-![](img/secrecy-comp-example.png)
+<img src="img/secrecy-comp-example.png" width="800">
 
-### SecretFlow
+### 3) Comparison with SecretFlow
 
-The comparison with Secretflow involves two experiments: `Sorting` and `TPC-H Queries`
+The comparison with Secretflow involves two experiments: `Sorting` and `TPC-H queries`. 
+> [!Warning]
+> 
+> These experiments must be run on __two independent clusters__ to avoid SecretFlow setup conflicts. We will provide dedicated clusters for this experiment on HotCRP. For each of the two experiments, both ORQ and SecretFlow will be run on the same cluster to avoid the need to copy data between clusters.
+>
+> If this is the first experiment you run, and you did not run the `deploy.sh` script in the [Functional section](#functional), do so now.
 
 #### Sorting (Fig. 6)
 
-_Time: XXX_
+_Time: 2 hours_
 
 The sorting experiment can be run using the following commands:
 ```bash
+cd ~/orq
+
 # Runs the complete experiment for both systems
 ./scripts/sosp25/secretflow/artifact-secretflow-sort.sh
 
 # Once the experiments are complete, this command can be used to generate plots
 ./scripts/sosp25/secretflow/artifact-secretflow-sort.sh plot
 ```
-The raw result along with the generated plot will be available in the `~/orq/results/secretflow-sort` directory once the above commands have been run.
+The raw result along with the generated plot will be available in the `~/orq/results/secretflow-sort` directory once the above commands have been run. Here is an example plot from this experiment:
 
-#### TPC-H (Fig. 5b)
+<img src="img/secretflow-sort-example.png" width="800">
 
-_Time: XXX_
+#### Queries (Fig. 5b)
 
-The TPC-H query experiment can be run using the following commands:
+_Time: 3 hours_
+
+The comparison with SecretFlow on queries can be run using the following commands:
 ```bash
+cd ~/orq
+
 # Runs the complete experiment for both systems
 ./scripts/sosp25/secretflow/artifact-secretflow-tpch.sh
 
 # Once the experiments are complete, this command can be used to generate plots
 ./scripts/sosp25/secretflow/artifact-secretflow-tpch.sh plot
 ```
-This script requires the following:
-- A docker image for secretflow named `scql-aws-vldb-image` should be present in the `~/scql_image` directory.
-- Pre-generated data for Secretflow tables should be present in `~/scql/vldb/docker-compose/data`
 
-The raw result along with the generated plot will be available in the `~/orq/results/secretflow-tpch` directory once the above commands have been run.
+> This script for the query comparison requires the following [_Note: These steps have already been completed on the AWS cluster that we will provide to you_] :
+> - A docker image for secretflow named `scql-aws-vldb-image` should be present in the `~/scql_image` directory.
+> - Pre-generated data for Secretflow tables should be present in `~/scql/vldb/docker-compose/data`
 
-### MP-SPDZ (Fig. 7)
+The raw result along with the generated plot will be available in the `~/orq/results/secretflow-tpch` directory once the above commands have been run. Here is an example plot from this experiment:
+
+<img src="img/secretflow-queries-example.png" width="800">
+
+### 4) Comparison with MP-SPDZ (Fig. 7)
 
 _Time: approximately 1 day_
 
-To reproduce the comparison with MP-SPDZ's sorting implementations, the relevant files are in `scripts/sosp25/mpspdz/reproducibility`. The entire comparison can be run with a single script: `full-experiment.sh`. Make sure to call this from the `mpspdz/reproducibility` directory. This script will run the ORQ benchmarks, then it will run the MP-SPDZ benchmarks, and then it will plot the result. The results will all go in the `~/results/` directory. The ORQ benchmarks will take 2-3 hours, while the MP-SPDZ benchmarks will take approximately 18 hours.
+To reproduce the comparison with MP-SPDZ's sorting implementations, the relevant files are in `scripts/sosp25/mpspdz/reproducibility`. The entire comparison can be run with a single script: `full-experiment.sh`. Make sure to call this from the `mpspdz/reproducibility` directory. This script will run the ORQ benchmarks, then it will run the MP-SPDZ benchmarks, and then it will plot the result. The ORQ benchmarks will take 2-3 hours, while the MP-SPDZ benchmarks will take approximately 18 hours.
 
 The plot in the paper for the comparison shows that ORQ can be run on larger inputs than MP-SPDZ. We run MP-SPDZ on all input sizes that we run ORQ. It is possible that 2PC execution of MP-SPDZ at the largest size will succeed, although it frequently crashes at this size. 3PC and 4PC execution of MP-SPDZ will run out of memory at the largest input size and silently crash. We omit the annotations from the plot when reproducing the results.
 
@@ -283,17 +345,20 @@ $ screen -S mpspdz
 $ ./full-experiment.sh
 ```
 
-Here is an example plot of this experiment:
+The results will be available in the `~/results/` directory. Here is an example plot of this experiment:
 
-![](img/mpspdz.png)
+<img src="img/mpspdz.png" width="800">
 
-### ORQ Sorting (Fig. 10)
+<details>
+<summary>5) ORQ Sorting (Fig. 10) (Optional)</summary>
 
 _Time: 5-36 hours (flexible)_
 
-The large ORQ sorting experiment tests our sorting protocols with input sizes up to $2^{29}$ (~0.5B) elements. Only the largest data points are unique to this experiment. To run the two largest data points, we need machines with additional memory. The script will try to run them anyway, but they will crash on small machines. Since this experiment has a high degree of overlap with other experiments and takes over a day, we recommend prioritizing other experiments over this one and running the large sorting experiment if time permits. If you wish to run a subset of the experiment, you can optionally pass in a maximum power of two input size to stop the experiment early. By default, the maximum power of two input size is $2^{29}$.
+The large ORQ sorting experiment tests our sorting protocols with input sizes up to $2^{29}$ (~0.5B) elements. There is a large overlap between this experiment and the comparison with MP-SPDZ. Only input sizes above $2^{22}$ for 2PC, $2^{25}$ for 3PC, and $2^{20}$ for 4PC are unique to this experiment and not contained in the MP-SPDZ experiment. Due to this overlap and the fact that the full experiment takes over a day, we recommend prioritizing other experiments over this one and running the large sorting experiment if time permits.
 
-Running with inputs up to $2^{25}$ would take approximately 5 hours. Running with inputs up to $2^{29}$ would take approximately 36 hours. If you wish to run with inputs up to $2^{29}$, let us know, and we can configure larger machines for the additional data points.
+The largest two input sizes require machines with additional RAM. If you wish to run the full experiment with all input sizes, let us know and we can configure a cluster of `c7a.24xlarge` AWS instances. We recommend running this experiment with a maximum input size of $2^{27}$ or lower rather than the full $2^{29}$ shown in the paper. Doing so will allow the experiment to complete quicker and will prevent the need to switch to another cluster.
+
+The script takes an optional parameter of the maximum power of two input size. By default, the maximum power of two input size is $2^{27}$. Running with inputs up to $2^{25}$ would take approximately 5 hours. Running with inputs up to $2^{29}$ would take approximately 36 hours.
 
 ```bash
 $ cd ~/orq/scripts/sosp25/sorting-main/
@@ -301,6 +366,20 @@ $ screen -S sorting-main
 # runs input sizes up to and including 2^25
 $ ./sorting-main.sh 25
 ```
+
+Below is an example plot when running with maximum input size $2^{25}$. Depending on the maximum input size that you choose to run, individual data points may fail because we have run out of memory. Radixsort uses more memory than quicksort and will fail at smaller input sizes. The results will be placed in ~/results/sorting-main/`.
+
+<img src="img/orq-sorting.png" width="800">
+
+</details>
+
+## Tips and Common Mistakes
+
+We will make every effort to prevent any common mistakes, but we list them here in case they arise anyway.
+
+1) All machines should be up to date (achievable with `sudo apt update && sudo apt upgrade`). We will ensure all machines provided have been updated.
+2) You may be prompted to upgrade your kernel after beginning a script if the script involves installing additional dependencies. If this occurs, all experiments will be blocked until you interact with the popup. We recommend checking after beginning an experiment to see that the data collection has begun. If it seems like no data is being produced to the specified output folder, it is likely that the `tmux` or `screen` session has opened the popup.
+3) The setup for the "Secretflow TPCH" experiment may occasionally hang due to Docker containers failing to start. If no results are generated within 3 hours, please let us know — we can either manually fix the issue or help set up a fresh cluster.
 
 ## Cleaning Up
 

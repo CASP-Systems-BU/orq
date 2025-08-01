@@ -38,7 +38,9 @@ cd ~/scql
 mv ~/scql/vldb/docker-compose/data ~/data-bak
 bash vldb/docker-compose/setup.sh
 mv ~/data-bak ~/scql/vldb/docker-compose/data
+
 # NOTE: wait until all containers are running, which may take several minutes to load data.
+(cd vldb/docker-compose && docker compose -p vldb down)
 (cd vldb/docker-compose && docker compose -p vldb up -d)
 
 sleep 5
@@ -49,7 +51,7 @@ while docker ps --filter "name=vldb-broker" --format '{{.Status}}' | grep -q "Re
   sleep 10
 done
 
-sleep 10
+sleep 60
 
 # Setup table settings
 bash vldb/tpch_scripts/prepare.sh
