@@ -4,8 +4,8 @@
 
 We target all three artifact badges:
 - [Available](#available): we publish ORQ on [Github](https://github.com/CASP-Systems-BU/orq), and once reviewers are otherwise satisfied, will publish to Zenodo.
-- [Functional](#functional): we provide instructions for running a simple test query.
-- [Reproduced](#reproduced): reviewers are expected to reproduce key results of Section 5 of the paper. Our main results -- Figures 4, 5, 6 and 7 -- are reproducible. Figure 10 is also reproducible but is optional.
+- [Functional](#functional): we describe all artifact components and provide instructions for running a minimal working example.
+- [Reproduced](#reproduced): we provide instructions for reviewers to reproduce key results of Section 5 of the paper. Our main results -- Figures 4, 5, 6 and 7 -- are reproducible. Figure 10 is also reproducible but is optional.
 
 We run all experiments on `c7a.16xlarge` AWS instances with Ubuntu 22.04.5
 LTS and gcc 11.4.0.
