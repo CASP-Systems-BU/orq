@@ -8,7 +8,7 @@ shift
 
 NODES=$*
 
-me=$(hostname --short)
+me=$(hostname --fqdn)
 
 for n in $NODES
 do

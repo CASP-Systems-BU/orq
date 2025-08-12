@@ -58,7 +58,7 @@ cd build
 ../scripts/setup.sh
 
 echo 'Testing MPI execution of `example2`...'
-cmake .. -DPROTOCOL=$NUM_NODES &&
+cmake .. -DPROTOCOL=$NUM_NODES -DCOMM=MPI &&
 make -j $(nproc) example2
 
 for W in "$@"; do
