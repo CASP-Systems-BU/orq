@@ -13,12 +13,17 @@ if [[ $# -eq 1 && "$1" == "plot" ]]; then
 
     echo -e "\nPlot directory: $RESULT_DIR"
     exit 0
+elif [[ $# -eq 1 && "$1" == "setup" ]]; then
+    cd helper
+
+    # Setup Secretflow TPC-H query experiment
+    ./secretflow-tpch-setup.sh
+
+    echo -e "\nSecretFlow TPC-H experiment setup completed."
+    exit 0
 fi
 
 cd helper
-
-# Setup Secretflow TPC-H query experiment
-./secretflow-tpch-setup.sh
 
 # Run Secretflow TPC-H query experiment
 ./secretflow-tpch-runner.sh "$RESULT_DIR"
