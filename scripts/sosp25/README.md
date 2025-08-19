@@ -313,6 +313,9 @@ The comparison with SecretFlow on queries can be run using the following command
 ```bash
 cd ~/orq
 
+# [This setup should only be run once] Run setup for secretflow containers
+./scripts/sosp25/secretflow/artifact-secretflow-tpch.sh setup
+
 # Runs the complete experiment for both systems
 ./scripts/sosp25/secretflow/artifact-secretflow-tpch.sh
 
