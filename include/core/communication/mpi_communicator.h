@@ -1,19 +1,18 @@
-#ifndef SECRECY_MPI_COMMUNICATOR_H
-#define SECRECY_MPI_COMMUNICATOR_H
+#pragma once
 
-#include "../../benchmark/stopwatch.h"
-#include "../../debug/debug.h"
 #include "communicator.h"
 #include "communicator_factory.h"
+#include "debug/orq_debug.h"
+#include "profiling/stopwatch.h"
 
 #if defined(MPC_USE_MPI_COMMUNICATOR)
 #include "mpi.h"
 #endif
 
-#include "../../benchmark/thread_profiling.h"
-using namespace secrecy::instrumentation;
+#include "profiling/thread_profiling.h"
+using namespace orq::instrumentation;
 
-namespace secrecy {
+namespace orq {
 
 #ifdef MPC_USE_MPI_COMMUNICATOR
 
@@ -31,6 +30,7 @@ namespace secrecy {
 template <typename T>
 struct MPI_type;
 
+// \cond DOXYGEN_IGNORE
 template <>
 struct MPI_type<int8_t> {
     inline static const MPI_Datatype v = MPI_INT8_T;
@@ -53,6 +53,7 @@ struct MPI_type<__int128_t> {
     // so we send each half as a 64b value.
     inline static const MPI_Datatype v = MPI_INT64_T;
 };
+// \endcond DOXYGEN_IGNORE
 #endif
 
 class MPICommunicator : public Communicator {
@@ -219,7 +220,7 @@ class MPICommunicator : public Communicator {
     }
 
     /**
-     * @brief Exchange shares - single party specifier version
+     * @brief Single party version of exchange shares
      *
      * @tparam T
      * @param sent_shares
@@ -514,13 +515,7 @@ class MPICommunicatorFactory : public CommunicatorFactory<MPICommunicatorFactory
         MPI_Comm_rank(MPI_COMM_WORLD, &partyId_);
 #endif
 
-        secrecy::benchmarking::stopwatch::partyID = partyId_;
-    }
-
-    ~MPICommunicatorFactory() {
-        // #if defined(MPC_USE_MPI_COMMUNICATOR)
-        //             MPI_Finalize();
-        // #endif
+        orq::benchmarking::stopwatch::partyID = partyId_;
     }
 
     std::unique_ptr<Communicator> create() {
@@ -553,6 +548,4 @@ class MPICommunicatorFactory : public CommunicatorFactory<MPICommunicatorFactory
     const int parallelismFactor_;
 };
 
-}  // namespace secrecy
-
-#endif  // SECRECY_MPI_COMMUNICATOR_H
+}  // namespace orq

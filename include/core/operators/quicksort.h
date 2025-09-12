@@ -1,19 +1,30 @@
-#ifndef SECRECY_OPERATORS_QUICKSORT_H
-#define SECRECY_OPERATORS_QUICKSORT_H
+#pragma once
 
-#include "../../benchmark/stopwatch.h"
-#include "common.h"
 #include <random>
+
+#include "common.h"
+#include "profiling/stopwatch.h"
 
 // #define DEBUG_QUICKSORT
 
-using namespace secrecy::benchmarking;
+using namespace orq::benchmarking;
 
-namespace secrecy::operators {
+namespace orq::operators {
 
-// start and end are inclusive indices
-// between start and end (sublist) and a list of comparison results, swap
-// elements based on that
+/**
+ * @brief Partitions a vector segment based on comparison results.
+ *
+ * Rearranges elements between start and end indices based on pivot comparisons.
+ * Elements equal to 0 in comparisons are moved to the left partition.
+ *
+ * @tparam T Share data type.
+ * @tparam E Share container type.
+ * @param v Vector to partition (modified in place).
+ * @param comparisons Comparison results for each element.
+ * @param start Starting index (inclusive).
+ * @param end Ending index (inclusive).
+ * @param pivots Vector tracking pivot positions.
+ */
 template <typename T, typename E>
 void partition(BSharedVector<T, E> &v, Vector<T> &comparisons, int start, int end,
                Vector<long> &pivots) {
@@ -40,6 +51,15 @@ void partition(BSharedVector<T, E> &v, Vector<T> &comparisons, int start, int en
     }
 }
 
+/**
+ * @brief Core quicksort algorithm implementation.
+ *
+ * Performs the main quicksort logic on a padded vector.
+ *
+ * @tparam T Share data type.
+ * @tparam EVector Share container type.
+ * @param v Vector to sort (modified in place).
+ */
 template <typename T, typename EVector>
 static void quicksort_body(BSharedVector<T, EVector> &v) {
     v.shuffle();
@@ -158,7 +178,8 @@ static void quicksort_body(BSharedVector<T, EVector> &v) {
 #endif
 
 #ifdef MPC_PROTOCOL_DUMMY_ZERO
-        binom.param(std::binomial_distribution<>::param_type(num_pivots * 2 / 3 + 1, 1 - (double) num_pivots / N));
+        binom.param(std::binomial_distribution<>::param_type(num_pivots * 2 / 3 + 1,
+                                                             1 - (double)num_pivots / N));
         num_pivots += binom(rd);
 #else
         // Pivots are stored as non-negative values. Count them.
@@ -179,6 +200,18 @@ static void quicksort_body(BSharedVector<T, EVector> &v) {
     }
 }
 
+/**
+ * @brief Main quicksort entry point.
+ *
+ * Sorts a vector using the quicksort algorithm with padding for stability.
+ * Handles both ascending and descending order sorting.
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param v Vector to sort (modified in place).
+ * @param order Sorting direction (ASC or DESC).
+ * @return Permutation representing the applied sort order.
+ */
 // the quicksort entry point which calls the body
 template <typename Share, typename EVector>
 static ElementwisePermutation<EVector> quicksort(BSharedVector<Share, EVector> &v,
@@ -191,7 +224,7 @@ static ElementwisePermutation<EVector> quicksort(BSharedVector<Share, EVector> &
     }
     // 1 pair for invert (calls obliv_apply_elementwise_perm)
     int num_pairs = 1;
-    secrecy::random::PermutationManager::get()->reserve(v.size(), num_permutations, num_pairs);
+    orq::random::PermutationManager::get()->reserve(v.size(), num_permutations, num_pairs);
 
     auto reversed = order == SortOrder::DESC;
 
@@ -212,6 +245,4 @@ static ElementwisePermutation<EVector> quicksort(BSharedVector<Share, EVector> &
     return permutation;
 }
 
-}  // namespace secrecy::operators
-
-#endif  // SECRECY_OPERATORS_QUICKSORT_H
+}  // namespace orq::operators

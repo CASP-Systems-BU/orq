@@ -1,21 +1,23 @@
-#ifndef SECRECY_E_VECTOR_H
-#define SECRECY_E_VECTOR_H
+#pragma once
 
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <utility>
 
 #include "encoding.h"
-#include "vector.h"  // Secrecy's wrapper for std::vector
+#include "vector.h"  // ORQ's wrapper for std::vector
 
 #define define_apply_return_to_replicated(_func_)       \
+    ;                                                   \
     template <typename... T>                            \
     EVector _func_(T... args) const {                   \
         std::vector<Vector<Share>> res;                 \
         for (int i = 0; i < ReplicationNumber; ++i) {   \
             res.push_back(contents[i]._func_(args...)); \
         }                                               \
-        return res;                                     \
+        EVector result(res, this->precision);           \
+        return result;                                  \
     }
 
 #define define_apply_to_replicated(_func_)            \
@@ -57,26 +59,31 @@
         for (int i = 0; i < ReplicationNumber; ++i) {                      \
             res.push_back(contents[i]._func_(other.contents[i], args...)); \
         }                                                                  \
-        return res;                                                        \
+        EVector result(res, this->precision);                              \
+        return result;                                                     \
     }
 
 #define define_binary_evector_element_op(_op_)                   \
+    ;                                                            \
     template <typename OtherType>                                \
     inline EVector operator _op_(const OtherType &other) const { \
         std::vector<Vector<Share>> res;                          \
         for (int i = 0; i < ReplicationNumber; ++i) {            \
             res.push_back(contents[i] _op_ other);               \
         }                                                        \
-        return res;                                              \
+        EVector result(res, this->precision);                    \
+        return result;                                           \
     }
 
 #define define_binary_evector_evector_op(_op_)                 \
+    ;                                                          \
     inline EVector operator _op_(const EVector &other) const { \
         std::vector<Vector<Share>> res;                        \
         for (int i = 0; i < ReplicationNumber; ++i) {          \
             res.push_back(contents[i] _op_ other.contents[i]); \
         }                                                      \
-        return res;                                            \
+        EVector result(res, this->precision);                  \
+        return result;                                         \
     }
 
 #define define_unary_evector_op(_op_)                 \
@@ -85,7 +92,8 @@
         for (int i = 0; i < ReplicationNumber; ++i) { \
             res.push_back(_op_ contents[i]);          \
         }                                             \
-        return res;                                   \
+        EVector result(res, this->precision);         \
+        return result;                                \
     }
 
 #define define_binary_evector_assignment_op(_op_)          \
@@ -96,7 +104,7 @@
         return *this;                                      \
     }
 
-namespace secrecy {
+namespace orq {
 // Forward declarations
 namespace service {
     class RunTime;
@@ -107,8 +115,8 @@ namespace service {
 }  // namespace service
 
 /**
- * @tparam Share - Share type.
- * @tparam ReplicationNumber - The number of shares that each party sees for each secret value.
+ * @tparam Share Share type.
+ * @tparam ReplicationNumber The number of shares that each party sees for each secret value.
  *
  * EVector is an abstraction similar to the EncodedVector, i.e., an "encoded view" of a plaintext
  * vector as seen by an untrusted party. In contrast to EncodedVector, EVector provides access to
@@ -120,6 +128,9 @@ namespace service {
  */
 template <typename Share, int ReplicationNumber>
 class EVector {
+    // The fixed point precision
+    size_t precision;
+
    protected:
     // The EVector contents
     std::vector<Vector<Share>> contents;
@@ -140,17 +151,25 @@ class EVector {
 
     /**
      * Provides an interface to initialize the data object with existing data.
-     * @param contents - The vector of vectors to initialize the data object with.
+     * @param contents The vector of vectors to initialize the data object with.
      *
      * NOTE: the copy constructor of Vector<T> is shallow; if this is initialized by another
      * Vector<T> object, both will point to data in the same memory location.
      */
     EVector(std::vector<Vector<Share>> contents)
-        : contents(contents) {}
-    
+        : contents(contents), precision(contents[0].getPrecision()) {}
+
+    /**
+     * Initializes the EVector with a given vector of vectors and a fixed-point precision.
+     * @param contents - The vector of vectors to initialize the data object with.
+     * @param fixed_point_precision - The fixed-point fractional bits to set for this EVector.
+     */
+    EVector(std::vector<Vector<Share>> contents, size_t fixed_point_precision)
+        : contents(std::move(contents)), precision(fixed_point_precision) {}
+
     /**
      * Initializes the EVector with a given initializer list of Vector<Share>.
-     * @param l - The initializer list to initialize the EVector with.
+     * @param l The initializer list to initialize the EVector with.
      * @throws std::invalid_argument if the size of the initializer list doesn't match
      *  ReplicationNumber.
      */
@@ -159,15 +178,16 @@ class EVector {
             throw std::invalid_argument("Initializer list size must match ReplicationNumber");
         }
         contents.assign(l.begin(), l.end());
+        precision = contents[0].getPrecision();
     }
 
     /**
      *
      * EVector<T,N> constructor that allocates `ReplicationNumber` new Vectors, each one of size
      * `size`.
-     * @param size - The size of Vector<T> in this EVector<T,N>.
+     * @param size The size of Vector<T> in this EVector<T,N>.
      */
-    EVector(const size_t &size) {
+    EVector(const size_t &size) : precision(0) {
         for (int i = 0; i < ReplicationNumber; ++i) {
             // NOTE: it is important to use the push_back and
             // not pass the size in the constructor. Otherwise,
@@ -180,27 +200,71 @@ class EVector {
     /**
      * This is a shallow copy constructor (i.e., only copies the vector pointer but not its
      * contents).
-     * @param other - The other EVector whose contents this vector will point to.
+     * @param other The other EVector whose contents this vector will point to.
      *
      * WARNING: The new vector will point to the same memory location as used by `other`. To copy
      * the data into a separate memory location, create a new vector first then use the assignment
      * operator.
      */
-    EVector(const EVector &other) : contents(other.contents) {}
+    EVector(const EVector &other) : contents(other.contents), precision(other.getPrecision()) {}
 
     /**
      * This is a deep move assignment.
      * Applies the move assignment operator to Vector<T>. Assigns the values of the current batch
      * from the `other` vector to the current batch of this vector. Assumes `other` has the same
      * size and replication factor as this vector.
-     * @param other - The EVector containing the values that this vector must point to.
+     * @param other The EVector containing the values that this vector must point to.
      * @return A reference to this EVector after modification.
      */
     EVector &operator=(const EVector &&other) {
         for (int i = 0; i < ReplicationNumber; ++i) {
             contents[i] = other.contents[i];
         }
+        precision = other.getPrecision();
         return *this;
+    }
+
+    /**
+     * Sets the fixed-point precision.
+     * @param fixed_point_precision - the number of fixed-point fractional bits.
+     */
+    void setPrecision(const int fixed_point_precision) { precision = fixed_point_precision; }
+
+    /**
+     * Gets the fixed-point precision.
+     */
+    size_t getPrecision() const { return precision; }
+
+    /**
+     * Helper that sets this vector's precision to match another EVector.
+     * @param other The EVector whose precision should be copied.
+     */
+    void matchPrecision(const EVector &other) { precision = other.getPrecision(); }
+
+    /*
+     * Writes the secret shares of the EVector to a file.
+     * @param _output_file_path - The path to the file to write the secret shares to.
+     *  Given file is overwritten if it already exists.
+     */
+    void output(const std::string &_output_file_path) {
+        // Open file for writing
+        std::ofstream output_file(_output_file_path, std::ios::out | std::ios::trunc);
+        if (!output_file.is_open()) {
+            std::cerr << "Error: could not open output file " << _output_file_path << std::endl;
+            exit(1);
+        }
+
+        // Write the output file
+        for (size_t i = 0; i < contents[0].size(); ++i) {
+            for (int j = 0; j < ReplicationNumber; ++j) {
+                output_file << contents[j][i];
+                if (j < ReplicationNumber - 1) {
+                    output_file << ",";
+                }
+            }
+            output_file << std::endl;
+        }
+        output_file.close();
     }
 
     /**
@@ -208,13 +272,14 @@ class EVector {
      * Applies the copy assignment operator to Vector<T>. Copies the values of the current batch
      * from the `other` vector to the current batch of this vector. Assumes `other` has the same
      * size and replication factor as this vector.
-     * @param other - The EVector that contains the values to be copied.
+     * @param other The EVector that contains the values to be copied.
      * @return A reference to this EVector after modification.
      */
     EVector &operator=(const EVector &other) {
         for (int i = 0; i < ReplicationNumber; ++i) {
             contents[i] = other.contents[i];
         }
+        precision = other.getPrecision();
         return *this;
     }
 
@@ -227,22 +292,23 @@ class EVector {
      * @return EVector&
      */
     template <typename Other, int R>
-    EVector &operator=(const secrecy::EVector<Other, R> &other) {
+    EVector &operator=(const orq::EVector<Other, R> &other) {
         for (int i = 0; i < ReplicationNumber; ++i) {
             contents[i] = other.contents[i];
         }
+        precision = other.getPrecision();
         return *this;
     }
-    
+
     /**
      * EVector<T,N> constructor that allocates `ReplicationNumber` new Vectors, each one of size
      * `size`, and initializes them with the contents of the file `_input_file_path`. The file
      * contains the secret shares of the EVector. Each line in the file contains `ReplicationNumber`
      * values separated by a space.
-     * @param size - The size of Vector<T> in this EVector<T,N>.
-     * @param _input_file_path - The path to the file containing the contents of the EVector.
+     * @param size The size of Vector<T> in this EVector<T,N>.
+     * @param _input_file_path The path to the file containing the contents of the EVector.
      */
-    EVector(const size_t &size, const std::string &_input_file_path) {
+    EVector(const size_t &size, const std::string &_input_file_path) : precision(0) {
         // First allocate the memory
         for (int i = 0; i < ReplicationNumber; ++i) {
             // NOTE: it is important to use the push_back and
@@ -281,38 +347,12 @@ class EVector {
         input_file.close();
     }
 
-    /*
-     * Writes the secret shares of the EVector to a file.
-     * @param _output_file_path - The path to the file to write the secret shares to.
-     *  Given file is overwritten if it already exists.
-     */
-    void output(const std::string &_output_file_path) {
-        // Open file for writing
-        std::ofstream output_file(_output_file_path, std::ios::out | std::ios::trunc);
-        if (!output_file.is_open()) {
-            std::cerr << "Error: could not open output file " << _output_file_path << std::endl;
-            exit(1);
-        }
-
-        // Write the output file
-        for (size_t i = 0; i < contents[0].size(); ++i) {
-            for (int j = 0; j < ReplicationNumber; ++j) {
-                output_file << contents[j][i];
-                if (j < ReplicationNumber - 1) {
-                    output_file << ",";
-                }
-            }
-            output_file << std::endl;
-        }
-        output_file.close();
-    }
-
     /**
      * Returns the current batch size, i.e., the number of secret values that are being processed in
      * the current round. The default batch size is the actual vector size.
      * @return The current batch size.
      *
-     * NOTE: Secrecy parties apply operations on EVectors in batches. Each batch corresponds to a
+     * NOTE: ORQ parties apply operations on EVectors in batches. Each batch corresponds to a
      * range of elements in the vector.
      */
     inline size_t size() const { return contents[0].size(); }
@@ -349,7 +389,6 @@ class EVector {
     define_apply_return_to_replicated(alternating_subset_reference);
     define_apply_return_to_replicated(bit_arithmetic_right_shift);
     define_apply_return_to_replicated(bit_left_shift);
-    define_apply_return_to_replicated(bit_level_shift);
     define_apply_return_to_replicated(bit_logical_right_shift);
     define_apply_return_to_replicated(bit_xor);
     define_apply_return_to_replicated(cyclic_subset_reference);
@@ -357,7 +396,6 @@ class EVector {
     define_apply_return_to_replicated(extend_lsb);
     define_apply_return_to_replicated(ltz);
     define_apply_return_to_replicated(repeated_subset_reference);
-    define_apply_return_to_replicated(reverse_bit_level_shift);
     define_apply_return_to_replicated(reversed_alternating_subset_reference);
     define_apply_return_to_replicated(simple_bit_compress);
     define_apply_return_to_replicated(simple_subset_reference);
@@ -388,7 +426,7 @@ class EVector {
 
     /**
      * Returns a mutable reference to a column of the EVector.
-     * @param column - The column index.
+     * @param column The column index.
      * @return A mutable reference to a vector of encodings at the given index.
      *
      * EVector is implemented as a column-first 2D vector, where:
@@ -422,11 +460,12 @@ class EVector {
     inline Vector<Share> &operator()(const int &column) { return contents[column]; }
 
     /**
-     * Returns a read-only reference to a column of the EVector.
-     * @param column - The column index.
+     * Returns a read-only reference to a column of the EVector. For more information, see the
+     * version of the same operator that returns a mutable reference.
+     *
+     * @param column The column index.
      * @return A read-only reference to a vector of encodings at the given index.
      *
-     * For more information, see the version of the same operator that returns a mutable reference.
      */
     inline const Vector<Share> &operator()(const int &column) const { return contents[column]; }
 
@@ -481,9 +520,9 @@ class EVector {
     friend class ASharedVector;
     friend class service::RunTime;
     template <typename InputType, typename ReturnType, typename ObjectType>
-    friend class secrecy::service::Task_1;
+    friend class orq::service::Task_1;
     template <typename InputType, typename ReturnType, typename ObjectType>
-    friend class secrecy::service::Task_2;
+    friend class orq::service::Task_2;
 
     template <typename OtherShare, int R>
     friend class EVector;
@@ -493,6 +532,4 @@ class EVector {
     friend class Protocol;
 };
 
-}  // namespace secrecy
-
-#endif  // SECRECY_E_VECTOR_H
+}  // namespace orq

@@ -1,19 +1,19 @@
-#include "../include/secrecy.h"
+#include "orq.h"
 
-using namespace secrecy::debug;
-using namespace secrecy::service;
+using namespace orq::debug;
+using namespace orq::service;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
 const int test_size = 1 << 16;
 
 template <typename T>
 void TestBasicCommunication(const int& testSize) {
-    auto n = secrecy::service::runTime->getNumParties();
+    auto n = orq::service::runTime->getNumParties();
     auto othersCount = n - 1;
 
     // Exchanging one vector
     {
-        secrecy::Vector<T> x(testSize), y(testSize), z(testSize);
+        orq::Vector<T> x(testSize), y(testSize), z(testSize);
         runTime->populateLocalRandom(x);
 
         // Exchange Shares with party +1
@@ -30,16 +30,16 @@ void TestBasicCommunication(const int& testSize) {
 
     // Exhange multiple vectors
     {
-        std::vector<secrecy::Vector<T>> x, y, z;
+        std::vector<orq::Vector<T>> x, y, z;
         for (int i = 0; i < othersCount; i++) {
-            x.push_back(secrecy::Vector<T>(testSize));
-            y.push_back(secrecy::Vector<T>(testSize));
-            z.push_back(secrecy::Vector<T>(testSize));
+            x.push_back(orq::Vector<T>(testSize));
+            y.push_back(orq::Vector<T>(testSize));
+            z.push_back(orq::Vector<T>(testSize));
             runTime->populateLocalRandom(x[i]);
         }
 
-        std::vector<secrecy::PartyID> to(othersCount);
-        std::vector<secrecy::PartyID> from(othersCount);
+        std::vector<orq::PartyID> to(othersCount);
+        std::vector<orq::PartyID> from(othersCount);
         for (int i = 0; i < othersCount; i++) {
             to[i] = i + 1;
             from[i] = -i - 1;
@@ -61,8 +61,7 @@ void TestBasicCommunication(const int& testSize) {
 }
 
 int main(int argc, char** argv) {
-    // Initialize Secrecy runtime
-    secrecy_init(argc, argv);
+    orq_init(argc, argv);
 
     TestBasicCommunication<int8_t>(test_size);
     single_cout("int8_t communication: OK");
@@ -79,9 +78,7 @@ int main(int argc, char** argv) {
     TestBasicCommunication<__int128_t>(test_size);
     single_cout("__int128_t communication: OK");
 
-// Tear down communication
-#if defined(MPC_USE_MPI_COMMUNICATOR)
-    MPI_Finalize();
-#endif
+    // Tear down communication
+
     return 0;
 }

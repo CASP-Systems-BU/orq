@@ -1,12 +1,11 @@
-#include "../include/secrecy.h"
+#include "orq.h"
 
-using namespace secrecy::debug;
-using namespace secrecy::service;
+using namespace orq::debug;
+using namespace orq::service;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
 template <typename T>
 EncodedTable<T> create_test_table(int column_count) {
-
     Vector<T> column_data = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     std::vector<Vector<T>> columns(column_count, column_data);
 
@@ -31,7 +30,7 @@ void assert_table_schema(EncodedTable<T> table, size_t column_count) {
 
 template <typename T>
 void test_add_columns() {
-    single_cout_nonl("Testing " << std::numeric_limits<std::make_unsigned_t<T>>::digits 
+    single_cout_nonl("Testing " << std::numeric_limits<std::make_unsigned_t<T>>::digits
                                 << "-bit: addColumns... ");
 
     EncodedTable<T> table = create_test_table<T>(1);
@@ -49,7 +48,7 @@ void test_add_columns() {
 
 template <typename T>
 void test_delete_columns() {
-    single_cout_nonl("Testing " << std::numeric_limits<std::make_unsigned_t<T>>::digits 
+    single_cout_nonl("Testing " << std::numeric_limits<std::make_unsigned_t<T>>::digits
                                 << "-bit: deleteColumns... ");
 
     EncodedTable<T> table = create_test_table<T>(6);
@@ -71,7 +70,7 @@ void test_delete_columns() {
 
 template <typename T>
 void test_project() {
-    single_cout_nonl("Testing " << std::numeric_limits<std::make_unsigned_t<T>>::digits 
+    single_cout_nonl("Testing " << std::numeric_limits<std::make_unsigned_t<T>>::digits
                                 << "-bit: project... ");
 
     // Project single column
@@ -93,11 +92,12 @@ void test_project() {
 
 template <typename T>
 void test_resize() {
-    single_cout_nonl("Testing " << std::numeric_limits<std::make_unsigned_t<T>>::digits 
+    single_cout_nonl("Testing " << std::numeric_limits<std::make_unsigned_t<T>>::digits
                                 << "-bit: resize... ");
 
     const size_t n_rows = 10000;
-    EncodedTable<T> table = secret_share<T>({Vector<T>(n_rows, 99), Vector<T>(n_rows, 77)}, {"A", "B"});
+    EncodedTable<T> table =
+        secret_share<T>({Vector<T>(n_rows, 99), Vector<T>(n_rows, 77)}, {"A", "B"});
 
     assert(table.size() == n_rows);
 
@@ -136,17 +136,13 @@ void test_resize() {
     single_cout("OK");
 }
 
-
 int main(int argc, char** argv) {
-    // Initialize Secrecy runtime
-    secrecy_init(argc, argv);
+    orq_init(argc, argv);
 
     // Testing basic table operations
     test_add_columns<int>();
     test_delete_columns<int>();
     test_project<int>();
     test_resize<int>();
-
-    MPI_Finalize();
     return 0;
 }

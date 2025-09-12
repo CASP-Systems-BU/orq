@@ -1,45 +1,54 @@
-#ifndef SECRECY_OPERATORS_SORTING_H
-#define SECRECY_OPERATORS_SORTING_H
+#pragma once
 
 #include "common.h"
+#include "shuffle.h"
 
 // To change the default sort protocol, recompile with this option set
 #ifndef DEFAULT_SORT_PROTO
 #define DEFAULT_SORT_PROTO QUICKSORT
 #endif
 
-namespace secrecy { 
+namespace orq {
+
+/**
+ * @brief Available sorting protocols.
+ */
+typedef enum {
+    BITONICSORT,
+    QUICKSORT,
+    RADIXSORT,
+    BITONICMERGE,
+    DEFAULT = DEFAULT_SORT_PROTO
+} SortingProtocol;
+
+namespace operators {
 
     /**
-    * Sorting protocols.
-    */
-    typedef enum
-    {
-        BITONICSORT,
-        QUICKSORT,
-        RADIXSORT,
-        BITONICMERGE,
-        DEFAULT = DEFAULT_SORT_PROTO
-    } SortingProtocol;
+     * @brief Sorting order enumeration.
+     */
+    enum SortOrder { ASC, DESC };
 
-    namespace operators {
-
-    enum SortOrder {
-        ASC,
-        DESC
-    };
-
-    // declare quicksort and radix sort
+    // \cond DOXYGEN_IGNORE
     template <typename S, typename E>
-    static ElementwisePermutation<E> quicksort(
-        BSharedVector<S, E>& v, SortOrder order = SortOrder::ASC);
+    static ElementwisePermutation<E> quicksort(BSharedVector<S, E>& v,
+                                               SortOrder order = SortOrder::ASC);
 
     template <typename S, typename E>
     static ElementwisePermutation<E> radix_sort(
         BSharedVector<S, E>& v, SortOrder order = SortOrder::ASC,
-        const size_t bits =
-            std::numeric_limits<std::make_unsigned_t<S>>::digits);
+        const size_t bits = std::numeric_limits<std::make_unsigned_t<S>>::digits);
+    // \endcond DOXYGEN_IGNORE
 
+    /**
+     * @brief Compares two vectors element-wise.
+     *
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param x_vec Left vector.
+     * @param y_vec Right vector.
+     * @param order Comparison order.
+     * @return Comparison result bits.
+     */
     template <typename Share, typename EVector>
     static BSharedVector<Share, EVector> compare(BSharedVector<Share, EVector>& x_vec,
                                                  BSharedVector<Share, EVector>& y_vec,
@@ -54,23 +63,27 @@ namespace secrecy {
     /**
      * Compares two `MxN` arrays row-wise by applying `M` greater-than comparisons on `N` keys.
      *
-     * @tparam Share - Share data type.
-     * @tparam EVector - Share container type.
-     * @param x_vec - The left column-first array with `M` rows and `N` columns.
-     * @param y_vec - The right column-first array with `M` rows and `N` columns.
-     * @param order - A vector that denotes the order of comparison per key.
-     * @return A new shared vector that contains the result bits of the `M` greater-than comparisons.
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param x_vec The left column-first array with `M` rows and `N` columns.
+     * @param y_vec The right column-first array with `M` rows and `N` columns.
+     * @param order A vector that denotes the order of comparison per key.
+     * @return A new shared vector that contains the result bits of the `M` greater-than
+     * comparisons.
      *
-     * NOTE: The i-th row, let l, from the left array is greater than the i-th row, let r, from the right array if l's
-     * first key is greater than r's first key, or the first keys are the same and l's second key is greater than r's
-     * second key, or the first two keys are the same and so forth, for all keys.
+     * NOTE: The i-th row, let l, from the left array is greater than the i-th row, let r, from the
+     * right array if l's first key is greater than r's first key, or the first keys are the same
+     * and l's second key is greater than r's second key, or the first two keys are the same and so
+     * forth, for all keys.
      */
     // TODO: use bit compression.
     template <typename Share, typename EVector>
-    static BSharedVector<Share, EVector> compare_rows(const std::vector<BSharedVector<Share, EVector>*>& x_vec,
-                                                      const std::vector<BSharedVector<Share, EVector>*>& y_vec,
-                                                      const std::vector<SortOrder>& order){
-        assert((x_vec.size() > 0) && (x_vec.size() == y_vec.size()) && (order.size() == x_vec.size()));
+    static BSharedVector<Share, EVector> compare_rows(
+        const std::vector<BSharedVector<Share, EVector>*>& x_vec,
+        const std::vector<BSharedVector<Share, EVector>*>& y_vec,
+        const std::vector<SortOrder>& order) {
+        assert((x_vec.size() > 0) && (x_vec.size() == y_vec.size()) &&
+               (order.size() == x_vec.size()));
         const int cols_num = x_vec.size();  // Number of keys
         // Compare elements on first key
         BSharedVector<Share, EVector>* t = order[0] == SortOrder::DESC ? y_vec[0] : x_vec[0];
@@ -97,21 +110,22 @@ namespace secrecy {
     /**
      * Same as above but accepts the `N` columns by reference.
      *
-     * @tparam Share - Share data type.
-     * @tparam EVector - Share container type.
-     * @param x_vec - The left column-first array with `M` rows and `N` columns.
-     * @param y_vec - The right column-first array with `M` rows and `N` columns.
-     * @param order - A vector that denotes the order of comparison per key.
-     * @return A new shared vector that contains the result bits of the `M` greater-than comparisons.
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param x_vec The left column-first array with `M` rows and `N` columns.
+     * @param y_vec The right column-first array with `M` rows and `N` columns.
+     * @param order A vector that denotes the order of comparison per key.
+     * @return A new shared vector that contains the result bits of the `M` greater-than
+     * comparisons.
      */
     // TODO: x_vec and y_vec should be passed as const
     template <typename Share, typename EVector>
-    static BSharedVector<Share, EVector> compare_rows(std::vector<BSharedVector<Share, EVector>>& x_vec,
-                                                      std::vector<BSharedVector<Share, EVector>>& y_vec,
-                                                      const std::vector<SortOrder>& order){
+    static BSharedVector<Share, EVector> compare_rows(
+        std::vector<BSharedVector<Share, EVector>>& x_vec,
+        std::vector<BSharedVector<Share, EVector>>& y_vec, const std::vector<SortOrder>& order) {
         std::vector<BSharedVector<Share, EVector>*> x_vec_;
         std::vector<BSharedVector<Share, EVector>*> y_vec_;
-        for(int i = 0; i < x_vec.size(); ++i){
+        for (int i = 0; i < x_vec.size(); ++i) {
             x_vec_.push_back(&x_vec[i]);
             y_vec_.push_back(&y_vec[i]);
         }
@@ -119,22 +133,20 @@ namespace secrecy {
         return compare_rows(x_vec_, y_vec_, order);
     }
 
-
-
     /**
      * Swaps rows of two `MxN` arrays in place using the provided `bits`.
      *
-     * @tparam Share - Share data type.
-     * @tparam EVector - Share container type.
-     * @param x_vec - The left column-first array with `M` rows and `N` columns.
-     * @param y_vec - The right column-first array with `M` rows and `N` columns.
-     * @param bits - The B-shared vector that contains 'M' bits to use for oblivious swapping (if bits[i]=True, the
-     * i-th rows will be swapped).
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param x_vec The left column-first array with `M` rows and `N` columns.
+     * @param y_vec The right column-first array with `M` rows and `N` columns.
+     * @param bits The B-shared vector that contains 'M' bits to use for oblivious swapping (if
+     * bits[i]=True, the i-th rows will be swapped).
      */
     template <typename Share, typename EVector>
     static void swap(std::vector<BSharedVector<Share, EVector>*>& x_vec,
                      std::vector<BSharedVector<Share, EVector>*>& y_vec,
-                     const BSharedVector<Share, EVector>& bits){
+                     const BSharedVector<Share, EVector>& bits) {
         // Make sure the input arrays have the same dimensions
         assert((x_vec.size() > 0) && (x_vec.size() == y_vec.size()));
         const int cols_num = x_vec.size();  // Number of columns
@@ -149,10 +161,19 @@ namespace secrecy {
         }
     }
 
+    /**
+     * @brief Swaps rows of two arithmetic arrays using selection bits.
+     *
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param x_vec Left array.
+     * @param y_vec Right array.
+     * @param bits Selection bits for swapping.
+     */
     template <typename Share, typename EVector>
     static void swap(std::vector<ASharedVector<Share, EVector>*>& x_vec,
                      std::vector<ASharedVector<Share, EVector>*>& y_vec,
-                     const ASharedVector<Share, EVector>& bits){
+                     const ASharedVector<Share, EVector>& bits) {
         // Make sure the input arrays have the same dimensions
         assert((x_vec.size() > 0) && (x_vec.size() == y_vec.size()));
         const int cols_num = x_vec.size();  // Number of columns
@@ -168,37 +189,45 @@ namespace secrecy {
         }
     }
 
-
     /**
      * Same as above but accepts the `N` columns by reference.
      *
-     * @tparam Share - Share data type.
-     * @tparam EVector - Share container type.
-     * @param x_vec - The left column-first array with `M` rows and `N` columns.
-     * @param y_vec - The right column-first array with `M` rows and `N` columns.
-     * @param bits - The B-shared vector that contains 'M' bits to use for oblivious swapping (if bits[i]=True, the
-     * i-th rows will be swapped).
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param x_vec The left column-first array with `M` rows and `N` columns.
+     * @param y_vec The right column-first array with `M` rows and `N` columns.
+     * @param bits The B-shared vector that contains 'M' bits to use for oblivious swapping (if
+     * bits[i]=True, the i-th rows will be swapped).
      */
     template <typename Share, typename EVector>
-    static void swap(std::vector<BSharedVector<Share, EVector>> &x_vec,
-                     std::vector<BSharedVector<Share, EVector>> &y_vec,
-                     const BSharedVector<Share, EVector> &bits) {
+    static void swap(std::vector<BSharedVector<Share, EVector>>& x_vec,
+                     std::vector<BSharedVector<Share, EVector>>& y_vec,
+                     const BSharedVector<Share, EVector>& bits) {
         std::vector<BSharedVector<Share, EVector>*> x_vec_;
         std::vector<BSharedVector<Share, EVector>*> y_vec_;
-        for(int i = 0; i < x_vec.size(); ++i){
+        for (int i = 0; i < x_vec.size(); ++i) {
             x_vec_.push_back(&x_vec[i]);
             y_vec_.push_back(&y_vec[i]);
         }
         swap(x_vec_, y_vec_, bits);
     }
 
+    /**
+     * @brief Swaps arithmetic arrays using selection bits (reference overload).
+     *
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param x_vec Left array.
+     * @param y_vec Right array.
+     * @param bits Selection bits for swapping.
+     */
     template <typename Share, typename EVector>
-    static void swap(std::vector<ASharedVector<Share, EVector>> &x_vec,
-                     std::vector<ASharedVector<Share, EVector>> &y_vec,
-                     const ASharedVector<Share, EVector> &bits) {
+    static void swap(std::vector<ASharedVector<Share, EVector>>& x_vec,
+                     std::vector<ASharedVector<Share, EVector>>& y_vec,
+                     const ASharedVector<Share, EVector>& bits) {
         std::vector<ASharedVector<Share, EVector>*> x_vec_;
         std::vector<ASharedVector<Share, EVector>*> y_vec_;
-        for(int i = 0; i < x_vec.size(); ++i){
+        for (int i = 0; i < x_vec.size(); ++i) {
             x_vec_.push_back(&x_vec[i]);
             y_vec_.push_back(&y_vec[i]);
         }
@@ -208,20 +237,19 @@ namespace secrecy {
     /**
      * Same as above but accepts the `N` columns by reference.
      *
-     * @tparam Share - Share data type.
-     * @tparam EVector - Share container type.
-     * @param x_vec - The left column-first array with `M` rows and `N` columns.
-     * @param y_vec - The right column-first array with `M` rows and `N` columns.
-     * @param bits - The B-shared vector that contains 'M' bits to use for oblivious swapping (if bits[i]=True, the
-     * i-th rows will be swapped).
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param x_vec The left column-first array with `M` rows and `N` columns.
+     * @param y_vec The right column-first array with `M` rows and `N` columns.
+     * @param bits The B-shared vector that contains 'M' bits to use for oblivious swapping (if
+     * bits[i]=True, the i-th rows will be swapped).
      */
-    template<typename Share, typename EVector>
-    void swap(BSharedVector <Share, EVector> &x_vec,
-              BSharedVector <Share, EVector> &y_vec,
-              BSharedVector <Share, EVector> &bits) {
-        bits.mask((Share) 1);  // Mask all bits but the LSB
-        std::vector<BSharedVector < Share, EVector>*> x_vec_;
-        std::vector<BSharedVector < Share, EVector>*> y_vec_;
+    template <typename Share, typename EVector>
+    void swap(BSharedVector<Share, EVector>& x_vec, BSharedVector<Share, EVector>& y_vec,
+              BSharedVector<Share, EVector>& bits) {
+        bits.mask((Share)1);  // Mask all bits but the LSB
+        std::vector<BSharedVector<Share, EVector>*> x_vec_;
+        std::vector<BSharedVector<Share, EVector>*> y_vec_;
         x_vec_.push_back(&x_vec);
         y_vec_.push_back(&y_vec);
         swap(x_vec_, y_vec_, bits);
@@ -230,77 +258,92 @@ namespace secrecy {
     /**
      * Sorts rows in the given array on all columns. Updates array in place.
      *
-     * @tparam Share - Share data type.
-     * @tparam EVector - Share container data type.
-     * @param _columns - The columns of the array.
-     * @param order - The sorting direction per column
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param _columns The columns of the array.
+     * @param order The sorting direction per column.
      */
-    template<typename Share, typename EVector>
+    template <typename Share, typename EVector>
     static void bitonic_sort(std::vector<BSharedVector<Share, EVector>*> _columns,
                              std::vector<ASharedVector<Share, EVector>*> _data_a,
                              std::vector<BSharedVector<Share, EVector>*> _data_b,
-                             const std::vector<SortOrder> &order) {
+                             const std::vector<SortOrder>& order) {
         assert(_columns.size() > 0);
         // Vector sizes must be a power of two
         // TODO (john): Modify sorter to support arbitrary vector sizes
-        for(int i = 0; i < _columns.size(); ++i)
+        for (int i = 0; i < _columns.size(); ++i)
             assert(ceil(log2(_columns[i]->size())) == floor(log2(_columns[i]->size())));
         // Number of rounds of bitonic sort
-        int rounds = (int) log2(_columns[0]->size());
+        int rounds = (int)log2(_columns[0]->size());
         // For each round
-        for (int i=0; i<rounds; i++) {
+        for (int i = 0; i < rounds; i++) {
             // For each column within a round
-            for (int j=0; j<=i; j++) {
-                const int half_box_size = 1 << (i-j);
-                const int box_direction_2 = (j==0) ? -1 : 1;
+            for (int j = 0; j <= i; j++) {
+                const int half_box_size = 1 << (i - j);
+                const int box_direction_2 = (j == 0) ? -1 : 1;
                 // The left (x) and right (y) rows to compare
                 std::vector<BSharedVector<Share, EVector>> x;
                 std::vector<BSharedVector<Share, EVector>> y;
-                for (int k = 0; k <_columns.size(); ++k){
-                    x.push_back(_columns[k]->alternating_subset_reference(half_box_size, half_box_size));
-                    if(box_direction_2 == -1){
-                        y.push_back(_columns[k]->simple_subset_reference(half_box_size)
-                                    .reversed_alternating_subset_reference(half_box_size, half_box_size));
-                    }else{
-                        y.push_back(_columns[k]->simple_subset_reference(half_box_size)
-                                    .alternating_subset_reference(half_box_size, half_box_size));
+                for (int k = 0; k < _columns.size(); ++k) {
+                    x.push_back(
+                        _columns[k]->alternating_subset_reference(half_box_size, half_box_size));
+                    if (box_direction_2 == -1) {
+                        y.push_back(_columns[k]
+                                        ->simple_subset_reference(half_box_size)
+                                        .reversed_alternating_subset_reference(half_box_size,
+                                                                               half_box_size));
+                    } else {
+                        y.push_back(
+                            _columns[k]
+                                ->simple_subset_reference(half_box_size)
+                                .alternating_subset_reference(half_box_size, half_box_size));
                     }
                 }
                 // Compare rows on all columns
-                BSharedVector<Share, EVector> bits = compare_rows(x,y, order);
+                BSharedVector<Share, EVector> bits = compare_rows(x, y, order);
 
                 // Swap rows in place using the comparison bits
-                swap(x,y,bits);
+                swap(x, y, bits);
 
                 // Sorting Data as well
-                if(_data_b.size() > 0){
+                if (_data_b.size() > 0) {
                     std::vector<BSharedVector<Share, EVector>> _data_b_1;
                     std::vector<BSharedVector<Share, EVector>> _data_b_2;
-                    for(int k = 0; k < _data_b.size(); ++k){
-                        _data_b_1.push_back(_data_b[k]->alternating_subset_reference(half_box_size, half_box_size));
-                        if(box_direction_2 == -1){
-                            _data_b_2.push_back(_data_b[k]->simple_subset_reference(half_box_size)
-                                        .reversed_alternating_subset_reference(half_box_size, half_box_size));
-                        }else{
-                            _data_b_2.push_back(_data_b[k]->simple_subset_reference(half_box_size)
-                                        .alternating_subset_reference(half_box_size, half_box_size));
+                    for (int k = 0; k < _data_b.size(); ++k) {
+                        _data_b_1.push_back(
+                            _data_b[k]->alternating_subset_reference(half_box_size, half_box_size));
+                        if (box_direction_2 == -1) {
+                            _data_b_2.push_back(_data_b[k]
+                                                    ->simple_subset_reference(half_box_size)
+                                                    .reversed_alternating_subset_reference(
+                                                        half_box_size, half_box_size));
+                        } else {
+                            _data_b_2.push_back(
+                                _data_b[k]
+                                    ->simple_subset_reference(half_box_size)
+                                    .alternating_subset_reference(half_box_size, half_box_size));
                         }
                     }
                     swap(_data_b_1, _data_b_2, bits);
                 }
 
-                if(_data_a.size() > 0){
+                if (_data_a.size() > 0) {
                     ASharedVector<Share, EVector> bits_a = bits.b2a_bit();
                     std::vector<ASharedVector<Share, EVector>> _data_a_1;
                     std::vector<ASharedVector<Share, EVector>> _data_a_2;
-                    for(int k = 0; k < _data_a.size(); ++k){
-                        _data_a_1.push_back(_data_a[k]->alternating_subset_reference(half_box_size, half_box_size));
-                        if(box_direction_2 == -1){
-                            _data_a_2.push_back(_data_a[k]->simple_subset_reference(half_box_size)
-                                        .reversed_alternating_subset_reference(half_box_size, half_box_size));
-                        }else{
-                            _data_a_2.push_back(_data_a[k]->simple_subset_reference(half_box_size)
-                                        .alternating_subset_reference(half_box_size, half_box_size));
+                    for (int k = 0; k < _data_a.size(); ++k) {
+                        _data_a_1.push_back(
+                            _data_a[k]->alternating_subset_reference(half_box_size, half_box_size));
+                        if (box_direction_2 == -1) {
+                            _data_a_2.push_back(_data_a[k]
+                                                    ->simple_subset_reference(half_box_size)
+                                                    .reversed_alternating_subset_reference(
+                                                        half_box_size, half_box_size));
+                        } else {
+                            _data_a_2.push_back(
+                                _data_a[k]
+                                    ->simple_subset_reference(half_box_size)
+                                    .alternating_subset_reference(half_box_size, half_box_size));
                         }
                     }
                     swap(_data_a_1, _data_a_2, bits_a);
@@ -312,31 +355,30 @@ namespace secrecy {
     /**
      * Same as above but accepts the columns by reference.
      *
-     * @tparam Share - Share data type.
-     * @tparam EVector - Share container data type.
-     * @param _columns - The columns of the array.
-     * @param order - The sorting direction per column.
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param _columns The columns of the array.
+     * @param order The sorting direction per column.
      */
-    template<typename Share, typename EVector>
+    template <typename Share, typename EVector>
     static void bitonic_sort(std::vector<BSharedVector<Share, EVector>> _columns,
                              std::vector<ASharedVector<Share, EVector>> _data_a,
                              std::vector<BSharedVector<Share, EVector>> _data_b,
-                             const std::vector<SortOrder> &order) {
+                             const std::vector<SortOrder>& order) {
         std::vector<BSharedVector<Share, EVector>*> res;
-        for(BSharedVector<Share, EVector>& c : _columns){
+        for (BSharedVector<Share, EVector>& c : _columns) {
             res.push_back(&c);
         }
 
         std::vector<ASharedVector<Share, EVector>*> _data_a_;
-        for(ASharedVector<Share, EVector>& c : _columns){
+        for (ASharedVector<Share, EVector>& c : _columns) {
             res.push_back(&c);
         }
 
         std::vector<BSharedVector<Share, EVector>*> _data_b_;
-        for(BSharedVector<Share, EVector>& c : _columns){
+        for (BSharedVector<Share, EVector>& c : _columns) {
             res.push_back(&c);
         }
-
 
         bitonic_sort(res, _data_a_, _data_b_, order);
     }
@@ -344,14 +386,13 @@ namespace secrecy {
     /**
      * Sorts rows in the given array on all columns. Updates array in place.
      *
-     * @tparam Share - Share data type.
-     * @tparam EVector - Share container data type.
-     * @param _columns - The columns of the array.
-     * @param order - The sorting direction per column (default ascending)
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param _columns The columns of the array.
+     * @param order The sorting direction per column (default ascending).
      */
-    template<typename Share, typename EVector>
-    static void bitonic_sort(BSharedVector<Share, EVector>& vec,
-                             SortOrder order=SortOrder::ASC) {
+    template <typename Share, typename EVector>
+    static void bitonic_sort(BSharedVector<Share, EVector>& vec, SortOrder order = SortOrder::ASC) {
         std::vector<BSharedVector<Share, EVector>*> res;
         res.push_back(&vec);
         bitonic_sort(res, {}, {}, {order});
@@ -372,40 +413,44 @@ namespace secrecy {
     template <typename E>
     using PaddedBSharedVector =
         BSharedVector<PadWidth<typename E::ShareT>,
-                      secrecy::EVector<PadWidth<typename E::ShareT>, E::replicationNumber>>;
+                      orq::EVector<PadWidth<typename E::ShareT>, E::replicationNumber>>;
 
     /**
-     * pad_input - Extend <=32 bit elements to 64 bit elements.
-     * @param v - The input vector with <=32 bits.
-     * @param reverse_order - Indicates whether the upcoming sort is in reverse order.
+     * Extend <=32 bit elements to 64 bit elements.
+     *
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param v The input vector with <=32 bits.
+     * @param reverse_order Indicates whether the upcoming sort is in reverse order.
      * @return The 64 bit shared vector.
-     * 
+     *
      * Shift original value into most significant 32 bits.
      * Set least significant 32 bits equal to the initial index.
      * If reverse_order is set, pad with the values -1 to -n, otherwise pad with 0 to n-1.
      */
-    template<typename Share, typename EVector>
-    static PaddedBSharedVector<EVector> pad_input(BSharedVector<Share, EVector> &v, bool reverse_order) {
+    template <typename Share, typename EVector>
+    static PaddedBSharedVector<EVector> pad_input(BSharedVector<Share, EVector>& v,
+                                                  bool reverse_order) {
         auto _size = v.size();
         PaddedBSharedVector<EVector> ret(_size);
 
-        secrecy::Vector<int> idx(_size);
+        orq::Vector<int> idx(_size);
         for (int i = 0; i < _size; i++) {
             idx[i] = reverse_order ? (-1 - i) : i;
         }
 
-        auto k = secrecy::service::runTime->public_share<EVector::replicationNumber>(idx);
+        auto k = orq::service::runTime->public_share<EVector::replicationNumber>(idx);
 
         // copy-cast
         ret = v;
         // Shift actual values up
         ret <<= 32;
-        
+
         // 32 LSBs is the index vector
         // Due to data type conversion this isn't really doable directly
         for (int j = 0; j < EVector::replicationNumber; j++) {
             for (int i = 0; i < _size; i++) {
-                ret.vector(j)[i] |= (uint32_t) k(j)[i];
+                ret.vector(j)[i] |= (uint32_t)k(j)[i];
             }
         }
 
@@ -417,17 +462,20 @@ namespace secrecy {
     }
 
     /**
-     * remove_padding - Remove the padding from the 64 bit result to obtain the original <=32 bit values.
-     * @param v - The original input vector to place the result in.
-     * @param padded - The 64 bit shared vector.
-     * @param reverse_order - Indicates whether the upcoming sort is in reverse order.
+     * Remove the padding from the 64 bit result to obtain the original <=32 bit
+     * values.
+     *
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param v The original input vector to place the result in.
+     * @param padded The 64 bit shared vector.
+     * @param reverse_order Indicates whether the upcoming sort is in reverse order.
      * @return The extracted permutation.
      */
-    template<typename S, typename E>
-    static ElementwisePermutation<E> remove_padding(BSharedVector<S, E> &v,
-                                                    PaddedBSharedVector<E> &padded,
-                                                    bool reverse_order) 
-    {
+    template <typename S, typename E>
+    static ElementwisePermutation<E> remove_padding(BSharedVector<S, E>& v,
+                                                    PaddedBSharedVector<E>& padded,
+                                                    bool reverse_order) {
         ElementwisePermutation<E> permutation(v.size(), Encoding::BShared);
 
         // Masking is implicit in the type conversion (copy 32 LSBs)
@@ -449,19 +497,20 @@ namespace secrecy {
     /**
      * Sorts rows in the given array on all columns. Updates array in place.
      *
-     * @tparam Share - Share data type.
-     * @tparam EVector - Share container data type.
-     * @param _columns - The columns to sort by.
-     * @param _data_a - The AShared columns of the array to be sorted.
-     * @param _data_b - The BShared columns of the array to be sorted.
-     * @param order - The sorting direction per column
+     * @tparam Share Share data type.
+     * @tparam EVector Share container type.
+     * @param _columns The columns to sort by.
+     * @param _data_a The AShared columns of the array to be sorted.
+     * @param _data_b The BShared columns of the array to be sorted.
+     * @param single_bit which columns are single-bit columns (thus use 1-bit radixsort)
+     * @param protocol which sorting protocol to use
+     * @param order The sorting direction per column.
      */
     template <typename Share, typename EVector>
     static void table_sort(std::vector<BSharedVector<Share, EVector>*> _columns,
                            std::vector<ASharedVector<Share, EVector>*> _data_a,
                            std::vector<BSharedVector<Share, EVector>*> _data_b,
-                           const std::vector<SortOrder>& order,
-                           const std::vector<bool>& single_bit,
+                           const std::vector<SortOrder>& order, const std::vector<bool>& single_bit,
                            const SortingProtocol protocol) {
         size_t size = _columns[0]->size();
 
@@ -495,9 +544,10 @@ namespace secrecy {
 #endif
 
 #ifdef INSTRUMENT_TABLES
-        single_cout("[TABLE_GENPERM] p=" << perms_required << " n=" << size << " pairs=" << pairs_required);
+        single_cout("[TABLE_GENPERM] p=" << perms_required << " n=" << size
+                                         << " pairs=" << pairs_required);
 #endif
-        secrecy::random::PermutationManager::get()->reserve(size, perms_required, pairs_required);
+        orq::random::PermutationManager::get()->reserve(size, perms_required, pairs_required);
 
         // sort subroutine, to pick the right algorithm
         auto sort_sub = [&, protocol](const int sort_col) {
@@ -525,7 +575,7 @@ namespace secrecy {
 
         // After sorting (...extracting permutation), revert to original
         *_columns[C] = orig;
-        
+
         // iterate over the sort columns in reverse order
         // starting with the second-to-last
         for (C--; C >= 0; C--) {
@@ -560,6 +610,5 @@ namespace secrecy {
 
         // At this point, should be zero permutations left in the queue
     }
-} }
-
-#endif //SECRECY_OPERATORS_SORTING_H
+}  // namespace operators
+}  // namespace orq

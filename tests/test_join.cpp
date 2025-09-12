@@ -1,10 +1,10 @@
 #include <ranges>
 
-#include "../include/secrecy.h"
+#include "orq.h"
 
-using namespace secrecy::debug;
-using namespace secrecy::service;
-using namespace secrecy::aggregators;
+using namespace orq::debug;
+using namespace orq::service;
+using namespace orq::aggregators;
 
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
@@ -30,17 +30,17 @@ using B = BSharedVector<int>;
 void test_multi_key() {
     auto pid = runTime->getPartyID();
     // clang-format off
-    std::vector<secrecy::Vector<int>> c1 = {
+    std::vector<orq::Vector<int>> c1 = {
         {1, 1, 2, 3, 4},
         {1, 2, 4, 6, 7},
         Vector<int>(5)};
     // clang-format on
     EncodedTable<int> t1 = secret_share(c1, {"[K1]", "[K2]", "[D]"});
 
-    std::vector<secrecy::Vector<int>> c2 = {{1, 1, 1, 3, 4, 4, 1, 1, 4, 5},
-                                            {2, 1, 1, 6, 7, 7, 1, 2, 7, 8},
-                                            {0, 1, 1, 2, 3, 5, 8, 3, 1, 4},
-                                            Vector<int>(10)};
+    std::vector<orq::Vector<int>> c2 = {{1, 1, 1, 3, 4, 4, 1, 1, 4, 5},
+                                        {2, 1, 1, 6, 7, 7, 1, 2, 7, 8},
+                                        {0, 1, 1, 2, 3, 5, 8, 3, 1, 4},
+                                        Vector<int>(10)};
     EncodedTable<int> t2 = secret_share(c2, {"[K1]", "[K2]", "[D2]", "C"});
 
     single_cout("Single-key join...");
@@ -59,7 +59,7 @@ void test_multi_key() {
 
     tj2.sort({"[K1]", "[K2]"}, ASC);
 
-    tj2.deleteColumns({"[D]", "[D2]"});
+    tj2.deleteColumns({"[D2]"});
 
     auto T = tj2.open_with_schema();
     auto count_col = tj2.get_column(T, "C");
@@ -72,7 +72,7 @@ void test_multi_key() {
 void test_valid() {
     auto pid = runTime->getPartyID();
     // clang-format off
-    std::vector<secrecy::Vector<int>> pk_data = {
+    std::vector<orq::Vector<int>> pk_data = {
         {1, 2, 3, 4},
         {100, 200, 300, 400},
         {1, 0, 1, 0}};
@@ -81,7 +81,7 @@ void test_valid() {
     P.filter(P["[_VALID]"]);
 
     // clang-format off
-    std::vector<secrecy::Vector<int>> fk_data = {
+    std::vector<orq::Vector<int>> fk_data = {
         { 1,  1,  1,  1,  2,  3,  3,  3,  3,  5,  5},
         {10, 20, 30, 32, 35, 40, 50, 60, 65, 70, 80},
         { 1,  1,  0,  1,  1,  1,  0,  0,  1,  1,  0},
@@ -110,11 +110,11 @@ void check_simple() {
     auto pid = runTime->getPartyID();
 
     single_cout("Simple correctness...");
-    std::vector<secrecy::Vector<int>> c1 = {{1, 2}, {12345, 67890}};
+    std::vector<orq::Vector<int>> c1 = {{1, 2}, {12345, 67890}};
     EncodedTable<int> t1 = secret_share(c1, {"[UID]", "[Zipcode]"});
     t1.tableName = "LOC";
 
-    std::vector<secrecy::Vector<int>> c2 = {{2, 2}, {40, -60}};
+    std::vector<orq::Vector<int>> c2 = {{2, 2}, {40, -60}};
     EncodedTable<int> t2 = secret_share(c2, {"[UID]", "[Amount]"});
     t2.tableName = "TXN";
 
@@ -123,11 +123,11 @@ void check_simple() {
     // Check sizes
     assert(tc.size() == t1.size() + t2.size());
 
-    auto tj = t1.inner_join(
-        t2, {"[UID]"},
-        {
-            {"[Zipcode]", "[Zipcode]", secrecy::aggregators::copy<BSharedVector<int>>},
-        });
+    auto tj =
+        t1.inner_join(t2, {"[UID]"},
+                      {
+                          {"[Zipcode]", "[Zipcode]", orq::aggregators::copy<BSharedVector<int>>},
+                      });
     // tj may trim
     assert(tc.size() >= tj.size());
 
@@ -141,7 +141,7 @@ void check_simple() {
 
     // Open and check values
     // clang-format off
-    std::vector<secrecy::Vector<int>> truth = {
+    std::vector<orq::Vector<int>> truth = {
         {1, 1, MASK_VALUE, MASK_VALUE},
         {67890, 67890, MASK_VALUE, MASK_VALUE},
         {2, 2, MASK_VALUE, MASK_VALUE},
@@ -158,15 +158,15 @@ void test_normal_behavior() {
 
     single_cout("Inner join...");
 
-    std::vector<secrecy::Vector<int>> c1 = {{1, 2, 3, -5, 10},
-                                            {12345, 67890, 11111, 98989, 22222},
-                                            {18, 22, 82, -10, 0},
-                                            {1111, 2222, 3333, 1040, 7777}};
+    std::vector<orq::Vector<int>> c1 = {{1, 2, 3, -5, 10},
+                                        {12345, 67890, 11111, 98989, 22222},
+                                        {18, 22, 82, -10, 0},
+                                        {1111, 2222, 3333, 1040, 7777}};
     EncodedTable<int> t1 = secret_share(c1, {"[UID]", "[Zip]", "Age", "Amount"});
     t1.tableName = "User";
 
     // clang-format off
-    std::vector<secrecy::Vector<int>> c2 = {
+    std::vector<orq::Vector<int>> c2 = {
         {  1,   2,  3, 3,  2,  3, 3, 3, 3, 10,  3, 3, 3, 3, 4, 4, 4, 4, 4, -5, 10},
         {100, -30, 80, 9, 10, 18, 4, 5, 5,  7, 19, 8, 1, 2, 5, 6, 3, 3, 1,  8,  9},
         {  2,   8,  7, 1,  8,  3, 1, 0, 3,  4,  8, 1, 0, 1, 9, 0, 3, 9, 7,  8,  3}};
@@ -184,7 +184,7 @@ void test_normal_behavior() {
     {
         auto tj = t1.inner_join(t2, {"[UID]"},
                                 {
-                                    {"[Zip]", "[Zip]", secrecy::aggregators::copy<B>},
+                                    {"[Zip]", "[Zip]", orq::aggregators::copy<B>},
                                 });
         print_table(tj.open_with_schema(), pid);
     }
@@ -192,8 +192,8 @@ void test_normal_behavior() {
     {
         auto tj = t1.inner_join(t2, {"[UID]"},
                                 {
-                                    {"[Zip]", "[Zip]", secrecy::aggregators::copy<B>},
-                                    {"Age", "Age", secrecy::aggregators::copy<A>},
+                                    {"[Zip]", "[Zip]", orq::aggregators::copy<B>},
+                                    {"Age", "Age", orq::aggregators::copy<A>},
                                 });
         auto R = tj.open_with_schema();
         print_table(R, pid);
@@ -220,10 +220,10 @@ void test_normal_behavior() {
     {
         auto tj = t1.inner_join(t2, {"[UID]"},
                                 {
-                                    {"Amount", "COUNT", secrecy::aggregators::count<A>},
-                                    {"Amount", "SUM_AMT", secrecy::aggregators::sum<A>},
-                                    {"Age", "Age", secrecy::aggregators::copy<A>},
-                                    {"[Zip]", "[Zip]", secrecy::aggregators::copy<B>},
+                                    {"Amount", "COUNT", orq::aggregators::count<A>},
+                                    {"Amount", "SUM_AMT", orq::aggregators::sum<A>},
+                                    {"Age", "Age", orq::aggregators::copy<A>},
+                                    {"[Zip]", "[Zip]", orq::aggregators::copy<B>},
                                 });
 
         // tj.deleteColumns({"Age", "Amount", "SUM_AMT", "[To]"});
@@ -253,14 +253,14 @@ void test_normal_behavior() {
 void test_outer() {
     auto pid = runTime->getPartyID();
 
-    std::vector<secrecy::Vector<int>> c1 = {
+    std::vector<orq::Vector<int>> c1 = {
         {111, 222, 222, 333, 444, 444, 999},
         {100, 200, 201, 300, 400, 402, 900},
         {-1, -2, -2, -3, -4, -7, -5},
     };
     EncodedTable<int> t1 = secret_share(c1, {"[K]", "[D]", "A"});
 
-    std::vector<secrecy::Vector<int>> c2 = {
+    std::vector<orq::Vector<int>> c2 = {
         {222, 999, 666, 333},
         {1, 2, 3, 4},
     };
@@ -303,14 +303,14 @@ void test_outer() {
 void test_semi_anti_join() {
     auto pid = runTime->getPartyID();
 
-    std::vector<secrecy::Vector<int>> c1 = {
+    std::vector<orq::Vector<int>> c1 = {
         {111, 222, 222, 333, 444, 444, 999},
         {100, 200, 201, 300, 400, 402, 900},
         {-1, -2, -2, -3, -4, -7, -5},
     };
     EncodedTable<int> t1 = secret_share(c1, {"[K]", "[D]", "A"});
 
-    std::vector<secrecy::Vector<int>> c2 = {
+    std::vector<orq::Vector<int>> c2 = {
         {222, 999, 666, 333},
         {1, 2, 3, 4},
     };
@@ -362,14 +362,14 @@ void test_unique() {
     single_cout("Unique key join...");
     single_cout("  single key column");
     {
-        std::vector<secrecy::Vector<int>> d1 = {
+        std::vector<orq::Vector<int>> d1 = {
             {1, 2, 4, 6, 7, 9, 10, 11, 13, 15},
             {99, 88, 77, 66, 55, 44, 33, 22, 11, 0},
             {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
         };
 
         // clang-format off
-        std::vector<secrecy::Vector<int>> d2 = {
+        std::vector<orq::Vector<int>> d2 = {
             {  2,   3,   4,   5,   6,   9,  12,  14},
             {111, 222, 333, 444, 555, 888, 777, 999},
         };
@@ -395,14 +395,14 @@ void test_unique() {
     }
 
     single_cout("  compound key");
-    std::vector<secrecy::Vector<int>> d1 = {
+    std::vector<orq::Vector<int>> d1 = {
         {0, 0, 0, 1, 1, 2, 2, 2, 2, 3, 4, 5, 5},
         {0, 1, 2, 0, 1, 0, 1, 2, 3, 3, 4, 5, 6},
         {9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1, -2, -3},
         {9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1, -2, -3},
     };
 
-    std::vector<secrecy::Vector<int>> d2 = {
+    std::vector<orq::Vector<int>> d2 = {
         {0, 1, 1, 1, 1, 2, 2, 3, 4, 4, 4, 4, 5},
         {1, 5, 4, 3, 2, 0, 2, 4, 1, 2, 3, 4, 5},
         {99, 88, 77, 66, 55, 44, 33, 22, 11, 0, -11, -22, -33},
@@ -436,7 +436,7 @@ void test_unique() {
 }
 
 int main(int argc, char** argv) {
-    secrecy_init(argc, argv);
+    orq_init(argc, argv);
 
     auto pid = runTime->getPartyID();
 
@@ -454,8 +454,6 @@ int main(int argc, char** argv) {
     test_unique();
 
     // TODO: Add tests here
-#if defined(MPC_USE_MPI_COMMUNICATOR)
-    MPI_Finalize();
-#endif
+
     return 0;
 }

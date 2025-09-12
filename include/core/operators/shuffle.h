@@ -1,33 +1,38 @@
-#ifndef SECRECY_OPERATORS_SHUFFLING_H
-#define SECRECY_OPERATORS_SHUFFLING_H
+#pragma once
 
-#include "../../benchmark/stopwatch.h"
-#include "../random/permutations/dm_dummy.h"
+#include "core/random/permutations/dm_dummy.h"
+#include "profiling/stopwatch.h"
 #ifdef USE_LIBOTE
-#include "../random/permutations/dm_permcorr.h"
+#include "core/random/permutations/dm_permcorr.h"
 #endif
-#include "../random/permutations/permutation_manager.h"
-using namespace secrecy::benchmarking;
+#include "core/random/permutations/permutation_manager.h"
+using namespace orq::benchmarking;
 
-using namespace secrecy::random;
+using namespace orq::random;
 
 #define random_buffer_size 65536
 
-namespace secrecy::operators {
+namespace orq::operators {
 
 #if defined(MPC_PROTOCOL_PLAINTEXT_ONE) || defined(MPC_PROTOCOL_DUMMY_ZERO)
 #define INSTRUMENT_APPLYPERM
 #endif
 
 template <typename E>
-using AElementwisePermutation = ASharedVector<int, secrecy::EVector<int, E::replicationNumber>>;
+using AElementwisePermutation = ASharedVector<int, orq::EVector<int, E::replicationNumber>>;
 template <typename E>
-using BElementwisePermutation = BSharedVector<int, secrecy::EVector<int, E::replicationNumber>>;
+using BElementwisePermutation = BSharedVector<int, orq::EVector<int, E::replicationNumber>>;
 
 #ifdef INSTRUMENT_APPLYPERM
+/**
+ * @brief Counts oblivious permutation applications for instrumentation.
+ *
+ * @tparam T Share data type.
+ * @param size Size of the permutation being applied.
+ */
 template <typename T>
 void count_oblivious_apply_perm(uint64_t size) {
-    using P = secrecy::Plaintext_1PC<T, T, secrecy::Vector<T>, EVector<T, 1>>;
+    using P = orq::Plaintext_1PC<T, T, orq::Vector<T>, EVector<T, 1>>;
     P *proto;
     if constexpr (std::is_same_v<T, int8_t>) {
         proto = (P *)runTime->worker0->proto_8.get();
@@ -45,16 +50,14 @@ void count_oblivious_apply_perm(uint64_t size) {
 }
 #endif
 
-// TODO: for some reason this doesn't work when passing a RandomGenerator* as
-// input, fix this for non-replicated
 /**
- * gen_perm - Generate a pseudorandom local permutation.
- * @param size - The size of the permutation.
- * @param generator - The common PRG object used as the pseudorandomness source.
- * @return The permutation as a vector of destination indices.
+ * @brief Generate a pseudorandom local permutation using Fisher-Yates shuffle.
  *
- *  uses the Fisher-Yates shuffle algorithm
- *  creates a vector {0, 1, ..., size-1}, permutes it, and returns it
+ * Creates a vector {0, 1, ..., size-1}, permutes it, and returns it.
+ *
+ * @param size The size of the permutation.
+ * @param generator The common PRG object used as the pseudorandomness source.
+ * @return The permutation as a vector of destination indices.
  */
 std::vector<int> gen_perm(size_t size, std::shared_ptr<random::CommonPRG> generator) {
     std::vector<int> permutation(size);
@@ -65,7 +68,7 @@ std::vector<int> gen_perm(size_t size, std::shared_ptr<random::CommonPRG> genera
     // we don't know a priori how many random elements we will need,
     //  so we don't want to overshoot by too much
     // however, we also get speed benefits from generating randomness in batches
-    secrecy::Vector<uint32_t> random(random_buffer_size);
+    orq::Vector<uint32_t> random(random_buffer_size);
     generator->getNext(random);
 
     int bits = std::bit_width(size);
@@ -101,9 +104,10 @@ std::vector<int> gen_perm(size_t size, std::shared_ptr<random::CommonPRG> genera
 //////////////////////////////////
 
 /**
- * Apply a local permutation to a vector by first inverting it, and then
- * calling local_apply_inverse perm.
- * @param x The (possibly secret-shared) vector to permute.
+ * @brief Apply a local permutation to a vector.
+ *
+ * @tparam T Data type of vector elements.
+ * @param x The vector to permute (modified in place).
  * @param permutation The permutation to apply.
  */
 template <typename T>
@@ -123,15 +127,17 @@ void local_apply_perm(Vector<T> &x, const LocalPermutation &permutation) {
         }
     };
 
-    secrecy::service::runTime->execute_parallel_unsafe(x.size(), perm_func);
+    orq::service::runTime->execute_parallel_unsafe(x.size(), perm_func);
     // copy back in.
-    secrecy::service::runTime->execute_parallel_unsafe(x.size(), copy_func);
+    orq::service::runTime->execute_parallel_unsafe(x.size(), copy_func);
 }
 
 /**
- * Overload for both vector and permutation represented as secrecy Vector
- * @param x
- * @param permutation
+ * @brief Overload for both vector and permutation represented as ORQ Vector.
+ *
+ * @tparam T Data type of vector elements.
+ * @param x The vector to permute (modified in place).
+ * @param permutation The permutation to apply as ORQ Vector.
  */
 template <typename T>
 void local_apply_perm(Vector<T> &x, Vector<int> &permutation) {
@@ -139,9 +145,12 @@ void local_apply_perm(Vector<T> &x, Vector<int> &permutation) {
 }
 
 /**
- * Single-threaded version of local_apply_perm to avoid reentering the runtime within a thread.
- * Apply a local permutation to a vector.
- * @param x The vector to permute.
+ * @brief Single-threaded version of local_apply_perm.
+ *
+ * Avoids reentering the runtime within a thread.
+ *
+ * @tparam T Data type of vector elements.
+ * @param x The vector to permute (modified in place).
  * @param permutation The permutation to apply.
  */
 template <typename T>
@@ -160,9 +169,11 @@ void local_apply_perm_single_threaded(Vector<T> &x, const LocalPermutation &perm
 }
 
 /**
- * Single-threaded overload for both vector and permutation represented as secrecy Vector
- * @param x
- * @param permutation
+ * @brief Single-threaded overload for both vector and permutation represented as ORQ Vector
+ *
+ * @tparam T Data type of vector elements.
+ * @param x The vector to permute (modified in place).
+ * @param permutation The permutation to apply.
  */
 template <typename T>
 void local_apply_perm_single_threaded(Vector<T> &x, Vector<int> &permutation) {
@@ -170,11 +181,13 @@ void local_apply_perm_single_threaded(Vector<T> &x, Vector<int> &permutation) {
 }
 
 /**
- * Catch-all overload for arbitrary vector types and permutation as
- * secrecy Vector
+ * Catch-all overload for arbitrary vector types and permutation as ORQ Vector
  *
- * @param x
- * @param permutation
+ * @tparam T Data type of vector elements.
+ * @tparam R Replication number.
+ * @tparam P Permutation type.
+ * @param x The vector to permute (modified in place).
+ * @param permutation The permutation to apply.
  */
 template <typename T, int R, typename P>
 void local_apply_perm(EVector<T, R> &x, P &permutation) {
@@ -194,8 +207,10 @@ void local_apply_perm(EVector<T, R> &x, P &permutation) {
 
 /**
  * Overload when vector is an ElementwisePermutation.
- * @param x
- * @param permutation
+ *
+ * @tparam EVector Share container type.
+ * @param x The vector to permute (modified in place).
+ * @param permutation The permutation to apply.
  */
 template <typename EVector>
 void local_apply_perm(ElementwisePermutation<EVector> &x, Vector<int> &permutation) {
@@ -206,8 +221,11 @@ void local_apply_perm(ElementwisePermutation<EVector> &x, Vector<int> &permutati
  * Overload for permutation a SharedVector. Permutation type P can be
  * a LocalPermutation or Vector<int>.
  *
- * @param x
- * @param permutation
+ * @tparam S Share data type.
+ * @tparam E Share container type.
+ * @tparam P Permutation type.
+ * @param x The vector to permute (modified in place).
+ * @param permutation The permutation to apply.
  */
 template <typename S, typename E, typename P>
 void local_apply_perm(SharedVector<S, E> &x, P &permutation) {
@@ -219,11 +237,13 @@ void local_apply_perm(SharedVector<S, E> &x, P &permutation) {
 //////////////////////////////////////////
 
 /**
- * Apply the inverse of a local permutation to a vector.
+ * @brief Apply the inverse of a local permutation to a vector.
  *
  * NOTE: this can also be implemented by just applying `permutation` as
  * a new mapping. However, this is currently less efficient.
  *
+ * @tparam T Data type of vector elements.
+ * @tparam S Permutation data type.
  * @param x The vector to permute.
  * @param permutation The permutation whose inverse to apply.
  */
@@ -244,16 +264,18 @@ void local_apply_inverse_perm(Vector<T> &x, const std::vector<S> &permutation) {
         }
     };
 
-    secrecy::service::runTime->execute_parallel_unsafe(x.size(), perm_func);
+    orq::service::runTime->execute_parallel_unsafe(x.size(), perm_func);
     // copy back in.
-    secrecy::service::runTime->execute_parallel_unsafe(x.size(), copy_func);
+    orq::service::runTime->execute_parallel_unsafe(x.size(), copy_func);
 }
 
 /**
- * @brief Overload when both are secrecy Vectors
+ * @brief Overload when both are ORQ Vectors.
  *
- * @param x
- * @param permutation
+ * @tparam T Data type of vector elements.
+ * @tparam S Permutation data type.
+ * @param x The vector to permute.
+ * @param permutation The permutation whose inverse to apply.
  */
 template <typename T, typename S = int>
 void local_apply_inverse_perm(Vector<T> &x, const Vector<S> &permutation) {
@@ -261,10 +283,13 @@ void local_apply_inverse_perm(Vector<T> &x, const Vector<S> &permutation) {
 }
 
 /**
- * @brief Overload when we are permutation an EVector
+ * @brief Overload when we are permutation an EVector.
  *
- * @param x
- * @param permutation
+ * @tparam T Data type of vector elements.
+ * @tparam R Replication number.
+ * @tparam S Permutation data type.
+ * @param x The vector to permute.
+ * @param permutation The permutation whose inverse to apply.
  */
 template <typename T, int R, typename S = int>
 void local_apply_inverse_perm(EVector<T, R> &x, const std::vector<S> &permutation) {
@@ -275,8 +300,12 @@ void local_apply_inverse_perm(EVector<T, R> &x, const std::vector<S> &permutatio
 
 /**
  * Overload when vector is a SharedVector.
- * @param x
- * @param permutation
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @tparam S Permutation data type.
+ * @param x The vector to permute.
+ * @param permutation The permutation whose inverse to apply.
  */
 template <typename Share, typename EVector, typename S = int>
 void local_apply_inverse_perm(SharedVector<Share, EVector> &x, const std::vector<S> &permutation) {
@@ -284,9 +313,12 @@ void local_apply_inverse_perm(SharedVector<Share, EVector> &x, const std::vector
 }
 
 /**
- * Overload when vector is a SharedVector and permutation is a secrecy Vector
- * @param x
- * @param permutation
+ * Overload when vector is a SharedVector and permutation is a ORQ Vector
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param x The vector to permute.
+ * @param permutation The permutation whose inverse to apply.
  */
 template <typename Share, typename EVector>
 void local_apply_inverse_perm(SharedVector<Share, EVector> &x, Vector<int> &permutation) {
@@ -295,10 +327,11 @@ void local_apply_inverse_perm(SharedVector<Share, EVector> &x, Vector<int> &perm
 
 /**
  * Overload when the vector is an ElementwisePermutation and permutation is
- * a secrecy Vector
+ * a ORQ Vector
  *
- * @param x
- * @param permutation
+ * @tparam EVector Share container type.
+ * @param x The vector to permute.
+ * @param permutation The permutation whose inverse to apply.
  */
 template <typename EVector>
 void local_apply_inverse_perm(ElementwisePermutation<EVector> &x, Vector<int> &permutation) {
@@ -306,18 +339,20 @@ void local_apply_inverse_perm(ElementwisePermutation<EVector> &x, Vector<int> &p
 }
 
 /**
- * hm_oblivious_apply_sharded_perm (Honest Majority) - Obliviously apply a
- * sharded secret-shared permutation.
- * @param x - The secret-shared vector to permute.
- * @param permutation - The permutation to apply.
+ * @brief Obliviously apply a sharded secret-shared permutation (Honest Majority).
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param x The secret-shared vector to permute.
+ * @param permutation The permutation to apply.
  */
 template <typename Share, typename EVector>
 void hm_oblivious_apply_sharded_perm(SharedVector<Share, EVector> &x,
                                      std::shared_ptr<HMShardedPermutation> &permutation) {
     bool binary = x.encoding;
 
-    int pID = secrecy::service::runTime->getPartyID();
-    auto groups = secrecy::service::runTime->getGroups();
+    int pID = orq::service::runTime->getPartyID();
+    auto groups = orq::service::runTime->getGroups();
 
     // apply permutations and reshare
     for (std::set<int> group : groups) {
@@ -328,18 +363,17 @@ void hm_oblivious_apply_sharded_perm(SharedVector<Share, EVector> &x,
 
         // reshare
         x.vector.materialize_inplace();
-        secrecy::service::runTime->reshare(x.vector, group, binary);
+        orq::service::runTime->reshare(x.vector, group, binary);
     }
 }
 
 /**
- * hm_oblivious_apply_sharded_perm (Honest Majority) - Obliviously apply a
- * sharded secret-shared permutation.
- * @param x - The ElementwisePermutation to permute.
- * @param permutation - The permutation to apply.
+ * @brief Obliviously apply a sharded secret-shared permutation (Honest Majority).
  *
- *  This overloaded function just passes the ElementwisePermutation's underlying
- * SharedVector.
+ * This overloaded function just passes the ElementwisePermutation's underlying SharedVector.
+ *
+ * @param x The ElementwisePermutation to permute.
+ * @param permutation The permutation to apply.
  */
 template <typename EVector>
 void hm_oblivious_apply_sharded_perm(ElementwisePermutation<EVector> &x,
@@ -348,18 +382,20 @@ void hm_oblivious_apply_sharded_perm(ElementwisePermutation<EVector> &x,
 }
 
 /**
- * hm_oblivious_apply_inverse_sharded_perm (Honest Majority) - Obliviously apply
- * the inverse of a sharded secret-shared permutation.
- * @param x - The secret-shared vector to permute.
- * @param permutation - The permutation whose inverse to apply.
+ * Obliviously apply the inverse of a sharded secret-shared permutation.
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param x The secret-shared vector to permute.
+ * @param permutation The permutation whose inverse to apply.
  */
 template <typename Share, typename EVector>
 void hm_oblivious_apply_inverse_sharded_perm(SharedVector<Share, EVector> &x,
                                              std::shared_ptr<HMShardedPermutation> &permutation) {
     bool binary = x.encoding;
 
-    int pID = secrecy::service::runTime->getPartyID();
-    auto groups = secrecy::service::runTime->getGroups();
+    int pID = orq::service::runTime->getPartyID();
+    auto groups = orq::service::runTime->getGroups();
     std::reverse(groups.begin(), groups.end());
 
     // apply inverse permutations in reverse order and reshare
@@ -371,18 +407,16 @@ void hm_oblivious_apply_inverse_sharded_perm(SharedVector<Share, EVector> &x,
 
         // reshare
         x.vector.materialize_inplace();
-        secrecy::service::runTime->reshare(x.vector, group, binary);
+        orq::service::runTime->reshare(x.vector, group, binary);
     }
 }
 
 /**
- * hm_oblivious_apply_inverse_sharded_perm (Honest Majority) - Obliviously apply
- * the inverse of a sharded secret-shared permutation.
- * @param x - The ElementwisePermutation to permute.
- * @param permutation - The permutation whose inverse to apply.
+ * @brief Obliviously apply the inverse of a sharded secret-shared permutation (Honest Majority).
  *
- *  This overloaded function just passes the ElementwisePermutation's underlying
- * SharedVector.
+ * @tparam EVector Share container type.
+ * @param x The ElementwisePermutation to permute.
+ * @param permutation The permutation whose inverse to apply.
  */
 template <typename EVector>
 void hm_oblivious_apply_inverse_sharded_perm(ElementwisePermutation<EVector> &x,
@@ -391,11 +425,13 @@ void hm_oblivious_apply_inverse_sharded_perm(ElementwisePermutation<EVector> &x,
 }
 
 /**
- * permute_and_share - Apply a permutation correlation to a secret-shared
- * vector. (2PC only.)
- * @param x - The secret-shared vector to permute and share.
- * @param perm - The permutation correlation.
- * @param send_party - The index of the party acting as the sender.
+ * @brief Apply a permutation correlation to a secret-shared vector (2PC only).
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param x The secret-shared vector to permute and share.
+ * @param perm The permutation correlation.
+ * @param send_party The index of the party acting as the sender.
  */
 template <typename Share, typename EVector>
 void permute_and_share(SharedVector<Share, EVector> &x,
@@ -404,14 +440,14 @@ void permute_and_share(SharedVector<Share, EVector> &x,
     int rank = runTime->getPartyID();
     bool sender = (rank == send_party);
     bool receiver = !sender;
-    secrecy::Encoding encoding = perm->getEncoding();
+    orq::Encoding encoding = perm->getEncoding();
 
     auto [pi, A, B, C] = *(perm->getTuple());
 
     if (receiver) {
         // receiver blinds their share
         // delta = [x]_r - A
-        if (encoding == secrecy::Encoding::BShared) {
+        if (encoding == orq::Encoding::BShared) {
             x.vector(0) ^= A;
         } else {
             x.vector(0) -= A;
@@ -437,7 +473,7 @@ void permute_and_share(SharedVector<Share, EVector> &x,
         local_apply_perm(delta, pi);
 
         // C' = pi(delta) + C
-        if (encoding == secrecy::Encoding::BShared) {
+        if (encoding == orq::Encoding::BShared) {
             delta ^= C;
         } else {
             delta += C;
@@ -446,7 +482,7 @@ void permute_and_share(SharedVector<Share, EVector> &x,
         // output C'
         // [x]_s = pi([x]_s) + C'
         local_apply_perm(x, pi);
-        if (encoding == secrecy::Encoding::BShared) {
+        if (encoding == orq::Encoding::BShared) {
             x.vector(0) ^= delta;
         } else {
             x.vector(0) += delta;
@@ -455,11 +491,13 @@ void permute_and_share(SharedVector<Share, EVector> &x,
 }
 
 /**
- * permute_and_share_inverse - Apply the inverse of a permutation
- * correlation to a secret-shared vector. (2PC only.)
- * @param x - The secret-shared vector to permute and share.
- * @param perm - The permutation correlation whose inverse to apply.
- * @param send_party - The index of the party acting as the sender.
+ * @brief Apply the inverse of a permutation correlation to a secret-shared vector (2PC only).
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param x The secret-shared vector to permute and share.
+ * @param perm The permutation correlation whose inverse to apply.
+ * @param send_party The index of the party acting as the sender.
  */
 template <typename Share, typename EVector>
 void permute_and_share_inverse(SharedVector<Share, EVector> &x,
@@ -468,14 +506,14 @@ void permute_and_share_inverse(SharedVector<Share, EVector> &x,
     int rank = runTime->getPartyID();
     bool sender = (rank == send_party);
     bool receiver = !sender;
-    secrecy::Encoding encoding = perm->getEncoding();
+    orq::Encoding encoding = perm->getEncoding();
 
     auto [pi, A, B, C] = *(perm->getTuple());
 
     if (receiver) {
         // receiver blinds their share
         // delta = [x]_r - B
-        if (encoding == secrecy::Encoding::BShared) {
+        if (encoding == orq::Encoding::BShared) {
             x.vector(0) ^= B;
         } else {
             x.vector(0) -= B;
@@ -498,7 +536,7 @@ void permute_and_share_inverse(SharedVector<Share, EVector> &x,
         runTime->comm0()->receiveShares(delta, 1, n);
 
         // delta' = delta - C
-        if (encoding == secrecy::Encoding::BShared) {
+        if (encoding == orq::Encoding::BShared) {
             delta ^= C;
         } else {
             delta -= C;
@@ -510,7 +548,7 @@ void permute_and_share_inverse(SharedVector<Share, EVector> &x,
         // output delta prime under pi inverse
         // [x]_s = pi^-1([x]_s) + delta'
         local_apply_inverse_perm(x, pi);
-        if (encoding == secrecy::Encoding::BShared) {
+        if (encoding == orq::Encoding::BShared) {
             x.vector(0) ^= delta;
         } else {
             x.vector(0) += delta;
@@ -519,10 +557,12 @@ void permute_and_share_inverse(SharedVector<Share, EVector> &x,
 }
 
 /**
- * dm_oblivious_apply_sharded_perm (Dishonest Majority) - Obliviously apply a
- * sharded secret-shared permutation.
- * @param x - The secret-shared vector to permute.
- * @param permutation - The permutation to apply.
+ * @brief Obliviously apply a sharded secret-shared permutation (Dishonest Majority).
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param x The secret-shared vector to permute.
+ * @param permutation The permutation to apply.
  */
 template <typename Share, typename EVector>
 void dm_oblivious_apply_sharded_perm(SharedVector<Share, EVector> &x,
@@ -532,10 +572,13 @@ void dm_oblivious_apply_sharded_perm(SharedVector<Share, EVector> &x,
 }
 
 /**
- * dm_oblivious_apply_inverse_sharded_perm (Dishonest Majority) - Obliviously
- * apply the inverse of a sharded secret-shared permutation.
- * @param x - The secret-shared vector to permute.
- * @param permutation - The permutation whose inverse to apply.
+ * @brief Obliviously apply the inverse of a sharded secret-shared permutation
+ *      (Dishonest Majority).
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param x The secret-shared vector to permute.
+ * @param permutation The permutation whose inverse to apply.
  */
 template <typename Share, typename EVector>
 void dm_oblivious_apply_inverse_sharded_perm(
@@ -545,10 +588,12 @@ void dm_oblivious_apply_inverse_sharded_perm(
 }
 
 /**
- * oblivious_apply_sharded_perm - Protocol agnostic function to call the
- * protocol specific function.
- * @param x - The secret-shared vector to permute.
- * @param permutation - The permutation to apply.
+ * @brief Protocol agnostic function to apply sharded permutations.
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param x The secret-shared vector to permute.
+ * @param perm The permutation to apply.
  */
 template <typename Share, typename EVector>
 void oblivious_apply_sharded_perm(SharedVector<Share, EVector> &x,
@@ -573,10 +618,11 @@ void oblivious_apply_sharded_perm(SharedVector<Share, EVector> &x,
 }
 
 /**
- * oblivious_apply_sharded_perm - Protocol agnostic function to call the
- * protocol specific function.
- * @param x - The secret-shared vector to permute.
- * @param permutation - The permutation to apply.
+ * @brief Protocol agnostic function to apply sharded permutations.
+ *
+ * @tparam EVector Share container type.
+ * @param x The secret-shared vector to permute.
+ * @param permutation The permutation to apply.
  *
  *  This overloaded function just passes the ElementwisePermutation's underlying
  * SharedVector.
@@ -588,10 +634,12 @@ void oblivious_apply_sharded_perm(ElementwisePermutation<EVector> &x,
 }
 
 /**
- * oblivious_apply_inverse_sharded_perm - Protocol agnostic function to call the
- * protocol specific function.
- * @param x - The secret-shared vector to permute.
- * @param permutation - The permutation whose inverse to apply.
+ * @brief Protocol agnostic function to apply sharded permutations.
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param x The secret-shared vector to permute.
+ * @param perm The permutation whose inverse to apply.
  */
 template <typename Share, typename EVector>
 void oblivious_apply_inverse_sharded_perm(SharedVector<Share, EVector> &x,
@@ -615,13 +663,11 @@ void oblivious_apply_inverse_sharded_perm(SharedVector<Share, EVector> &x,
 }
 
 /**
- * oblivious_apply_inverse_sharded_perm - Protocol agnostic function to call the
- * protocol specific function.
- * @param x - The secret-shared vector to permute.
- * @param permutation - The permutation whose inverse to apply.
+ * @brief Protocol agnostic function to apply inversesharded permutations.
  *
- *  This overloaded function just passes the ElementwisePermutation's underlying
- * SharedVector.
+ * @tparam EVector Share container type.
+ * @param x The secret-shared vector to permute.
+ * @param permutation The permutation whose inverse to apply.
  */
 template <typename EVector>
 void oblivious_apply_inverse_sharded_perm(ElementwisePermutation<EVector> &x,
@@ -630,10 +676,13 @@ void oblivious_apply_inverse_sharded_perm(ElementwisePermutation<EVector> &x,
 }
 
 /**
- * oblivious_apply_elementwise_perm - Obliviously apply an elementwise
- * secret-shared permutation.
- * @param x - The secret-shared vector to permute.
- * @param perm - The permutation to apply.
+ * @brief Obliviously apply an elementwise secret-shared permutation.
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @tparam EVectorPerm Permutation type.
+ * @param x The secret-shared vector to permute.
+ * @param perm The permutation to apply.
  */
 template <typename Share, typename EVector, typename EVectorPerm>
 void oblivious_apply_elementwise_perm(SharedVector<Share, EVector> &x,
@@ -642,23 +691,26 @@ void oblivious_apply_elementwise_perm(SharedVector<Share, EVector> &x,
     ElementwisePermutation<EVectorPerm> permutation(perm);
 
     // generate a pair of random sharded permutations
-    auto [pi_1, pi_2] = PermutationManager::get()->getNextPair<Share, int>(x.size(), x.encoding, perm.getEncoding());
-    
+    auto [pi_1, pi_2] = PermutationManager::get()->getNextPair<Share, int>(x.size(), x.encoding,
+                                                                           perm.getEncoding());
+
     // shuffle both the vector and the permutation according to pi
     oblivious_apply_sharded_perm(x, pi_1);
     oblivious_apply_sharded_perm(permutation, pi_2);
-    
+
     // open pi(perm)
     Vector<int> pi_perm = permutation.open();
-    
+
     // locally apply pi(perm) to pi(x)
     local_apply_perm(x, pi_perm);
 }
 
 /**
- * compose_permutations - Compose two elementwise secret-shared permutations.
- * @param sigma - The first permutation to be applied in the composition.
- * @param rho - The second permutation to be applied in the composition.
+ * @brief Compose two elementwise secret-shared permutations.
+ *
+ * @tparam EVector Share container type.
+ * @param sigma The first permutation to be applied in the composition.
+ * @param rho The second permutation to be applied in the composition.
  * @return An elementwise secret-sharing of the composed permutation.
  */
 template <typename EVector>
@@ -691,10 +743,11 @@ ElementwisePermutation<EVector> compose_permutations(ElementwisePermutation<EVec
 }
 
 /**
- * shuffle (vector version) - Obliviously shuffle a vector.
- * @param x - The vector to shuffle.
- * @param binary - Indicates whether the vector is binary or arithmetic, which
- * dictates how resharing works.
+ * @brief Obliviously shuffle a secret-shared vector.
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param x The vector to shuffle.
  */
 template <typename Share, typename EVector>
 static void shuffle(SharedVector<Share, EVector> &x) {
@@ -704,12 +757,13 @@ static void shuffle(SharedVector<Share, EVector> &x) {
 }
 
 /**
- * shuffle (table version) - Obliviously shuffle a table.
+ * @brief Obliviously shuffle a table of secret-shared vectors.
  *
- * @tparam Share - Share data type.
- * @tparam EVector - Share container data type.
- * @param _data_a - List of pointers to all arithmetic columns.
- * @param _data_b - List of pointers to all binary columns.
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param _data_a List of pointers to all arithmetic columns.
+ * @param _data_b List of pointers to all binary columns.
+ * @param size Size of the vectors to shuffle.
  */
 template <typename Share, typename EVector>
 static void shuffle(std::vector<ASharedVector<Share, EVector> *> _data_a,
@@ -717,8 +771,8 @@ static void shuffle(std::vector<ASharedVector<Share, EVector> *> _data_a,
     // generate a random sharded permutation and use it to generate a random
     // elementwise permutation
     std::shared_ptr<ShardedPermutation> sharded_perm =
-        PermutationManager::get()->getNext<int32_t>(size, secrecy::Encoding::BShared);
-    ElementwisePermutation<EVector> permutation(size, secrecy::Encoding::BShared);
+        PermutationManager::get()->getNext<int32_t>(size, orq::Encoding::BShared);
+    ElementwisePermutation<EVector> permutation(size, orq::Encoding::BShared);
     oblivious_apply_sharded_perm(permutation, sharded_perm);
 
     // apply the shared permutation to all arithmetic columns
@@ -730,6 +784,4 @@ static void shuffle(std::vector<ASharedVector<Share, EVector> *> _data_a,
         oblivious_apply_elementwise_perm(*b_column, permutation);
     }
 }
-}  // namespace secrecy::operators
-
-#endif  // SECRECY_OPERATORS_SHUFFLING_H
+}  // namespace orq::operators

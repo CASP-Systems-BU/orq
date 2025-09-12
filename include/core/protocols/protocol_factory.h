@@ -2,13 +2,26 @@
 
 #include "protocol.h"
 
-namespace secrecy {
+namespace orq {
 
+/**
+ * @brief Base factory class for creating protocol instances using CRTP.
+ *
+ * @tparam InnerFactory The derived factory class.
+ */
 template <typename InnerFactory>
 class ProtocolFactory {
    public:
     virtual ~ProtocolFactory() = default;
 
+    /**
+     * @brief Create a protocol instance for the given data type.
+     *
+     * @tparam T The data type for the protocol.
+     * @param _communicator Pointer to the communicator.
+     * @param _randomnessManager Pointer to the randomness manager.
+     * @return Unique pointer to the created protocol instance.
+     */
     template <typename T>
     std::unique_ptr<ProtocolBase> create(Communicator *_communicator,
                                          random::RandomnessManager *_randomnessManager) {
@@ -18,6 +31,14 @@ class ProtocolFactory {
     }
 };
 
+/**
+ * @brief Default protocol factory implementation.
+ *
+ * @tparam Protocol The protocol class template.
+ * @tparam S Share type template.
+ * @tparam V Vector type template.
+ * @tparam E Encoding vector type template.
+ */
 template <template <typename, typename, typename, typename> class Protocol,
           template <typename> class S, template <typename> class V, template <typename> class E>
 class DefaultProtocolFactory : public ProtocolFactory<DefaultProtocolFactory<Protocol, S, V, E>> {
@@ -25,9 +46,23 @@ class DefaultProtocolFactory : public ProtocolFactory<DefaultProtocolFactory<Pro
     using ProtocolInstance = Protocol<T, S<T>, V<T>, E<T>>;
 
    public:
+    /**
+     * @brief Constructor for DefaultProtocolFactory.
+     *
+     * @param partyID The party identifier.
+     * @param partiesNumber The total number of parties.
+     */
     DefaultProtocolFactory(const int &partyID, const int &partiesNumber)
         : partyID_(partyID), partiesNumber_(partiesNumber) {}
 
+    /**
+     * @brief Create a protocol instance for the given data type.
+     *
+     * @tparam T The data type for the protocol.
+     * @param communicator Pointer to the communicator.
+     * @param randomnessManager Pointer to the randomness manager.
+     * @return Unique pointer to the created protocol instance.
+     */
     template <typename T>
     std::unique_ptr<ProtocolBase> create(Communicator *communicator,
                                          random::RandomnessManager *randomnessManager) {
@@ -40,4 +75,4 @@ class DefaultProtocolFactory : public ProtocolFactory<DefaultProtocolFactory<Pro
     const int partiesNumber_;
 };
 
-}  // namespace secrecy
+}  // namespace orq

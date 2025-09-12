@@ -1,11 +1,10 @@
-#ifndef SECRECY_PROTOCOL_H
-#define SECRECY_PROTOCOL_H
+#pragma once
 
-#include "../../benchmark/stopwatch.h"
-#include "../../debug/debug.h"
-#include "../communication/communicator.h"
-#include "../random/manager.h"
-using namespace secrecy::benchmarking;
+#include "core/communication/communicator.h"
+#include "core/random/manager.h"
+#include "debug/orq_debug.h"
+#include "profiling/stopwatch.h"
+using namespace orq::benchmarking;
 
 #include <numeric>
 #include <set>
@@ -26,10 +25,19 @@ using namespace secrecy::benchmarking;
 // Eventually, this should be something like worker.proto<int32_t>
 #define PROTO_OBJ_NAME(T) GLUE(proto_, TYPE_BITS(T))
 
-namespace secrecy {
+namespace orq {
 
+/**
+ * @brief Actions for resharing operations.
+ */
 enum class ReshareAction { Send, Receive };
 
+/**
+ * @brief Assignment for resharing operations.
+ *
+ * Defines whether a party sends or receives shares during resharing,
+ * along with the target parties and share indices.
+ */
 struct ReshareAssignment {
     // whether this party sends (in group) or receives (not in group)
     ReshareAction action;
@@ -41,6 +49,9 @@ struct ReshareAssignment {
     std::vector<int> shareIdx;
 };
 
+/**
+ * @brief Base class for all secure multi-party computation protocols.
+ */
 // The protocol base
 class ProtocolBase {
     // party id -> shares held by that party
@@ -49,10 +60,11 @@ class ProtocolBase {
     std::vector<std::vector<int>> sharePartyMap = {};
 
     /**
-     * Defines the mapping from rank to the secret shares held by that rank.
+     * @brief Defines the mapping from rank to the secret shares held by that rank.
+     *
      * Index i in the vector is the set of shares held by rank i.
      * For a replication k, party i holds shares [i, i+1, ..., i+k-1].
-     * This is function should be called during construction.
+     * This function should be called during construction.
      */
     void generatePartyShareMappings() {
         partyShareMap.clear();
@@ -67,8 +79,8 @@ class ProtocolBase {
 
     /**
      * @brief Generate a mapping from shares to parties holding that share.
-     * Called during construction to populated.
      *
+     * Called during construction to populate the mapping.
      */
     void generateSharePartyMappings() {
         sharePartyMap.clear();
@@ -87,11 +99,11 @@ class ProtocolBase {
     }
 
     /**
-     * @brief Reshare my shares to other parties
+     * @brief Generate send assignment for resharing shares to other parties.
      *
-     * @param p
-     * @param group
-     * @return auto
+     * @param p Party identifier.
+     * @param group Set of parties in the resharing group.
+     * @return ReshareAssignment for sending shares.
      */
     auto generate_send_assignment(int p, std::set<int> group) {
         ReshareAssignment ra;
@@ -162,11 +174,11 @@ class ProtocolBase {
     }
 
     /**
-     * @brief Receive fresh shares from parties in the group
+     * @brief Generate receive assignment for resharing shares from other parties.
      *
-     * @param p
-     * @param group
-     * @return auto
+     * @param p Party identifier.
+     * @param group Set of parties in the resharing group.
+     * @return ReshareAssignment for receiving shares.
      */
     auto generate_recv_assignment(int p, std::set<int> group) {
         ReshareAssignment ra;
@@ -199,8 +211,7 @@ class ProtocolBase {
    protected:
     // The unique id of the party that created the Protocol instance
     PartyID partyID;
-    // The total number of computing parties participating in the protocol
-    // execution
+    // The total number of computing parties participating in the protocol execution
     const int numParties;
     // The replication factor
     const int replicationNumber;
@@ -223,6 +234,13 @@ class ProtocolBase {
     size_t send_calls = 0;
     size_t recv_calls = 0;
 
+    /**
+     * @brief Constructor for ProtocolBase.
+     *
+     * @param pID Party identifier for this protocol instance.
+     * @param partiesNum Total number of parties in the protocol.
+     * @param replicationNum Replication factor for the protocol.
+     */
     ProtocolBase(PartyID pID, int partiesNum, int replicationNum)
         : partyID(pID), numParties(partiesNum), replicationNumber(replicationNum) {
         assert(pID < partiesNum);
@@ -245,12 +263,12 @@ class ProtocolBase {
     /**
      * Generates all combinations of a given size of an input size
      * (recursively).
-     * @param set - the set of ints to find combinations of.
-     * @param partial_set - the partially complete combination at any given
+     * @param set the set of ints to find combinations of.
+     * @param partial_set the partially complete combination at any given
      * point in the recursion.
-     * @param size - the size of the combinations to search for, decremented
+     * @param size the size of the combinations to search for, decremented
      * with each recursive call.
-     * @param combinations - a vector of combinations to be filled throughout
+     * @param combinations a vector of combinations to be filled throughout
      * the algorithm.
      */
     static void generateAllCombinations(std::set<int> set, std::set<int> partial_set, int size,
@@ -279,11 +297,13 @@ class ProtocolBase {
     }
 
     /**
-     * Defines the groups for the protocol.
-     * This is a STATIC function to be callable during setup before protocol
-     * objects exist.
-     * @param num_parties - the number of parties in the protocol.
-     * @param replication_number - the number of shares that each party holds.
+     * @brief Defines the groups for the protocol.
+     *
+     * This is a STATIC function to be callable during setup before protocol objects exist.
+     *
+     * @param num_parties The number of parties in the protocol.
+     * @param parties_to_reconstruct Number of parties needed to reconstruct.
+     * @param num_adversaries Number of adversarial parties.
      * @return The vector of groups.
      */
     static std::vector<std::set<int>> generateGroups(int num_parties, int parties_to_reconstruct,
@@ -323,12 +343,23 @@ class ProtocolBase {
         return groups;
     }
 
-    // For shuffling.
+    /**
+     * @brief Get the groups for shuffling operations.
+     *
+     * @return Vector of party groups for shuffling.
+     */
     virtual std::vector<std::set<int>> getGroups() const {
         return generateGroups(numParties, 2, 1);
     }
 
-    // Also includes the group of everyone.
+    /**
+     * @brief Generate randomness groups (includes the group of everyone).
+     *
+     * @param n Number of parties.
+     * @param n_reconstruct Number of parties needed for reconstruction.
+     * @param n_adversary Number of adversarial parties.
+     * @return Vector of randomness groups.
+     */
     static std::vector<std::set<int>> generateRandomnessGroups(int n, int n_reconstruct,
                                                                int n_adversary) {
         // Get the regular groups
@@ -353,15 +384,35 @@ class ProtocolBase {
         return partyShareMap;
     }
 
+    /**
+     * @brief Get a mapping from shares to parties holding that share.
+     *
+     * @return Vector mapping share IDs to party lists.
+     */
     std::vector<std::vector<int>> getSharePartyMappings() const {
         assert(sharePartyMap.size() > 0);
         return sharePartyMap;
     }
 
+    /**
+     * @brief Get the party ID for this protocol instance.
+     *
+     * @return Party identifier.
+     */
     int getPartyID() const { return partyID; }
 
+    /**
+     * @brief Get the replication number for this protocol.
+     *
+     * @return Replication factor.
+     */
     const int getRepNumber() const { return replicationNumber; }
 
+    /**
+     * @brief Get the total number of parties in this protocol.
+     *
+     * @return Number of parties.
+     */
     const int getNumParties() const { return numParties; }
 
     /**
@@ -379,16 +430,25 @@ class ProtocolBase {
      */
     virtual void mark_statistics() {}
 
+    /**
+     * @brief Check for malicious behavior (4PC only).
+     *
+     * @param should_abort Whether to abort the protocol if malicious behavior is detected.
+     * @return True if no malicious behavior is detected, false otherwise.
+     */
     virtual bool malicious_check(const bool should_abort = true) { return true; }
 };
+
 /**
+ * @brief Abstract class defining primitive methods for secure protocols.
+ *
  * This is the abstract class that defines the primitive methods each secure
  * protocol must implement.
- * @tparam Data - Plaintext data type.
- * @tparam Share - Share type (e.g., a 32-bit integer, a pair of 64-bit
- * integers, a 256-bit string, etc.).
- * @tparam Vector - Data container type.
- * @tparam EVector - Share container type.
+ *
+ * @tparam Data Plaintext data type.
+ * @tparam Share Share type (e.g., a 32-bit integer, a pair of 64-bit integers, etc.).
+ * @tparam Vector Data container type.
+ * @tparam EVector Share container type.
  *
  * Primitive operations are grouped as follows:
  *  1. Arithmetic operations on arithmetic shares.
@@ -405,14 +465,13 @@ class Protocol : public ProtocolBase {
     random::RandomnessManager *randomnessManager;
 
     /**
-     * Protocol constructor:
-     * @param _communicator - A pointer to the communicator.
-     * @param _randomnessManager - A pointer to the randomness manager.
-     * @param _partyID - The (globally) unique identifier of the party that
-     * calls this constructor.
-     * @param _numParties - The total number of computing parties participating
-     * in the protocol execution.
-     * @param _replicationNumber - The protocol's replication factor.
+     * @brief Protocol constructor.
+     *
+     * @param _communicator A pointer to the communicator.
+     * @param _randomnessManager A pointer to the randomness manager.
+     * @param _partyID The (globally) unique identifier of the party that calls this constructor.
+     * @param _numParties The total number of computing parties participating in the protocol.
+     * @param _replicationNumber The protocol's replication factor.
      */
     Protocol(Communicator *_communicator, random::RandomnessManager *_randomnessManager,
              PartyID _partyID, const int &_numParties, const int &_replicationNumber)
@@ -424,13 +483,18 @@ class Protocol : public ProtocolBase {
     virtual ~Protocol() {}
 
     /**
-     * The group rerandomizes the vector v and sends shares to all parties
-     * that are not in the group.
+     * @brief Reshare shares with other parties.
      *
-     * Operates in place - TODO: fix runtime to support this better.
+     * The group rerandomizes the vector v and sends shares to all parties that are not in the
+     * group.
      *
-     * @param group - The group of parties that perform the resharing.
-     * @param v - The EVector representing each party's view of the vector to be
+     * Operates in place.
+     *
+     * TODO: fix runtime to support this better.
+     *
+     * @param v The EVector representing each party's view of the vector to be
+     * @param group The group of parties that perform the resharing.
+     * @param binary whether this is a binary (true) or arithmetic (false) resharing
      * reshared.
      */
     virtual void reshare(EVector &v, const std::set<int> group, bool binary) {
@@ -476,64 +540,68 @@ class Protocol : public ProtocolBase {
         }
     }
 
+    virtual void handle_precision(const EVector &x, const EVector &y, EVector &z) {
+        if (x.getPrecision() != y.getPrecision()) {
+            throw std::runtime_error("Precision mismatch between multiplication inputs");
+        }
+        z.matchPrecision(x);
+    }
+
     // **************************************** //
     //          Arithmetic operations           //
     // **************************************** //
 
     /**
-     * Defines vectorized arithmetic addition.
-     * This method must take two input vectors with arithmetic shares and return
-     * a new vector that contains arithmetic shares of the elementwise
-     * additions.
-     * @param first - The first shared vector of size S.
-     * @param second - The second shared vector of size S.
-     * @return A new shared vector v of size S such that v[i] = first[i] +
-     * second[i], 0 <= i < S.
+     * @brief Defines vectorized arithmetic addition.
+     *
+     * @param x The first shared vector of size S.
+     * @param y The second shared vector of size S.
+     * @param z The output shared vector of size S.
      */
     virtual void add_a(const EVector &x, const EVector &y, EVector &z) { z = x + y; }
+
     /**
-     * Defines vectorized arithmetic subtraction.
-     * This method must take two input vectors with arithmetic shares and return
-     * a new vector that contains arithmetic shares of the elementwise
-     * subtractions.
-     * @param first - The first shared vector of size S.
-     * @param second - The second shared vector of size S.
-     * @return A new shared vector v of size S such that v[i] = first[i] -
-     * second[i], 0 <= i < S.
+     * @brief Defines vectorized arithmetic subtraction.
+     *
+     * @param x The first shared vector of size S.
+     * @param y The second shared vector of size S.
+     * @param z The output shared vector of size S.
      */
     virtual void sub_a(const EVector &x, const EVector &y, EVector &z) { z = x - y; }
+
     /**
-     * Defines vectorized arithmetic multiplication.
-     * This method must take two input vectors with arithmetic shares and return
-     * a new vector that contains arithmetic shares of the elementwise
-     * multiplications.
-     * @param first - The first shared vector of size S.
-     * @param second - The second shared vector of size S.
-     * @return A new shared vector v of size S such that v[i] = first[i] *
-     * second[i], 0 <= i < S.
+     * @brief Defines vectorized arithmetic multiplication.
+     *
+     * @param first The first shared vector of size S.
+     * @param second The second shared vector of size S.
+     * @param result The output shared vector of size S.
      */
     virtual void multiply_a(const EVector &first, const EVector &second, EVector &result) = 0;
+
     /**
-     * Defines vectorized arithmetic negation
-     * This method must take one input vector with arithmetic shares and return
-     * a new vector with all arithmetic shares negated.
-     * @param input - The input shared vector of size S.
-     * @return A new shared vector v of size S such that v[i] = -input[i],
-     * 0<=i<S.
+     * @brief Defines vectorized arithmetic negation.
+     *
+     * @param in The input shared vector of size S.
+     * @param out The output shared vector of size S.
      */
     virtual void neg_a(const EVector &in, EVector &out) { out = -in; }
 
+    /**
+     * @brief Defines vectorized arithmetic division by constant.
+     *
+     * @param input The input shared vector.
+     * @param c The constant divisor.
+     * @return Pair of shared vectors representing the division result.
+     */
     virtual std::pair<EVector, EVector> div_const_a(const EVector &input, const Data &c) = 0;
 
     /**
-     * Defines the vectorized dot product operation for each consecutive m pairs of elements in the
-     * input vectors.
-     * @param x - The first shared vector of size S.
-     * @param y - The second shared vector of size S.
-     * @param aggSize - The number of consecutive pairs of elements to aggregate.
-     * @return A new shared vector v of size S such that
-     * v[i] = x[i*m] * y[i*m] + x[i*m+1] * y[i*m+1] + ... + x[i*m+m-1] * y[i*m+m-1], 0 <= i <
-     * ceil(S/m).
+     * @brief Defines the vectorized dot product operation for consecutive elements.
+     *
+     * @param x The first shared vector of size S.
+     * @param y The second shared vector of size S.
+     * @param z The output shared vector.
+     * @param aggSize The number of consecutive pairs of elements to aggregate.
      */
     virtual void dot_product_a(const EVector &x, const EVector &y, EVector &z,
                                const size_t &aggSize) {
@@ -542,57 +610,74 @@ class Protocol : public ProtocolBase {
         z = res.chunkedSum(aggSize);
     }
 
+    /**
+     * Defines vectorized arithmetic truncation.
+     * This method must take one input vector with arithmetic shares and return
+     * a new vector that contains arithmetic shares of the truncated input.
+     * The default implementation invokes the protocol's public division protocol.
+     * @param x - The shared vector to truncate.
+     */
+    virtual void truncate(EVector &x) {
+        // compute the public divisor
+        int precision = x.getPrecision();
+        if (precision == 0) {
+            return;
+        }
+
+        Data divisor = 1 << precision;
+
+        // run public division and discard the error
+        // TODO: the default should use the error, not discard it
+        std::pair<EVector, EVector> ret = this->div_const_a(x, divisor);
+        x = ret.first;
+
+        // preserve precision
+        x.setPrecision(precision);
+    }
+
     // **************************************** //
     //            Boolean operations            //
     // **************************************** //
 
     /**
-     * Defines vectorized bitwise XOR (^).
-     * This method must take two input vectors with boolean shares and return a
-     * new vector that contains boolean shares of the elementwise XORs.
-     * @param first - The first shared vector of size S.
-     * @param second - The second shared vector of size S.
-     * @return A new shared vector v of size S such that v[i] = first[i] ^
-     * second[i], 0 <= i < S.
+     * @brief Defines vectorized bitwise XOR (^).
+     *
+     * @param x The first shared vector of size S.
+     * @param y The second shared vector of size S.
+     * @param z The output shared vector of size S.
      */
     virtual void xor_b(const EVector &x, const EVector &y, EVector &z) { z = x ^ y; }
+
     /**
-     * Defines vectorized bitwise AND (&).
-     * This method must take two input vectors with boolean shares and return a
-     * new vector that contains boolean shares of the elementwise ANDs.
-     * @param first - The first shared vector of size S.
-     * @param second - The second shared vector of size S.
-     * @return A new shared vector v of size S such that v[i] = first[i] &
-     * second[i], 0 <= i < S.
+     * @brief Defines vectorized bitwise AND (&).
+     *
+     * @param first The first shared vector of size S.
+     * @param second The second shared vector of size S.
+     * @param result The output shared vector of size S.
      */
     virtual void and_b(const EVector &first, const EVector &second, EVector &result) = 0;
+
     /**
-     * Defines vectorized boolean complement (~).
-     * This method must take one input vector with boolean shares and return a
-     * new vector with all boolean shares complemented.
-     * @param input - The input shared vector of size S.
-     * @return A new shared vector v of size S such that v[i] = ~input[i], 0 <=
-     * i < S.
+     * @brief Defines vectorized boolean complement (~).
+     *
+     * @param in The input shared vector of size S.
+     * @param out The output shared vector of size S.
      */
     virtual void not_b(const EVector &in, EVector &out) = 0;
+
     /**
-     * Defines vectorized boolean NOT (!).
-     * This method must take one input vector with boolean shares and return a
-     * new vector with all boolean shares negated.
-     * @param input - The input shared vector of size S.
-     * @return A new shared vector v of size S such that v[i] = !input[i], 0 <=
-     * i < S.
+     * @brief Defines vectorized boolean NOT (!).
+     *
+     * @param in The input shared vector of size S.
+     * @param out The output shared vector of size S.
      */
     virtual void not_b_1(const EVector &in, EVector &out) = 0;
 
     /**
-     * Defines vectorized less-than-zero comparison.
-     * This method must take one input vector with boolean shares and return a
-     * new vector that contains boolean shares of the elementwise less-than-zero
-     * comparisons.
-     * @param input - The input shared vector of size S.
-     * @return A new shared vector v of size S such that v[i] = 1 if input[i]<0,
-     * otherwise v[i] = 0, 0 <= i < S.
+     * @brief Defines vectorized less-than-zero comparison.
+     *
+     * @param in The input shared vector of size S.
+     * @param out The output shared vector of size S.
      */
     virtual void ltz(const EVector &in, EVector &out) { out = in.ltz(); }
 
@@ -601,17 +686,19 @@ class Protocol : public ProtocolBase {
     // **************************************** //
 
     /**
-     * Defines vectorized boolean-to-arithmetic single bit conversion.
-     * @param x - A B-shared vector of S single-bit elements.
-     * @return A new A-shared vector v of size S such that v[i] = x[i], 0 <= i <
-     * S.
+     * @brief Defines vectorized boolean-to-arithmetic single bit conversion.
+     *
+     * @param in A B-shared vector of S single-bit elements.
+     * @param out The output A-shared vector of size S.
      */
     virtual void b2a_bit(const EVector &in, EVector &out) = 0;
 
     /**
-     * Defines a redistribution of arithmetic secret shares into boolean secret
-     *shares.
-     **/
+     * @brief Defines a redistribution of arithmetic secret shares into boolean secret shares.
+     *
+     * @param x The input arithmetic shared vector.
+     * @return Pair of boolean shared vectors representing the redistribution.
+     */
     virtual std::pair<EVector, EVector> redistribute_shares_b(const EVector &x) = 0;
 
     // **************************************** //
@@ -619,53 +706,47 @@ class Protocol : public ProtocolBase {
     // **************************************** //
 
     /**
-     * Defines how to reconstruct a single data value by adding its arithmetic
-     * shares stored in the input vector.
-     * @param shares - The input vector containing arithmetic shares of the
-     * secret value.
+     * @brief Defines how to reconstruct a single data value by adding its arithmetic shares.
+     *
+     * @param shares The input vector containing arithmetic shares of the secret value.
      * @return The plaintext value of type Data.
      *
-     * NOTE: This method is useful when a computing party also acts as learner
-     * that receives arithmetic shares from other parties and needs to
-     * reconstruct a true value.
+     * NOTE: This method is useful when a computing party also acts as learner that receives
+     * arithmetic shares from other parties and needs to reconstruct a true value.
      */
     virtual Data reconstruct_from_a(const std::vector<Share> &shares) = 0;
+
     /**
-     * Vectorized version of the reconstruct_from_a() method.
-     * This method defines how to reconstruct a vector of *n* data values
-     * by adding their respective arithmetic shares in the input shared vectors.
-     * @param shares - A vector of shared vectors (each one of size *n*) that
-     * contain arithmetic shares.
-     * @return A new vector that contains *n* plaintext values of type Data.
+     * @brief Vectorized version of the reconstruct_from_a() method.
      *
-     * NOTE: This method is useful when a computing party also acts as learner
-     * that receives arithmetic shared vectors from other parties and needs to
-     * reconstruct the original vector.
+     * @param shares A vector of shared vectors (each one of size n) that contain arithmetic
+     shares.
+     * @return A new vector that contains n plaintext values of type Data.
+     *
+     * NOTE: This method is useful when a computing party also acts as learner that receives
+     * arithmetic shared vectors from other parties and needs to reconstruct the original vector.
      */
     virtual Vector reconstruct_from_a(const std::vector<EVector> &shares) = 0;
+
     /**
-     * Defines how to reconstruct a single data value by XORing its boolean
-     * shares stored in the input vector.
-     * @param shares - The input vector containing boolean shares of the secret
-     * value.
+     * @brief Defines how to reconstruct a single data value by XORing its boolean shares.
+     *
+     * @param shares The input vector containing boolean shares of the secret value.
      * @return The plaintext value of type Data.
      *
-     * NOTE: This method is useful when a computing party also acts as learner
-     * that receives boolean shares from other parties and needs to reconstruct
-     * a true value.
+     * NOTE: This method is useful when a computing party also acts as learner that receives
+     * boolean shares from other parties and needs to reconstruct a true value.
      */
     virtual Data reconstruct_from_b(const std::vector<Share> &shares) = 0;
+
     /**
-     * Vectorized version of the reconstruct_from_b() method.
-     * This method defines how to reconstruct a vector of *n* data values
-     * by XORing their respective boolean shares in the input shared vectors.
-     * @param shares - A vector of shared vectors (each one of size *n*) that
-     * contain boolean shares.
-     * @return A new vector that contains *n* plaintext values of type Data.
+     * @brief Vectorized version of the reconstruct_from_b() method.
      *
-     * NOTE: This method is useful when a computing party also acts as learner
-     * that receives boolean shared vectors from other parties and needs to
-     * reconstruct the original vector.
+     * @param shares A vector of shared vectors (each one of size n) that contain boolean shares.
+     * @return A new vector that contains n plaintext values of type Data.
+     *
+     * NOTE: This method is useful when a computing party also acts as learner that receives
+     * boolean shared vectors from other parties and needs to reconstruct the original vector.
      */
     virtual Vector reconstruct_from_b(const std::vector<EVector> &shares) = 0;
 
@@ -673,22 +754,24 @@ class Protocol : public ProtocolBase {
     //            Opening operations            //
     // **************************************** //
     /**
-     * @param shares - A shared vector that contains boolean shares of the
-     * secret values.
+     * @brief Opens arithmetic shares to reveal plaintext values.
+     *
+     * @param shares A shared vector that contains arithmetic shares of the secret values.
      * @return A new vector that contains the plaintext values of type Data.
      *
-     * NOTE: This method is useful when computing parties need to reveal
-     * a secret-shared vector to each other.
+     * NOTE: This method is useful when computing parties need to reveal a secret-shared vector
+     * to each other.
      */
     virtual Vector open_shares_a(const EVector &shares) = 0;
 
     /**
-     * @param shares - A shared vector that contains boolean shares of the
-     * secret values.
+     * @brief Opens boolean shares to reveal plaintext values.
+     *
+     * @param shares A shared vector that contains boolean shares of the secret values.
      * @return A new vector that contains the plaintext values of type Data.
      *
-     * NOTE: This method is useful when computing parties need to reveal
-     * a secret-shared vector to each other.
+     * NOTE: This method is useful when computing parties need to reveal a secret-shared vector
+     * to each other.
      */
     virtual Vector open_shares_b(const EVector &shares) = 0;
 
@@ -697,59 +780,96 @@ class Protocol : public ProtocolBase {
     // **************************************** //
 
     /**
-     * Vectorized version of the get_share_a() method.
+     * @brief Compute secret shares for a vector of plaintext values.
+     *
      * @param data A vector of input values of type Data.
      * @return A vector of shared vectors containing arithmetic shares.
      */
     virtual std::vector<EVector> get_shares_a(const Vector &data) = 0;
 
     /**
-     * Vectorized version of the get_share_b() method.
+     * @brief Compute secret shares for a vector of plaintext values.
+     *
      * @param data A vector of input values of type Data.
      * @return A vector of shared vectors containing boolean shares.
      */
     virtual std::vector<EVector> get_shares_b(const Vector &data) = 0;
-    /**
-     * Defines how to replicate local shares across parties according to a
-     * protocol.
-     *
-     * NOTE: Computing parties must have received or generated the local shares
-     * before calling this method.
-     */
-    virtual void replicate_shares() = 0;
 
     /**
-     * Defines how to B-share a plaintext vector according to a protocol.
-     * @param data - The plaintext vector that must be secret-shared among
-     * computing parties.
-     * @return The boolean shared vector of the party that calls this method.
+     * @brief Compute secret shares for a vector of plaintext values.
      *
-     * NOTE: This method is useful for secret-sharing plaintext data in Secrecy
-     * programs.
+     * @param data The plaintext vector that must be secret-shared among computing parties.
+     * @param data_party The party that owns the data.
+     * @return The boolean shared vector
+     *
+     * NOTE: This method is useful for secret-sharing plaintext data in ORQ programs.
      */
     virtual EVector secret_share_b(const Vector &data, const PartyID &data_party) = 0;
+
+    /**
+     * @brief Compute secret shares for a vector of plaintext values. Overloaded secret_share_b
+     * function that establishes a non-zero fixed-point precision.
+     *
+     * @param data The plaintext vector that must be secret-shared among computing parties.
+     * @param data_party The party that owns the data.
+     * @param fixed_point_precision precision of the input values
+     * @return The boolean shared fixed-point vector
+     */
+    virtual EVector secret_share_b(const Vector &data, const PartyID &data_party,
+                                   const int &fixed_point_precision) {
+        EVector ret = secret_share_b(data, data_party);
+        ret.setPrecision(fixed_point_precision);
+        return ret;
+    }
 
     /**
      * Defines how to A-share a plaintext vector according to a protocol.
      * @param data - The plaintext vector that must be secret-shared among
      * computing parties.
+     * @param data_party data ownner
      * @return The arithmetic shared vector of the party that calls this method.
      *
-     * NOTE: This method is useful for secret-sharing plaintext data in Secrecy
-     * programs.
+     * NOTE: This method is useful for secret-sharing plaintext data in ORQ programs.
      */
     virtual EVector secret_share_a(const Vector &data, const PartyID &data_party) = 0;
+
+    /**
+     * @brief Compute secret shares for a vector of plaintext values. Overloaded secret_share_a
+     * function that establishes a non-zero fixed-point precision.
+     *
+     * @param data The plaintext vector that must be secret-shared among computing parties.
+     * @param data_party The party that owns the data.
+     * @param fixed_point_precision precision of the input values
+     * @return The arithmetic shared fixed-point vector
+     */
+    virtual EVector secret_share_a(const Vector &data, const PartyID &data_party,
+                                   const int &fixed_point_precision) {
+        EVector ret = secret_share_a(data, data_party);
+        ret.setPrecision(fixed_point_precision);
+        return ret;
+    }
 
     /**
      * @brief Create a "secret" share of a public value, `x`. This
      * implemented by setting one share to `x` and all others to zero;
      * this gives a valid sharing under both arithmetic and boolean.
      *
-     * @param x
-     * @return EVector
+     * @param x The public vector to share.
+     * @return The shared vector.
      */
     virtual EVector public_share(const Vector &x) = 0;
-};
-}  // namespace secrecy
 
-#endif  // SECRECY_PROTOCOL_H
+    /**
+     * An overloaded public_share function that establishes a non-zero
+     * fixed-point precision.
+     * @param x
+     * @param fixed_point_precision
+     * @return EVector
+     */
+    virtual EVector public_share(const Vector &x, const int fixed_point_precision) {
+        EVector ret = public_share(x);
+        ret.setPrecision(fixed_point_precision);
+        return ret;
+    }
+};
+}  // namespace orq

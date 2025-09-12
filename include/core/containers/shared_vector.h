@@ -1,11 +1,10 @@
-#ifndef SECRECY_SHARED_VECTOR_H
-#define SECRECY_SHARED_VECTOR_H
+#pragma once
 
-#include "../../debug/debug.h"
+#include "debug/orq_debug.h"
 #include "e_vector.h"
 #include "encoded_vector.h"
 
-namespace secrecy {
+namespace orq {
 
 // Forward class declarations
 template <typename Share, typename EVector>
@@ -22,27 +21,30 @@ namespace operators {
 
 /**
  * A secret-shared vector with share and container types.
- * @tparam Share - Share data type.
- * @tparam EVector - Share container type.
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
  *
  * A SharedVector is an "encoded view" of a plaintext vector as seen from an untrusted party.
  * Different parties in a MPC protocol have different "views" of the same plaintext vector and views
- * may vary significantly across protocols. Currently, Secrecy supports two techniques to construct
+ * may vary significantly across protocols. Currently, ORQ supports two techniques to construct
  * a SharedVector: *arithmetic and boolean secret sharing*. Using these techniques, a secret value
- * *s* is encoded using *n* > 1 random "shares" such that:
+ * \f$s\f$ is encoded using \f$n > 1\f$ random "shares" such that:
  *
- * - \f$s = s_1 + s_2 + ... + s_n~\texttt{mod}~2^\ell\f$, where \f$\ell\f$ is the length of *s* in
- * bits (Arithmetic)
+ * - \f$s = s_1 + s_2 + ... + s_n~\texttt{mod}~2^\ell\f$, where \f$\ell\f$ is the length of \f$s\f$
+ * in bits (Arithmetic)
  *
  * - \f$s = s_1 \oplus s_2 \oplus ... \oplus s_n\f$, where \f$\oplus\f$ denotes the bitwise XOR
  * operation (Boolean)
  *
- * Let \f(v = \{4, 12, 84\}\f) be a plaintext vector that is secret-shared by 2 parties using
- * arithmetic sharing. From the viewpoint of each party, vector \f(v\f) will look like this:
+ * Let \f$v = \{4, 12, 84\}\f$ be a plaintext vector that is secret-shared by 2 parties using
+ * arithmetic sharing. From the viewpoint of each party, vector \f$v\f$ will look like this:
  *
- * \f(v = \{-1, 12, 100\}   (This is the encoded view of Party 1)\f)
- *
- * \f(v = \{5, 0, -16\}~~~  (This is the encoded view of Party 2)\f)
+ * \f(
+ * \begin{align}
+ * v = \{-1, 12, 100\} \quad & \textit{(encoded view of party 1)}\\
+ * v = \{5, 0, -16]\}  \quad & \textit{(encoded view of party 2)}
+ * \end{align}
+ * \f)
  *
  * These two vectors are in practice SharedVectors containing random numbers that add up to the
  * numbers in the original vector (which remains hidden from the parties). To reconstruct the
@@ -58,8 +60,8 @@ class SharedVector : public EncodedVector {
 
     /**
      * Creates a SharedVector of size `_size` and initializes it with zeros.
-     * @param _size - The size of the SharedVector.
-     * @param eType - The encoding of the SharedVector.
+     * @param _size The size of the SharedVector.
+     * @param eType The encoding of the SharedVector.
      */
     explicit SharedVector(const size_t &_size, const Encoding &eType)
         : EncodedVector(eType), vector(_size) {}
@@ -67,9 +69,9 @@ class SharedVector : public EncodedVector {
     /**
      * Creates a SharedVector of size `_size` and initializes it with the contents of the file
      * `_input_file`.
-     * @param _size - The size of the SharedVector.
-     * @param _input_file - The file containing the contents of the SharedVector.
-     * @param eType - The encoding of the SharedVector.
+     * @param _size The size of the SharedVector.
+     * @param _input_file The file containing the contents of the SharedVector.
+     * @param eType The encoding of the SharedVector.
      */
     explicit SharedVector(const size_t &_size, const std::string &_input_file,
                           const Encoding &eType)
@@ -77,20 +79,21 @@ class SharedVector : public EncodedVector {
 
     /**
      * Writes the secret shares of the shared vector to a file.
-     * @param _output_file - The file to write the secret shares to.
+     * @param _output_file The file to write the secret shares to.
      */
     void outputSecretShares(const std::string &_output_file) { vector.output(_output_file); }
 
     /**
      * This is a shallow copy constructor from EVector.
-     * @param _shares - The EVector whose contents will be pointed by the SharedVector.
+     * @param _shares The EVector whose contents will be pointed by the SharedVector.
+     * @param eType encoding
      */
     explicit SharedVector(const EVector &_shares, const Encoding &eType)
         : EncodedVector(eType), vector(_shares) {}
 
     /**
      * This is a move constructor from SharedVector.
-     * @param secretShares - The SharedVector whose contents will be moved to the new SharedVector.
+     * @param secretShares The SharedVector whose contents will be moved to the new SharedVector.
      */
     SharedVector(SharedVector &&secretShares) noexcept
         : EncodedVector(secretShares.encoding), vector(secretShares.vector) {}
@@ -100,7 +103,7 @@ class SharedVector : public EncodedVector {
 
     /**
      * Copy constructor from EncodedVector.
-     * @param _shares - The EncodedVector object whose contents will be copied to the new
+     * @param _shares The EncodedVector object whose contents will be copied to the new
      * SharedVector.
      */
     explicit SharedVector(EncodedVector &_shares) : EncodedVector(_shares.encoding) {
@@ -136,29 +139,11 @@ class SharedVector : public EncodedVector {
     }
 
     /**
-     * Populates the shared vector with locally generated pseudorandom shares.
-     * TODO: what should this actually be doing?
-     */
-    void populateLocalRandom(Vector<T> &v) {
-        // secrecy::service::runTime->generate_parallel(&secrecy::RandomnessManager::generate_local,
-        // v);
-    }
-
-    /**
-     * Populates the shared vector with commonly generated pseudorandom shares.
-     * TODO: what should this actually be doing?
-     */
-    void populateCommonRandom(Vector<T> &v, std::set<int> group) {
-        // secrecy::service::runTime->generate_parallel(&secrecy::RandomnessManager::generate_common,
-        // v, group);
-    }
-
-    /**
      * @return The size of the shared vector in number of elements.
      */
     VectorSizeType size() const { return vector.size(); }
 
-    void zero() { secrecy::service::runTime->modify_parallel(this->vector, &EVector::zero); }
+    void zero() { orq::service::runTime->modify_parallel(this->vector, &EVector::zero); }
 
     /**
      * @brief Resize a shared vector. If the new vector is larger, the tail
@@ -205,7 +190,8 @@ class SharedVector : public EncodedVector {
     SharedVector &operator=(const SharedVector &other) {
         assert(this->encoding == other.encoding);
         // Multithreaded equivalent to: this->vector = other.vector;
-        secrecy::service::runTime->modify_parallel_2arg(this->vector, other.vector, &EVector::operator=);
+        orq::service::runTime->modify_parallel_2arg(this->vector, other.vector,
+                                                    &EVector::operator=);
         return *this;
     }
 
@@ -233,10 +219,11 @@ class SharedVector : public EncodedVector {
      */
     template <typename T2>
     SharedVector &operator=(
-        const SharedVector<T2, secrecy::EVector<T2, EVector::replicationNumber>> &other) {
+        const SharedVector<T2, orq::EVector<T2, EVector::replicationNumber>> &other) {
         assert(this->encoding == other.encoding);
         // Calls overloaded EVector -> Vector cast-and-copy operators
-        secrecy::service::runTime->modify_parallel_2arg(this->vector, other.vector, &EVector::operator=);
+        orq::service::runTime->modify_parallel_2arg(this->vector, other.vector,
+                                                    &EVector::operator=);
         return *this;
     }
 
@@ -267,7 +254,18 @@ class SharedVector : public EncodedVector {
     }
 
     void reverse() { this->vector.reverse(); }
-};
-}  // namespace secrecy
 
-#endif  // SECRECY_SHARED_VECTOR_H
+    /**
+     * Sets the fixed-point precision.
+     * @param fixed_point_precision - the number of fixed-point fractional bits.
+     */
+    void setPrecision(const int fixed_point_precision) {
+        vector.setPrecision(fixed_point_precision);
+    }
+
+    /**
+     * Gets the fixed-point precision.
+     */
+    size_t getPrecision() const { return vector.getPrecision(); }
+};
+}  // namespace orq

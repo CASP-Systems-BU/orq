@@ -2,48 +2,50 @@
 
 trap "exit 1" SIGINT
 
+# Defaults
+exp_protocol="3"
+exp_setting="same"
+exp_communicator="nocopy"
+num_comm_threads="-1"  # Only used for NoCopyComm
+batch_size=-12
+row_exponents=20
+scale_factor=-1
+min_threads_pow=0
+max_threads_pow=0
+THREADS=1
+exp_repetitions=1
+cmake_args=""
+exp_args=""
+node_prefix="node"
+
+use_scale_factor=0
+use_power_of_10=false
+
+
 usage () {
     echo "Usage: ${0} [options] <exp_name>"
     echo "  exp_name Experiment to run"
     echo "OPTIONS:"
     echo "  [-h]                                    Show this help"
-    echo "  [-p 1|2|3|4]                            Protocol, defaults to 3"
-    echo "  [-s same|lan|wan]                       Setting, defaults to same"
-    echo "  [-c mpi|socket|nocopy]                  Communicator, defaults to mpi"
-    echo "  [-n num_comm_threads]                   [NoCopyComm only] Number of communicator threads, defaults to -1 (1 comm thread per app thread)"
-    echo "  [-r min_rows_pow[-max_rows_pow]]        Number of rows, as powers of 2, can be a range, defaults to 10-20"
+    echo "  [-p 1|2|3|4]                            Protocol; default: ${exp_protocol}"
+    echo "  [-s same|lan|wan]                       Setting; default: ${exp_setting}"
+    echo "  [-c mpi|nocopy]                         Communicator; default: mpi for same; ${exp_communicator} otherwise"
+    echo "  [-n num_comm_threads]                   [NoCopyComm only] Number of communicator threads (negative: # per worker); default: ${num_comm_threads}"
+    echo "  [-r min_rows_pow[-max_rows_pow]]        Number of rows, as powers of 2, can be a range; default: ${row_exponents}"
     echo "  [-d]                                    Use powers of 10 for the number of rows flag (-r)"
     echo "  [-f scale_factor]                       Scale factor for TPC-H and other queries. Overrides -r if set."
-    echo "  [-t min_threads_pow[-max_threads_pow]]  Number of threads, as powers of 2, can be a range, defaults to 0 (1 thread)"
-    echo "  [-T threads]                            Number of threads (arbitrary)"
-    echo "  [-b batch_size]                         Batch size."
-    echo "  [-e exp_repetitions]                    Number of times to repeat each rows/threads pairing, defaults to 1"
+    echo "  [-t min_threads_pow[-max_threads_pow]]  Number of threads, as powers of 2, can be a range"
+    echo "  [-T threads]                            Number of threads (arbitrary); default: ${THREADS}"
+    echo "  [-b batch_size]                         Batch size; default: ${batch_size}"
+    echo "  [-e exp_repetitions]                    Number of times to repeat each rows/threads pairing; default: {exp_repetitions}"
     echo "  [-m cmake_args]                         Pass additional arguments to cmake (can be repeated for more)"
     echo "  [-a experiment_args]                    Pass additional arguments to the experiment binary (can be repeated for more)"
-    echo "  [-x node prefix]                        Prefix for remote nodes. Default is 'machine-' or 'machine-wan-'."
+    echo "  [-x node prefix]                        Prefix for remote nodes. Machines are prefix0, prefix1, ...; default: ${node_prefix}"
     exit 1
 }
 
 (( $# < 1 )) && usage
 
-# Defaults
-exp_protocol="3"
-exp_setting="same"
-exp_communicator="mpi"
-num_comm_threads="-1"  # Only used for NoCopyComm
-batch_size=8192
-row_exponents=$(seq 10 20)
-scale_factor=-1
-min_threads_pow=0
-max_threads_pow=0
-THREADS=0
-exp_repetitions=1
-cmake_args=""
-exp_args=""
-node_prefix=""
-
-use_scale_factor=0
-use_power_of_10=false
 
 cwd=$(pwd)
 
@@ -67,6 +69,8 @@ parse_range() {
     echo "${result[@]}"
 }
 
+specified_communicator=0
+
 # Read options
 RANGE_REGEX='^([0-9]+)(-([0-9]+))?$'
 while getopts "p:s:c:n:r:df:t:e:m:a:x:b:hT:" arg; do
@@ -81,7 +85,8 @@ while getopts "p:s:c:n:r:df:t:e:m:a:x:b:hT:" arg; do
             ;;
         c)
             exp_communicator="${OPTARG}"
-            [[ ${exp_communicator} = "mpi" || ${exp_communicator} = "socket" || ${exp_communicator} = "nocopy" ]] || { echo "Invalid communicator"; usage; }
+            specified_communicator=1
+            [[ ${exp_communicator} = "mpi" || ${exp_communicator} = "nocopy" ]] || { echo "Invalid communicator"; usage; }
             ;;
         n)
             num_comm_threads="${OPTARG}"
@@ -142,6 +147,11 @@ while getopts "p:s:c:n:r:df:t:e:m:a:x:b:hT:" arg; do
 done
 shift $((OPTIND-1))
 
+# default mpi for same
+if [[ $specified_communicator == 0 && $exp_setting == "same" ]]; then
+    exp_communicator="mpi"
+fi
+
 if [[ $use_scale_factor -eq 1 ]]; then
     exp_input_sizes=$scale_factor
 else
@@ -151,18 +161,6 @@ fi
 # Read parameters
 (( $# < 1 )) && { echo "Missing exp_name"; usage; }
 exp_name=${1}
-
-# set the default node prefix for our experiments if the user didn't add one
-if [ -z $node_prefix ]; then
-    case "${exp_setting}" in
-        "lan")
-            node_prefix="machine-"
-            ;;
-        "wan")
-            node_prefix="machine-wan-"
-            ;;
-    esac
-fi
 
 if [[ $exp_setting != "same" ]]; then
     iface=""

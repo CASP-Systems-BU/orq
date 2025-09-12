@@ -1,14 +1,13 @@
-#ifndef SECRECY_OPERATORS_H
-#define SECRECY_OPERATORS_H
+#pragma once
 
-#include "common.h"
 #include "aggregation.h"
+#include "circuits.h"
+#include "common.h"
+#include "distinct.h"
+#include "join.h"
+#include "merge.h"
+#include "quicksort.h"
+#include "radixsort.h"
 #include "shuffle.h"
 #include "sorting.h"
 #include "streaming.h"
-#include "relational.h"
-#include "quicksort.h"
-#include "radixsort.h"
-#include "merge.h"
-
-#endif //SECRECY_OPERATORS_H

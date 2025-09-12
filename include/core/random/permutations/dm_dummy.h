@@ -1,19 +1,25 @@
-#ifndef SECRECY_DM_DUMMY_PERMUTATION_GENERATOR_H
-#define SECRECY_DM_DUMMY_PERMUTATION_GENERATOR_H
+#pragma once
 
 #ifdef MPC_PROTOCOL_BEAVER_TWO
 
-#include "../correlation_generator.h"
+#include <utility>
+
+#include "../correlation/correlation_generator.h"
 #include "dm_sharded_permutation_generator.h"
 #include "hm_sharded_permutation_generator.h"
 #include "sharded_permutation_generator.h"
 
-#include <utility>
-
-namespace secrecy::random {
+namespace orq::random {
 
 /**
- * Dummy Dishonest Majority Generator
+ * @brief Dummy Dishonest Majority Generator
+ *
+ * A dummy implementation of the dishonest majority permutation correlation generator.
+ *
+ * This implementation is primarily used for testing, debugging, and performance
+ * benchmarking where the actual security properties are not required.
+ *
+ * @tparam T The data type for the permutation correlation elements
  */
 template <typename T>
 class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
@@ -22,6 +28,13 @@ class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
     std::shared_ptr<CommonPRG> all_prg;
 
    public:
+    /**
+     * Constructor for the dummy dishonest majority generator.
+     * @param _rank The rank of this party in the multi-party computation (0 or 1).
+     * @param thread The thread identifier.
+     * @param common The CommonPRGManager.
+     * @param _comm Optional communicator.
+     */
     DMDummyGenerator(int _rank, int thread, std::shared_ptr<CommonPRGManager> common,
                      std::optional<Communicator*> _comm = std::nullopt)
         : DMBase(_rank, _comm) {
@@ -29,9 +42,12 @@ class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
     }
 
     /**
-     * getNext - Generate and return a DMShardedPermutation.
-     * @param n - The size of the permutation.
-     * @return The DMShardedPermutation.
+     * Generate and return a DMShardedPermutation.
+     * Creates a new DMShardedPermutation of the specified size and populates it
+     * with a pair of permutation correlations.
+     *
+     * @param n The size of the permutation.
+     * @return A shared pointer to the generated DMShardedPermutation.
      */
     std::shared_ptr<ShardedPermutation> getNext(size_t n) {
         auto dm_perm = std::make_shared<DMShardedPermutation<T>>(n);
@@ -40,14 +56,24 @@ class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
     }
 
     /**
-     * getNext - In-place generation of a DMShardedPermutation.
-     * @param perm - The shared pointer to the ShardedPermutation to modify in place.
+     * In-place generation of a DMShardedPermutation.
+     *
+     * Populates an existing DMShardedPermutation with a new permutation correlation.
+     * This method can operate in two modes depending on whether the permutation
+     * has a CommonPRG set:
+     *
+     * 1. With CommonPRG: Generates permutations using the shared PRG and exchanges
+     *    shares between parties via communication
+     * 2. Without CommonPRG: Uses the internal all_prg to generate identical
+     *    permutations on both parties without communication
+     *
+     * @param perm The shared pointer to the ShardedPermutation to modify in place.
      */
     void getNext(std::shared_ptr<ShardedPermutation> perm) {
-        //stopwatch::profile_preprocessing();
+        // stopwatch::profile_preprocessing();
 
         auto dm_perm = std::static_pointer_cast<DMShardedPermutation<T>>(perm);
-        
+
         // get the size from the existing permutation
         size_t n = dm_perm->size();
 
@@ -93,11 +119,11 @@ class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
     }
 
     /**
-     * getNextImpl - The implementation function that generates a permutation correlation for a
+     * The implementation function that generates a permutation correlation for a
      * fixed permutation.
-     * @param perm - The sharded permutation to generate.
-     * @param pi_0 - The permutation of the first party in the correlation.
-     * @param pi_1 - The permutation of the second party in the correlation.
+     * @param perm The sharded permutation to generate.
+     * @param pi_0 The permutation of the first party.
+     * @param pi_1 The permutation of the second party.
      */
     void getNextImpl(std::shared_ptr<ShardedPermutation> perm, Vector<int> pi_0, Vector<int> pi_1) {
         auto dm_perm = std::static_pointer_cast<DMShardedPermutation<T>>(perm);
@@ -121,8 +147,8 @@ class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
             pi_A_0[i] = A_0[i];
             pi_A_1[i] = A_1[i];
         }
-        secrecy::operators::local_apply_perm_single_threaded(pi_A_0, pi_0);
-        secrecy::operators::local_apply_perm_single_threaded(pi_A_1, pi_1);
+        orq::operators::local_apply_perm_single_threaded(pi_A_0, pi_0);
+        orq::operators::local_apply_perm_single_threaded(pi_A_1, pi_1);
 
         // set C = pi(A) - B
         Vector<T> C_0(n);
@@ -134,19 +160,27 @@ class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
         // dereference the shared pointer to the tuple
         // assign to the underlying tuple
         // this modified the input in place
-        auto &perm_tuple = *(dm_perm->getTuple());
+        auto& perm_tuple = *(dm_perm->getTuple());
         if (DMBase::getRank() == 0) {
-            perm_tuple = std::make_tuple(std::move(pi_0), std::move(A_1), std::move(B_1), std::move(C_0));
+            perm_tuple =
+                std::make_tuple(std::move(pi_0), std::move(A_1), std::move(B_1), std::move(C_0));
         } else {
-            perm_tuple = std::make_tuple(std::move(pi_1), std::move(A_0), std::move(B_0), std::move(C_1));
+            perm_tuple =
+                std::make_tuple(std::move(pi_1), std::move(A_0), std::move(B_0), std::move(C_1));
         }
 
-        //stopwatch::profile_preprocessing("dm-dummyperm");
+        // stopwatch::profile_preprocessing("dm-dummyperm");
     }
-        
+
     /**
-     * generateBatch - Generate a batch of DMShardedPermutations, invoked by the runtime.
-     * @param ret - A vector of DMShardedPermutations to fill.
+     * Generate a batch of DMShardedPermutations, invoked by the runtime.
+     *
+     * This method is called by the runtime system to populate a pre-allocated vector
+     * of DMShardedPermutations. Each permutation in the batch is generated using the
+     * in-place getNext method, allowing for efficient batch processing of multiple
+     * permutation correlations.
+     *
+     * @param ret A vector of DMShardedPermutations to fill.
      */
     void generateBatch(std::vector<std::shared_ptr<ShardedPermutation>>& ret) {
         // generate a DMShardedPermutation for each element in the batch
@@ -154,11 +188,8 @@ class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
             getNext(ret[i]);
         }
     }
-
 };
 
-}  // namespace secrecy::random
+}  // namespace orq::random
 
-
-#endif // MPC_PROTOCOL_BEAVER_TWO
-#endif // SECRECY_DM_DUMMY_PERMUTATION_GENERATOR_H
+#endif  // MPC_PROTOCOL_BEAVER_TWO

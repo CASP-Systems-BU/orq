@@ -4,11 +4,11 @@
 #include <algorithm>
 #include <numeric>
 
-#include "../random/permutations/dm_dummy.h"
-#include "../random/permutations/permutation_manager.h"
+#include "core/random/permutations/dm_dummy.h"
+#include "core/random/permutations/permutation_manager.h"
 #include "shared_vector.h"
 
-namespace secrecy {
+namespace orq {
 // type definitions
 using Group = std::set<int>;
 using LocalPermutation = std::vector<int>;
@@ -22,12 +22,12 @@ namespace operators {
     template <typename Share, typename EVector>
     void oblivious_apply_sharded_perm(
         SharedVector<Share, EVector> &x,
-        std::shared_ptr<secrecy::random::ShardedPermutation> &permutation);
+        std::shared_ptr<orq::random::ShardedPermutation> &permutation);
 
     template <typename Share, typename EVector>
     void oblivious_apply_inverse_sharded_perm(
         SharedVector<Share, EVector> &x,
-        std::shared_ptr<secrecy::random::ShardedPermutation> &permutation);
+        std::shared_ptr<orq::random::ShardedPermutation> &permutation);
 
     template <typename Share, typename EVector, typename EVectorPerm>
     void oblivious_apply_elementwise_perm(SharedVector<Share, EVector> &x,
@@ -37,9 +37,9 @@ namespace operators {
 template <typename EVector>
 class ElementwisePermutation {
     // type definitions
-    using SharedPerm = SharedVector<int, secrecy::EVector<int, EVector::replicationNumber>>;
-    using ASharedPerm = ASharedVector<int, secrecy::EVector<int, EVector::replicationNumber>>;
-    using BSharedPerm = BSharedVector<int, secrecy::EVector<int, EVector::replicationNumber>>;
+    using SharedPerm = SharedVector<int, orq::EVector<int, EVector::replicationNumber>>;
+    using ASharedPerm = ASharedVector<int, orq::EVector<int, EVector::replicationNumber>>;
+    using BSharedPerm = BSharedVector<int, orq::EVector<int, EVector::replicationNumber>>;
 
    public:
     // the underlying SharedVector for the permutation
@@ -47,7 +47,7 @@ class ElementwisePermutation {
 
     /**
      * Default constructor which creates an identity permutation of a given size.
-     * @param size - The size of the permutation.
+     * @param size The size of the permutation.
      *
      * By default, this constructs an arithmetic sharing of the identity permutation.
      * This constructor simply calls the next constructor with the default AShared sharing type.
@@ -56,8 +56,8 @@ class ElementwisePermutation {
 
     /**
      * Constructor which creates an identity permutation of a given size with a given encoding.
-     * @param size - The size of the permutation.
-     * @param encoding - The encoding type of the underlying SharedVector (arithmetic or binary).
+     * @param size The size of the permutation.
+     * @param encoding The encoding type of the underlying SharedVector (arithmetic or binary).
      */
     ElementwisePermutation(size_t size, Encoding encoding) : sharedVector(size, encoding) {
         Vector<int> identity(size);
@@ -65,12 +65,12 @@ class ElementwisePermutation {
 
         // public sharing does the same thing for AShared and BShared
         sharedVector.vector =
-            secrecy::service::runTime->public_share<EVector::replicationNumber>(identity);
+            orq::service::runTime->public_share<EVector::replicationNumber>(identity);
     }
 
     /**
      * Copy constructor which takes another ElementwisePermutation as input.
-     * @param permutation - The permutation to copy.
+     * @param permutation The permutation to copy.
      */
     ElementwisePermutation(ElementwisePermutation &permutation)
         : sharedVector(*permutation.sharedVector.deepcopy()) {}
@@ -78,7 +78,7 @@ class ElementwisePermutation {
     /**
      * Constructor which takes a SharedVector as input and assigns it to the underlying
      * SharedVector.
-     * @param v - The SharedVector to copy.
+     * @param v The SharedVector to copy.
      *
      * The second template argument is named argEVector to distinguish it from the EVector that this
      * class is templated by. This function copies the underlying data to a 32 bit SharedVector,
@@ -94,7 +94,7 @@ class ElementwisePermutation {
 
     /**
      * Copy assignment operator.
-     * @param other - The permutation to copy.
+     * @param other The permutation to copy.
      */
     ElementwisePermutation &operator=(const ElementwisePermutation &other) {
         // not a self-assignment
@@ -108,7 +108,7 @@ class ElementwisePermutation {
 
     /**
      * Assignment operator from a SharedVector
-     * @param v - The SharedVector to copy.
+     * @param other The SharedVector to copy.
      *
      * The second template argument is named argEVector to distinguish it from the EVector that this
      * class is templated by. This function copies the underlying data to a 32 bit SharedVector,
@@ -122,12 +122,12 @@ class ElementwisePermutation {
     }
 
     /**
-     * size - Gets the size of the underlying SharedVector.
+     * Gets the size of the underlying SharedVector.
      */
     size_t size() { return sharedVector.size(); }
 
     /**
-     * getASharedPerm - Gets the underlying SharedVector as an ASharedVector.
+     * Gets the underlying SharedVector as an ASharedVector.
      */
     ASharedPerm getASharedPerm() {
         ASharedPerm v(size());
@@ -136,7 +136,7 @@ class ElementwisePermutation {
     }
 
     /**
-     * getBSharedPerm - Gets the underlying SharedVector as an BSharedVector.
+     * Gets the underlying SharedVector as an BSharedVector.
      */
     BSharedPerm getBSharedPerm() {
         BSharedPerm v(size());
@@ -145,12 +145,12 @@ class ElementwisePermutation {
     }
 
     /**
-     * getEncoding - Gets the encoding type of the underlying SharedVector.
+     * Gets the encoding type of the underlying SharedVector.
      */
-    secrecy::Encoding getEncoding() { return sharedVector.encoding; }
+    orq::Encoding getEncoding() { return sharedVector.encoding; }
 
     /**
-     * open - Open the underlying SharedVector.
+     * Open the underlying SharedVector.
      */
     Vector<int> open() {
         Vector<int> opened = sharedVector.open();
@@ -158,7 +158,7 @@ class ElementwisePermutation {
     }
 
     /**
-     * shuffle - Shuffle the underlying SharedVector
+     * Shuffle the underlying SharedVector
      * @return The shuffled permutation.
      */
     ElementwisePermutation shuffle() {
@@ -167,7 +167,7 @@ class ElementwisePermutation {
     }
 
     /**
-     * reverse - Reverse the direction of the permutation.
+     * Reverse the direction of the permutation.
      * @return A permutation such that when applied to a vector, the permuted vector will be the
      * reverse of the vector permuted under the original permutation.
      *
@@ -181,11 +181,10 @@ class ElementwisePermutation {
         Vector<int> additive_constant_plaintext = {static_cast<int>(size()) - 1};
 
         ASharedPerm negative_one =
-            secrecy::service::runTime
-                ->public_share<EVector::replicationNumber>(negative_one_plaintext)
+            orq::service::runTime->public_share<EVector::replicationNumber>(negative_one_plaintext)
                 .repeated_subset_reference(size());
         ASharedPerm additive_constant =
-            secrecy::service::runTime
+            orq::service::runTime
                 ->public_share<EVector::replicationNumber>(additive_constant_plaintext)
                 .repeated_subset_reference(size());
 
@@ -199,7 +198,7 @@ class ElementwisePermutation {
     }
 
     /**
-     * invert - Find the inverse of the permutation (different than applying an inverse
+     * Find the inverse of the permutation (different than applying an inverse
      * permutation).
      * @return The inverse of the permutation.
      */
@@ -207,13 +206,13 @@ class ElementwisePermutation {
         // initialize the inverse to the identity permutation
         ElementwisePermutation<EVector> inverse(size(), this->getEncoding());
 
-        secrecy::operators::oblivious_apply_elementwise_perm(inverse.sharedVector, *this);
+        orq::operators::oblivious_apply_elementwise_perm(inverse.sharedVector, *this);
         sharedVector.vector = inverse.sharedVector.vector;
         return *this;
     }
 
     /**
-     * b2a - Convert a binary shared ElementwisePermutation to an arithmetic shared
+     * Convert a binary shared ElementwisePermutation to an arithmetic shared
      * ElementwisePermutation.
      * @return An ElementwisePermutation with an arithmetic sharing of the input permutation.
      *
@@ -222,7 +221,7 @@ class ElementwisePermutation {
      */
     ElementwisePermutation b2a() {
         assert(sharedVector.encoding == Encoding::BShared);
-        
+
         // do a direct conversion for 2PC rather than the permutation-specific protocol below
         if (runTime->getNumParties() == 2) {
             ASharedPerm a = getBSharedPerm().b2a();
@@ -241,16 +240,15 @@ class ElementwisePermutation {
         auto pi = random::PermutationManager::get()->getNext<int>(size(), Encoding::BShared);
 
         // shuffle the permutation according to pi
-        secrecy::operators::oblivious_apply_sharded_perm(permutation.sharedVector, pi);
+        orq::operators::oblivious_apply_sharded_perm(permutation.sharedVector, pi);
 
         // open pi(perm)
         Vector<int> pi_perm = permutation.open();
 
-        ASharedPerm ret =
-            secrecy::service::runTime->public_share<EVector::replicationNumber>(pi_perm);
+        ASharedPerm ret = orq::service::runTime->public_share<EVector::replicationNumber>(pi_perm);
 
         // unapply the random permutation
-        secrecy::operators::oblivious_apply_inverse_sharded_perm(ret, pi);
+        orq::operators::oblivious_apply_inverse_sharded_perm(ret, pi);
 
         // assign the arithmetic shared result to this permutation
         sharedVector.vector = ret.vector;
@@ -260,7 +258,7 @@ class ElementwisePermutation {
     }
 
     /**
-     * negate - Convert a permutation with negative location values to one with positive location
+     * Convert a permutation with negative location values to one with positive location
      * values.
      * @return An ElementwisePermutation with the correct range of values.
      *
@@ -271,8 +269,7 @@ class ElementwisePermutation {
         Vector<int> negative_one_plaintext = {-1};
 
         ASharedPerm negative_one =
-            secrecy::service::runTime
-                ->public_share<EVector::replicationNumber>(negative_one_plaintext)
+            orq::service::runTime->public_share<EVector::replicationNumber>(negative_one_plaintext)
                 .repeated_subset_reference(size());
 
         ASharedPerm v(sharedVector.vector);
@@ -283,6 +280,6 @@ class ElementwisePermutation {
     }
 };
 
-}  // namespace secrecy
+}  // namespace orq
 
 #endif  // PERMUTATION_H

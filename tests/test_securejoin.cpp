@@ -1,10 +1,10 @@
 /**
  * @file test_securejoin.cpp
  * @brief Test that SecureJoin is properly installed and basic functionality works.
- * 
+ *
  */
 
-#include "../include/secrecy.h"
+#include "orq.h"
 
 // This test only runs on 2pc
 #ifdef MPC_PROTOCOL_BEAVER_TWO
@@ -12,7 +12,7 @@
 #include "coproto/Socket/AsioSocket.h"
 #include "secure-join/Prf/AltModPrfProto.h"
 
-using namespace secrecy::random;
+using namespace orq::random;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
 // tests that the OPRF correctly evaluates the PRF
@@ -22,7 +22,7 @@ void test_oprf_correctness(int test_size) {
 
     // create an OPRF object
     // TODO: this should be created at setup and accessible through the runtime
-    secrecy::random::OPRF oprf(rank, 0);
+    orq::random::OPRF oprf(rank, 0);
 
     // generate a key to use for both plaintext and secret-shared evaluations
     OPRF::key_t key = oprf.keyGen();
@@ -33,8 +33,10 @@ void test_oprf_correctness(int test_size) {
         inputs[i] = i;
     }
 
-    Vector<__int128_t> outputs_plaintext = oprf.evaluate_plaintext<__int128_t>(inputs.as_std_vector(), key);
-    Vector<__int128_t> outputs_plaintext_backup = oprf.evaluate_plaintext<__int128_t>(inputs.as_std_vector(), key);
+    Vector<__int128_t> outputs_plaintext =
+        oprf.evaluate_plaintext<__int128_t>(inputs.as_std_vector(), key);
+    Vector<__int128_t> outputs_plaintext_backup =
+        oprf.evaluate_plaintext<__int128_t>(inputs.as_std_vector(), key);
 
     // check that plaintext evaluation is deterministic
     // consecutive runs with identical input should produce identical output
@@ -79,36 +81,32 @@ void test_permutation_correlations() {
         new DMPermutationCorrelationGenerator<__int128_t>(pID, 0, commonPRGManager, comm);
 
     auto perm = sharded_generator->getNext(1000);
-    std::shared_ptr<DMShardedPermutation<__int128_t>> dm_perm = std::dynamic_pointer_cast<DMShardedPermutation<__int128_t>>(perm);
+    std::shared_ptr<DMShardedPermutation<__int128_t>> dm_perm =
+        std::dynamic_pointer_cast<DMShardedPermutation<__int128_t>>(perm);
 
     sharded_generator->assertCorrelated(dm_perm);
 }
 
-int main(int argc, char** argv)  {
-    secrecy_init(argc, argv);
+int main(int argc, char** argv) {
+    orq_init(argc, argv);
 
     auto pID = runTime->getPartyID();
-    
+
     test_oprf_correctness(1000);
     single_cout("OPRF Correctness...OK");
 
     test_permutation_correlations();
     single_cout("Permutation Correlations...OK");
-    
-    MPI_Finalize();
 }
-#else // MPC_PROTOCOL_BEAVER_TWO
+#else  // MPC_PROTOCOL_BEAVER_TWO
 
 // Dummy test for non-2pc
 
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
 int main(int argc, char** argv) {
-    secrecy_init(argc, argv);
+    orq_init(argc, argv);
     single_cout("secureJoin tests only for 2PC");
-#if defined(MPC_USE_MPI_COMMUNICATOR)
-    MPI_Finalize();
-#endif
 }
 
-#endif // MPC_PROTOCOL_BEAVER_TWO
+#endif  // MPC_PROTOCOL_BEAVER_TWO

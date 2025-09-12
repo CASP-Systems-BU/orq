@@ -1,19 +1,18 @@
-// Include secrecy first
-#include "../include/secrecy.h"
-// Then include other files if not already included
-#include "../include/core/random/ole_generator.h"
+#include "orq.h"
 
+// Include other files if not already included
+#include "core/random/correlation/ole_generator.h"
 
 // ../scripts/run_experiment.sh -p 3 -s same -c mpi -r 1 -T 1 test_correlated
 
-using namespace secrecy;
-using namespace secrecy::service;
-using namespace secrecy::random;
+using namespace orq;
+using namespace orq::service;
+using namespace orq::random;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
 const size_t test_size = 1 << 12;
 
-template <typename T, secrecy::random::Correlation C>
+template <typename T, orq::random::Correlation C>
 void checkCorrelation(std::string label) {
     auto L = std::numeric_limits<std::make_unsigned_t<T>>::digits;
     single_cout_nonl("Checking length " << test_size << " " << L << "-bit " << label << "... ");
@@ -31,7 +30,7 @@ void test_permutation_correlations(int test_size) {
     // get the generator and interpret it as a dishonest-majority generator
     // otherwise it won't have the assertCorrelated function
     auto base_generator =
-        runTime->rand0()->getCorrelation<T, secrecy::random::Correlation::ShardedPermutation>();
+        runTime->rand0()->getCorrelation<T, orq::random::Correlation::ShardedPermutation>();
     auto generator = dynamic_cast<DMShardedPermutationGenerator<T>*>(base_generator);
 
     // check for nullptr
@@ -39,13 +38,13 @@ void test_permutation_correlations(int test_size) {
         throw std::runtime_error("Failed to get generator of type DMShardedPermutationGenerator");
     }
 
-    secrecy::random::PermutationManager::get()->reserve(test_size, 2);
+    orq::random::PermutationManager::get()->reserve(test_size, 2);
 
     // check individual permutation correlations
-    auto result_a = secrecy::random::PermutationManager::get()->getNext<T>(
-        test_size, secrecy::Encoding::AShared);
-    auto result_b = secrecy::random::PermutationManager::get()->getNext<T>(
-        test_size, secrecy::Encoding::BShared);
+    auto result_a =
+        orq::random::PermutationManager::get()->getNext<T>(test_size, orq::Encoding::AShared);
+    auto result_b =
+        orq::random::PermutationManager::get()->getNext<T>(test_size, orq::Encoding::BShared);
 
     std::shared_ptr<DMShardedPermutation<T>> perm_corr_a =
         std::dynamic_pointer_cast<DMShardedPermutation<T>>(result_a);
@@ -58,10 +57,9 @@ void test_permutation_correlations(int test_size) {
 
     generator->assertCorrelated(perm_corr_a);
     generator->assertCorrelated(perm_corr_b);
-    
+
     // check pairs of permutation correlations
-    auto [first, second] =
-        secrecy::random::PermutationManager::get()->getNextPair<T, T>(test_size);
+    auto [first, second] = orq::random::PermutationManager::get()->getNextPair<T, T>(test_size);
     auto pair_first = std::dynamic_pointer_cast<DMShardedPermutation<T>>(first);
     auto pair_second = std::dynamic_pointer_cast<DMShardedPermutation<T>>(second);
     if ((pair_first == nullptr) || (pair_second == nullptr)) {
@@ -76,13 +74,13 @@ void test_permutation_correlations(int test_size) {
 template <typename T>
 void TestDummyAuthTriplesGenerator(const size_t& testSize) {
     // Party Information
-    auto pID = secrecy::service::runTime->getPartyID();
-    auto pNum = secrecy::service::runTime->getNumParties();
+    auto pID = orq::service::runTime->getPartyID();
+    auto pNum = orq::service::runTime->getNumParties();
     auto othersCount = pNum - 1;
 
     // Helpers
-    auto communicator = secrecy::service::runTime->comm0();
-    auto randManager = secrecy::service::runTime->rand0();
+    auto communicator = orq::service::runTime->comm0();
+    auto randManager = orq::service::runTime->rand0();
     auto zeroSharingGenerator = randManager->zeroSharingGenerator;
     auto localPRG = randManager->localPRG;
 
@@ -91,7 +89,7 @@ void TestDummyAuthTriplesGenerator(const size_t& testSize) {
     localPRG->getNext(partyKey);
 
     // Creating the dummy generator
-    auto dummyGenerator = secrecy::random::DummyAuthTripleGenerator<T>(
+    auto dummyGenerator = orq::random::DummyAuthTripleGenerator<T>(
         pNum, partyKey, pID, localPRG, zeroSharingGenerator, communicator);
 
     // Getting some dummy triples
@@ -102,13 +100,13 @@ void TestDummyAuthTriplesGenerator(const size_t& testSize) {
 template <typename T>
 void TestDummyAuthRandomGenerator(const size_t& testSize) {
     // Party Information
-    auto pID = secrecy::service::runTime->getPartyID();
-    auto pNum = secrecy::service::runTime->getNumParties();
+    auto pID = orq::service::runTime->getPartyID();
+    auto pNum = orq::service::runTime->getNumParties();
     auto othersCount = pNum - 1;
 
     // Helpers
-    auto communicator = secrecy::service::runTime->comm0();
-    auto randManager = secrecy::service::runTime->rand0();
+    auto communicator = orq::service::runTime->comm0();
+    auto randManager = orq::service::runTime->rand0();
     auto zeroSharingGenerator = randManager->zeroSharingGenerator;
     auto localPRG = randManager->localPRG;
 
@@ -117,7 +115,7 @@ void TestDummyAuthRandomGenerator(const size_t& testSize) {
     localPRG->getNext(partyKey);
 
     // Creating the dummy generator
-    auto dummyGenerator = secrecy::random::DummyAuthRandomGenerator<T>(
+    auto dummyGenerator = orq::random::DummyAuthRandomGenerator<T>(
         pNum, partyKey, pID, localPRG, zeroSharingGenerator, communicator);
 
     // Getting some dummy random numbers
@@ -126,7 +124,7 @@ void TestDummyAuthRandomGenerator(const size_t& testSize) {
 }
 
 int main(int argc, char** argv) {
-    secrecy_init(argc, argv);
+    orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
 #ifndef MPC_PROTOCOL_BEAVER_TWO
@@ -195,8 +193,4 @@ int main(int argc, char** argv) {
     single_cout("__int128_t dummy authenticated random generation: OK");
 
     runTime->malicious_check();
-
-#if defined(MPC_USE_MPI_COMMUNICATOR)
-    MPI_Finalize();
-#endif
 }

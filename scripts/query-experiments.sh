@@ -22,7 +22,7 @@ ENVIRO=${5:-lan}
 # Default to all 22 TPC-H queries.
 QUERY_RANGE=${6:-1..22}
 
-if [[ $ENVIRO == "lan" ]]; then
+if [[ $ENVIRO -ne "wan" ]]; then
     BATCH_SIZE=-12
     COMM_THREADS=4
 else
@@ -31,6 +31,12 @@ else
 fi
 
 COMM=nocopy
+
+if [[ $ENVIRO == "same" ]]; then
+    COMM=mpi
+fi
+
+
 PROFILING_MODE=1
 
 if [[ $PROFILING_MODE -eq 1 ]]; then
@@ -44,7 +50,7 @@ if [[ $EXP_TYPE == "tpch" ]]; then
     query_list=$(eval echo q{$QUERY_RANGE})
     echo $query_list
 elif [[ $EXP_TYPE == "other" ]]; then
-    query_list=$(ls ../src/queries/2024-paper/*.cpp | xargs -n1 basename | sed 's/\.cpp//')
+    query_list=$(ls ../bench/queries/other/*.cpp | xargs -n1 basename | sed 's/\.cpp//')
 elif [[ $EXP_TYPE == "secretflow" ]]; then
 
     # Force profiling mode 0 for secretflow queries
@@ -82,10 +88,10 @@ else
 fi
 
 if [[ $ENVIRO == "wan" ]]; then
-    ./cluster-wan-sim.sh on node{1,2,3}
+    ./comm/cluster-wan-sim.sh on node{1,2,3}
     CMAKE="$CMAKE,-DWAN_CONFIGURATION"
 else
-    ./cluster-wan-sim.sh off node{1,2,3}
+    ./comm/cluster-wan-sim.sh off node{1,2,3}
     CMAKE=
 fi
 
@@ -147,5 +153,5 @@ for query in $query_list; do
 done
 
 if [[ $ENVIRO == "wan" ]]; then
-    ./cluster-wan-sim.sh off node{1,2,3}
+    ./comm/cluster-wan-sim.sh off node{1,2,3}
 fi

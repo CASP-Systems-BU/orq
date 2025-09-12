@@ -1,16 +1,9 @@
-#ifndef SECRECY_ENCODING_H
-#define SECRECY_ENCODING_H
+#pragma once
 
-namespace secrecy {
-    /**
-     * @brief Vector encoding types.
-     * 
-     */
-    typedef enum
-    {
-        AShared,
-        BShared
-    } Encoding;
-}
-
-#endif
+namespace orq {
+/**
+ * @brief Vector encoding types.
+ *
+ */
+typedef enum { AShared, BShared } Encoding;
+}  // namespace orq

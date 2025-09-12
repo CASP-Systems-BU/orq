@@ -1,21 +1,20 @@
-#ifndef SECRECY_A_SHARED_VECTOR_H
-#define SECRECY_A_SHARED_VECTOR_H
+#pragma once
 
 #include "shared_vector.h"
 
-namespace secrecy {
+namespace orq {
 
 /**
  * A SharedVector that contains arithmetic shares and supports secure arithmetic operations.
- * @tparam Share - Share data type.
- * @tparam EVector - Share container type.
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
  */
 template <typename Share, typename EVector>
 class ASharedVector : public SharedVector<Share, EVector> {
    public:
     /**
      * Creates an ASharedVector of size `_size` and initializes it with zeros.
-     * @param _size - The size of the ASharedVector.
+     * @param _size The size of the ASharedVector.
      */
     explicit ASharedVector(const size_t& _size)
         : SharedVector<Share, EVector>(_size, Encoding::AShared) {}
@@ -23,42 +22,42 @@ class ASharedVector : public SharedVector<Share, EVector> {
     /**
      * Creates an ASharedVector of size `_size` and initializes it with secret shares in the given
      * file.
-     * @param _size - The size of the ASharedVector.
-     * @param _input_file - The file that contains the secret shares.
+     * @param _size The size of the ASharedVector.
+     * @param _input_file The file that contains the secret shares.
      */
     explicit ASharedVector(const size_t& _size, const std::string& _input_file)
         : SharedVector<Share, EVector>(_size, _input_file, Encoding::AShared) {}
 
     /**
      * This is a shallow copy constructor from EVector contents.
-     * @param _shares - The EVector whose contents will be pointed by the ASharedVector.
+     * @param _shares The EVector whose contents will be pointed by the ASharedVector.
      */
     explicit ASharedVector(EVector& _shares)
         : SharedVector<Share, EVector>(_shares, Encoding::AShared) {}
 
     /**
      * This is a move constructor from EVector contents.
-     * @param _shares - The EVector whose contents will be moved to the new ASharedVector.
+     * @param _shares The EVector whose contents will be moved to the new ASharedVector.
      */
     ASharedVector(EVector&& _shares) : SharedVector<Share, EVector>(_shares, Encoding::AShared) {}
 
     /**
      * This is a move constructor from another ASharedVector.
-     * @param other - The ASharedVector whose contents will be moved to the new ASharedVector.
+     * @param other The ASharedVector whose contents will be moved to the new ASharedVector.
      */
     ASharedVector(ASharedVector&& other) noexcept
         : SharedVector<Share, EVector>(other.vector, other.encoding) {}
 
     /**
      * This is a copy constructor from another ASharedVector.
-     * @param other - The ASharedVector whose contents will be moved to the new ASharedVector.
+     * @param other The ASharedVector whose contents will be moved to the new ASharedVector.
      */
     ASharedVector(const ASharedVector& other)
         : SharedVector<Share, EVector>(other.vector, other.encoding) {}
 
     /**
      * Copy constructor from SharedVector contents.
-     * @param _shares - The SharedVector object whose contents will be copied to the new
+     * @param _shares The SharedVector object whose contents will be copied to the new
      * ASharedVector.
      */
     explicit ASharedVector(SharedVector<Share, EVector>& _shares)
@@ -71,7 +70,7 @@ class ASharedVector : public SharedVector<Share, EVector> {
     /**
      * Move constructor that creates an ASharedVector from a unique pointer to an EncodedVector
      * object.
-     * @param base - The pointer to the SharedVector object whose contents will be moved to the new
+     * @param base The pointer to the SharedVector object whose contents will be moved to the new
      * ASharedVector.
      */
     ASharedVector(std::unique_ptr<ASharedVector>&& base)
@@ -80,7 +79,7 @@ class ASharedVector : public SharedVector<Share, EVector> {
     /**
      * Shallow copy constructor that creates an ASharedVector from a unique pointer to an
      * EncodedVector object.
-     * @param base - The SharedVector object whose contents will be pointed by the new
+     * @param base The SharedVector object whose contents will be pointed by the new
      * ASharedVector.
      */
     ASharedVector(std::unique_ptr<ASharedVector>& base)
@@ -89,13 +88,17 @@ class ASharedVector : public SharedVector<Share, EVector> {
     /**
      * Move constructor that creates an ASharedVector from a pointer to another ASharedVector
      * object.
-     * @param _base - The ASharedVector that will be moved as a whole (contents + state) to the new
+     * @param _base The ASharedVector that will be moved as a whole (contents + state) to the new
      * ASharedVector.
      *
      * NOTE: This constructor is implicitly called by the two constructors above.
      */
     explicit ASharedVector(ASharedVector* _base) : ASharedVector(std::move(*_base)) {}
 
+    /**
+     * @brief Use the underlying SharedVector's implementation of `operator=`.
+     *
+     */
     using SharedVector<Share, EVector>::operator=;
 
     ASharedVector& operator=(const ASharedVector&) = default;
@@ -104,6 +107,10 @@ class ASharedVector : public SharedVector<Share, EVector> {
     // Destructor
     virtual ~ASharedVector() {}
 
+    /**
+     * @brief Reuse underlying SharedVector implementation for access patterns.
+     *
+     */
     svector_reference(ASharedVector, simple_subset_reference);
     svector_reference(ASharedVector, alternating_subset_reference);
     svector_reference(ASharedVector, reversed_alternating_subset_reference);
@@ -115,13 +122,25 @@ class ASharedVector : public SharedVector<Share, EVector> {
     svector_reference(ASharedVector, slice);
 
     /**
-     * This is a conversion from ASharedVector to BSharedVector.
+     * @brief Type alias for an equivalent BSharedVector.
+     *
      */
     using B = BSharedVector<Share, EVector>;
+
+    /**
+     * @brief Convert from ASharedVector to BSharedVector. Each party redistributes boolean shares
+     * of their additive shares, then uses a boolean addition circuit to "add" those shares back
+     * together. In the end we are left with an XOR-sharing of the same value.
+     *
+     * Other protocols, such as using preprocessed shared bits, are possible.
+     *
+     */
     std::unique_ptr<B> a2b() const {
         std::pair<B, B> v = service::runTime->redistribute_shares_b(this->vector);
-        // Calls binary adder
-        return v.first + v.second;
+        // This `+` here is actually a call to our binary adder circuit.
+        auto res = v.first + v.second;
+        res->setPrecision(this->getPrecision());
+        return res;
     }
 
     // **************************************** //
@@ -129,36 +148,22 @@ class ASharedVector : public SharedVector<Share, EVector> {
     // **************************************** //
 
     /**
-     * Elementwise secure arithmetic addition.
-     * @param other - The second operand of addition.
-     * @return A unique pointer to a new shared vector that contains arithmetic shares of
-     * the elementwise additions.
+     * Elementwise secure arithmetic addition. Returns a unique ptr.
      */
     binary_op(+, ASharedVector, add_a, this, other);
 
     /**
-     * Elementwise secure arithmetic subtraction.
-     * This operator expects both input vectors (`this` and `other`) to have the same size.
-     * @param other - The second operand of subtraction.
-     * @return A unique pointer to a new shared vector that contains arithmetic shares of
-     * the elementwise subtractions.
+     * Elementwise secure arithmetic subtraction. Returns a unique ptr.
      */
     binary_op(-, ASharedVector, sub_a, this, other);
 
     /**
-     * Elementwise secure arithmetic multiplication.
-     * This operator expects both input vectors (`this` and `other`) to have the same size.
-     * @param other - The second operand of multiplication.
-     * @return A unique pointer to a new shared vector that contains arithmetic shares of
-     * the elementwise multiplications.
+     * Elementwise secure arithmetic multiplication. Returns a unique ptr.
      */
     binary_op(*, ASharedVector, multiply_a, this, other);
 
     /**
-     * Elementwise secure arithmetic negation.
-     * This operator expects the input vector (`this`) to contain arithmetic shares.
-     * @return A unique pointer to a new shared vector with all arithmetic shares of
-     * `this` vector negated.
+     * Elementwise secure arithmetic negation. Returns a unique ptr.
      */
     unary_op(-, ASharedVector, neg_a, this);
 
@@ -174,6 +179,14 @@ class ASharedVector : public SharedVector<Share, EVector> {
     compound_assignment_element_op(-=, sub_a, ASharedVector, Share);
     compound_assignment_element_op(*=, multiply_a, ASharedVector, Share);
 
+    /**
+     * @brief Division by public constant. Call the underlying protocol's `div_const_a`
+     * functionality, then perform error correction (if configured to do so using the compiler
+     * directive USE_DIVISION_CORRECTION).
+     *
+     * @param c
+     * @return std::unique_ptr<ASharedVector>
+     */
     std::unique_ptr<ASharedVector> operator/(const Share& c) const {
         // compute division and error correction shares
         std::pair<ASharedVector, ASharedVector> out =
@@ -186,16 +199,18 @@ class ASharedVector : public SharedVector<Share, EVector> {
         // Convert a2b, check < 0, and convert back
         auto correction = (!(out_err.a2b()->ltz()))->b2a_bit();
 
+        // These are AShares, so this addition is local.
         return out_res + correction;
 #else
+        // If correct is disabled, ignore the error term.
         return std::make_unique<ASharedVector>(out.first);
 #endif
     }
 
     /**
-     * @brief Auto-conversion A/A division. Since private division may often
-     * occur as a result of aggregation (i.e., averages), this auto-conversion
-     * operator is provided. Note that this incurs to cost of two a2b calls.
+     * @brief Auto-conversion private elementwise division. Since our current integer division
+     * algorithm only supports BSharedVector inputs, convert `this` and `other` to binary before
+     * calling `BSharedVector::operator/`. Do not convert the result back.
      *
      * @param other
      * @return std::unique_ptr<BSharedVector>
@@ -214,8 +229,8 @@ class ASharedVector : public SharedVector<Share, EVector> {
      * to do batching different in the runtime. Currently, whole vector dot product will be executed
      * single-threaded because each threads takes multiple.
      *
-     * @param other - The second operand of the dot product.
-     * @param aggSize - The size of each dot product.
+     * @param other The second operand of the dot product.
+     * @param aggSize The size of each dot product.
      * @return A unique pointer to a new ASharedVector that contains the result of the dot product.
      */
     std::unique_ptr<ASharedVector> dot_product(const ASharedVector& other,
@@ -235,6 +250,4 @@ class ASharedVector : public SharedVector<Share, EVector> {
     }
 };
 
-}  // namespace secrecy
-
-#endif  // SECRECY_A_SHARED_VECTOR_H
+}  // namespace orq

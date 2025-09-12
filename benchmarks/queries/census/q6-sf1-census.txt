@@ -1,7 +1,0 @@
-Q6 SF 1
-SQLite setup skipped
-[=SW]            Start
-[ SW] Add temp columns 0.01764  sec
-[ SW]          Filters 0.3495   sec
-[ SW]              Sum 0.0742   sec
-[=SW]          Overall 0.4439   sec

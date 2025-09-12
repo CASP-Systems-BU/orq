@@ -1,24 +1,28 @@
-#ifndef SECRECY_NULL_COMMUNICATOR_H
-#define SECRECY_NULL_COMMUNICATOR_H
+#pragma once
 
-#include "../../debug/debug.h"
 #include "communicator.h"
 #include "communicator_factory.h"
+#include "debug/orq_debug.h"
 
-namespace secrecy {
+namespace orq {
 class NullCommunicator : public Communicator {
     int numParties;
 
    public:
     /**
-     * @brief Null Communicator that does nothing - for the Plaintext 1PC
+     * @brief Null Communicator that does nothing for the Plaintext 1PC
      * test protocol.
-     * @param _currentId
      */
     NullCommunicator() : Communicator(0), numParties(1) {}
 
     ~NullCommunicator() {}
 
+    /**
+     * @brief Confirm that `v` does not have a mapping before sending it.
+     *
+     * @tparam T
+     * @param v
+     */
     template <typename T>
     void checkMapping(const Vector<T> &v) {
         assert(!v.has_mapping());
@@ -66,6 +70,15 @@ class NullCommunicator : public Communicator {
         checkMapping(_shares);
     }
 
+    /**
+     * @brief Copy `sent_shares` into `received_shares`
+     *
+     * @param sent_shares
+     * @param received_shares
+     * @param to_id
+     * @param from_id
+     * @param _size
+     */
     void exchangeShares(Vector<int8_t> sent_shares, Vector<int8_t> &received_shares, PartyID to_id,
                         PartyID from_id, size_t _size) {
         checkMapping(sent_shares);
@@ -166,12 +179,27 @@ class NullCommunicator : public Communicator {
         }
     }
 
+    /**
+     * @brief Do nothing.
+     *
+     * @param shares
+     * @param partyID
+     */
     void receiveBroadcast(std::vector<Vector<int8_t>> &shares, std::vector<PartyID> partyID) {}
     void receiveBroadcast(std::vector<Vector<int16_t>> &shares, std::vector<PartyID> partyID) {}
     void receiveBroadcast(std::vector<Vector<int32_t>> &shares, std::vector<PartyID> partyID) {}
     void receiveBroadcast(std::vector<Vector<int64_t>> &shares, std::vector<PartyID> partyID) {}
     void receiveBroadcast(std::vector<Vector<__int128_t>> &shares, std::vector<PartyID> partyID) {}
 
+    /**
+     * @brief Copy each element of `shares` into `received_shares`. Lengths must
+     * match.
+     *
+     * @param shares
+     * @param received_shares
+     * @param to_id
+     * @param from_id
+     */
     void exchangeShares(const std::vector<Vector<int8_t>> &shares,
                         std::vector<Vector<int8_t>> &received_shares, std::vector<PartyID> to_id,
                         std::vector<PartyID> from_id) {
@@ -237,6 +265,4 @@ class NullCommunicatorFactory : public CommunicatorFactory<NullCommunicatorFacto
     void blockingReady() {}
 };
 
-}  // namespace secrecy
-
-#endif  // SECRECY_NULL_COMMUNICATOR_H
+}  // namespace orq

@@ -1,33 +1,44 @@
 #pragma once
 
-#include "../../../service/socket/startmpc/startmpc.h"
-#include "../communicator.h"
-#include "../communicator_factory.h"
+#include "backend/nocopy_communicator/startmpc/startmpc.h"
+#include "core/communication/communicator.h"
+#include "core/communication/communicator_factory.h"
 #include "no_copy_communicator.h"
 
-namespace secrecy {
+// TODO: refactor this so that the communicator does not know
+// about the runtime
+
+namespace orq {
 
 namespace service {
     bool RunTimeRunning();
 }
 
 namespace {
-
-// TODO: refactor this so that the communicator does not know
-//  about the runtime
 #if defined(MPC_USE_NO_COPY_COMMUNICATOR)
+    /**
+     * @brief Function executed by each `nocopy` send thread. Continuously get
+     * entries off the ring buffer and send them out.
+     *
+     * @param rank party ID of this node.
+     * @param communicator_index_list a list mapping worker threads to
+     * communication threads
+     * @param host_count number of nodes in the computation
+     * @param b `shared_ptr` to a synchronization barrier, used internally for
+     * synchronizing all communication threads with the main thread.
+     */
     void send_communication_thread(int rank, std::vector<int> communicator_index_list,
                                    int host_count, std::shared_ptr<std::barrier<>> b) {
         // Wait for all threads to start before continuing
         b->arrive_and_wait();
 
         // Fetch pointers to the communicators
-        std::vector<secrecy::NoCopyCommunicator*> communicator_list;
+        std::vector<orq::NoCopyCommunicator*> communicator_list;
         for (int i = 0; i < communicator_index_list.size(); i++) {
             while (service::runTime->workers.size() <= communicator_index_list[i]) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(SOCKET_COMMUNICATOR_WAIT_MS));
             }
-            communicator_list.push_back(static_cast<secrecy::NoCopyCommunicator*>(
+            communicator_list.push_back(static_cast<orq::NoCopyCommunicator*>(
                 service::runTime->workers[communicator_index_list[i]].getCommunicator()));
         }
 
@@ -53,6 +64,14 @@ namespace {
         }
     }
 
+    /**
+     * @brief Create the mapping of send threads to workers, and start
+     * communication threads
+     *
+     * @param rank party ID of this node
+     * @param threads_num number of total threads
+     * @param host_count number of nodes in the computation
+     */
     void setup_send_threads(int rank, int threads_num, int host_count) {
         int num_communication_threads;
         if (NOCOPY_COMMUNICATOR_THREADS <= 0) {
@@ -82,7 +101,7 @@ namespace {
             communicator_index_list[i % num_communication_threads].push_back(i);
         }
 
-        // Send thread for each Secrecy thread
+        // Send thread for each ORQ thread
         for (int i = 0; i < num_communication_threads; i++) {
             service::runTime->emplace_socket_thread(send_communication_thread, rank,
                                                     communicator_index_list[i], host_count, b);
@@ -99,11 +118,15 @@ namespace {
 #endif
 }  // namespace
 
+/**
+ * @brief Factor for the `nocopy` communicator to interface with the
+ * `CommunicatorFactory` API.
+ *
+ */
 class NoCopyCommunicatorFactory : public CommunicatorFactory<NoCopyCommunicatorFactory> {
    public:
     NoCopyCommunicatorFactory(int argc, char** argv, int numParties, int threadsNum)
-        : threadsNum_(threadsNum),
-          numParties_(numParties) {
+        : threadsNum_(threadsNum), numParties_(numParties) {
         socketMaps_.resize(threadsNum_);
 
         for (auto& m : socketMaps_) {
@@ -149,7 +172,7 @@ class NoCopyCommunicatorFactory : public CommunicatorFactory<NoCopyCommunicatorF
     const int numParties_;
 
     /**
-     * @brief Vector of socket maps for each Secrecy thread. Each element of the
+     * @brief Vector of socket maps for each ORQ thread. Each element of the
      * outer vector is assigned to a thread. The inner vector maps from party ID
      * to socket file descriptor:
      *
@@ -161,4 +184,4 @@ class NoCopyCommunicatorFactory : public CommunicatorFactory<NoCopyCommunicatorF
     std::vector<std::vector<int>> socketMaps_;
 };
 
-}  // namespace secrecy
+}  // namespace orq

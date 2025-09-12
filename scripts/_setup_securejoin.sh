@@ -13,7 +13,7 @@ if ! cd secure-join; then
     cd secure-join
     # Latest commit from master branch
     # This file needs to change with every new commit to trigger a new build on GitHub CI
-    git checkout a931c428442456bfee415558e13c9c33484acef9
+    git checkout 98fda2e6780738926bc53c90e801c449e3ba89e8
 fi
 
 if [[ $(uname -m) == x86_64 ]]; then
