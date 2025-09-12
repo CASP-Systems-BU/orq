@@ -1,11 +1,11 @@
-#include "../include/secrecy.h"
-
 #include <iostream>
 #include <set>
 
-using namespace secrecy::debug;
-using namespace secrecy::service;
-using namespace secrecy::random;
+#include "orq.h"
+
+using namespace orq::debug;
+using namespace orq::service;
+using namespace orq::random;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
 const int num_parties = PROTOCOL_NUM;
@@ -38,7 +38,7 @@ void test_local_prg_randomness() {
     // convert vector to a set (which removes duplicates) and check same size
     std::set<T> s(r.begin(), r.end());
     assert(s.size() >= test_size * 0.99);
-    
+
     return;
 }
 
@@ -67,22 +67,24 @@ void test_xchacha20_randomness() {
     // convert vector to a set (which removes duplicates) and check same size
     std::set<T> s(r.begin(), r.end());
     assert(s.size() >= test_size * 0.99);
-    
+
     return;
 }
 
 // **************************************** //
 //           Test Group Generation          //
 // **************************************** //
-// helper function to check if the group generation for a given parameter set matches our expectation
-void helper_check_group_generation_correct(int num_parties, int group_size, std::vector<std::set<int>> correct) {
+// helper function to check if the group generation for a given parameter set matches our
+// expectation
+void helper_check_group_generation_correct(int num_parties, int group_size,
+                                           std::vector<std::set<int>> correct) {
     std::set<int> parties;
     for (int i = 0; i < num_parties; i++) {
         parties.insert(i);
     }
     std::set<int> partial_combination;
     std::vector<std::set<int>> groups;
-    secrecy::ProtocolBase::generateAllCombinations(parties, partial_combination, group_size, groups);
+    orq::ProtocolBase::generateAllCombinations(parties, partial_combination, group_size, groups);
 
     for (int i = 0; i < correct.size(); i++) {
         assert(groups[i] == correct[i]);
@@ -118,7 +120,7 @@ void test_group_generation() {
 template <typename T>
 void test_3pc_common_prg_correctness() {
     auto rank = runTime->getPartyID();
-    int test_size = secrecy::random::AESPRGAlgorithm::MAX_AES_QUERY_BYTES;
+    int test_size = orq::random::AESPRGAlgorithm::MAX_AES_QUERY_BYTES;
 
     std::vector<int> relative_ranks = {-1, +1};
     std::vector<Vector<T>*> common_randomness;
@@ -135,7 +137,7 @@ void test_3pc_common_prg_correctness() {
 
         common_prg->getNext(randomness);
         common_randomness.push_back(new Vector<T>(randomness));
-        
+
         // check that the values are not zero
         bool all_zero = true;
         for (int j = 0; j < test_size; j++) {
@@ -143,7 +145,7 @@ void test_3pc_common_prg_correctness() {
                 all_zero = false;
             }
         }
-        assert(! all_zero);
+        assert(!all_zero);
     }
 
     // now check that the generated randomness is correctly shared between parties
@@ -167,7 +169,7 @@ void test_3pc_common_prg_correctness() {
 template <typename T>
 void test_4pc_common_prg_correctness() {
     auto rank = runTime->getPartyID();
-    int test_size = secrecy::random::AESPRGAlgorithm::MAX_AES_QUERY_BYTES;
+    int test_size = orq::random::AESPRGAlgorithm::MAX_AES_QUERY_BYTES;
 
     std::vector<Vector<T>*> common_randomness;
 
@@ -187,15 +189,14 @@ void test_4pc_common_prg_correctness() {
                 all_zero = false;
             }
         }
-        assert (! all_zero);
+        assert(!all_zero);
     }
 
     for (int i = 0; i < 4; i++) {
-        if (i == rank)
-            continue;
+        if (i == rank) continue;
 
         int relative_rank = (4 + i - rank) % 4;
-        Vector<T> common_vec = *common_randomness[relative_rank-1];
+        Vector<T> common_vec = *common_randomness[relative_rank - 1];
 
         Vector<T> remote1(test_size);
         Vector<T> remote2(test_size);
@@ -210,7 +211,7 @@ void test_4pc_common_prg_correctness() {
             runTime->comm0()->exchangeShares(common_vec, remote1, +1, +1, test_size);
             runTime->comm0()->exchangeShares(common_vec, remote2, +2, +2, test_size);
         }
-        
+
         // check correctness
         for (int j = 0; j < test_size; j++) {
             assert(common_vec[j] == remote1[j]);
@@ -227,11 +228,10 @@ void test_4pc_common_prg_correctness() {
 template <typename T>
 void test_common_prg_correctness_groups() {
     auto rank = runTime->getPartyID();
-    int test_size = secrecy::random::AESPRGAlgorithm::MAX_AES_QUERY_BYTES;
+    int test_size = orq::random::AESPRGAlgorithm::MAX_AES_QUERY_BYTES;
 
     for (std::set<int> group : runTime->getGroups()) {
-        if (!group.contains(rank))
-            continue;
+        if (!group.contains(rank)) continue;
 
         Vector<T> randomness(test_size);
         auto common_prg = runTime->rand0()->commonPRGManager->get(group);
@@ -241,11 +241,11 @@ void test_common_prg_correctness_groups() {
         if (rank == lowestRank) {
             // lowest rank receives every other party's vector
             for (int otherRank : group) {
-                if (rank == otherRank)
-                    continue;
+                if (rank == otherRank) continue;
                 int relative_rank = otherRank - rank;
                 Vector<T> remote(test_size);
-                runTime->comm0()->exchangeShares(randomness, remote, relative_rank, relative_rank, test_size);
+                runTime->comm0()->exchangeShares(randomness, remote, relative_rank, relative_rank,
+                                                 test_size);
 
                 // check correctness
                 bool all_zero = true;
@@ -255,14 +255,15 @@ void test_common_prg_correctness_groups() {
                         all_zero = false;
                     }
                 }
-                assert(! all_zero);
+                assert(!all_zero);
             }
         } else {
             // just exchange with lowest rank, check equality
             int relative_rank = lowestRank - rank;
             Vector<T> remote(test_size);
-            runTime->comm0()->exchangeShares(randomness, remote, relative_rank, relative_rank, test_size);
-            
+            runTime->comm0()->exchangeShares(randomness, remote, relative_rank, relative_rank,
+                                             test_size);
+
             // check correctness
             bool all_zero = true;
             for (int j = 0; j < test_size; j++) {
@@ -271,7 +272,7 @@ void test_common_prg_correctness_groups() {
                     all_zero = false;
                 }
             }
-            assert(! all_zero);
+            assert(!all_zero);
         }
     }
 }
@@ -281,7 +282,7 @@ void test_common_prg_correctness_groups() {
 // **************************************** //
 template <typename T>
 void test_zero_sharing_generator_correctness() {
-    int test_size = secrecy::random::AESPRGAlgorithm::MAX_AES_QUERY_BYTES;
+    int test_size = orq::random::AESPRGAlgorithm::MAX_AES_QUERY_BYTES;
 
     // generate the values
     auto zeroSharingGenerator = runTime->rand0()->zeroSharingGenerator;
@@ -301,7 +302,7 @@ void test_zero_sharing_generator_correctness() {
                 all_zero_b = false;
             }
         }
-        assert(! all_zero_a && ! all_zero_b);
+        assert(!all_zero_a && !all_zero_b);
     }
 
     // get all shares
@@ -312,12 +313,14 @@ void test_zero_sharing_generator_correctness() {
         Vector<T> other_shares_b(test_size);
         int send_party = i;
         int recv_party = num_parties - i;
-        runTime->comm0()->exchangeShares(my_shares_arithmetic, other_shares_a, send_party, recv_party, test_size);
-        runTime->comm0()->exchangeShares(my_shares_binary, other_shares_b, send_party, recv_party, test_size);
+        runTime->comm0()->exchangeShares(my_shares_arithmetic, other_shares_a, send_party,
+                                         recv_party, test_size);
+        runTime->comm0()->exchangeShares(my_shares_binary, other_shares_b, send_party, recv_party,
+                                         test_size);
         other_shares_arithmetic.push_back(other_shares_a);
         other_shares_binary.push_back(other_shares_b);
     }
-    
+
     // check that the values sum/xor to zero
     for (int i = 0; i < test_size; i++) {
         int sum_shares = my_shares_arithmetic[i];
@@ -338,13 +341,12 @@ void test_zero_sharing_generator_correctness() {
 template <typename T>
 void test_zero_sharing_generator_groups() {
     auto rank = runTime->getPartyID();
-    int test_size = secrecy::random::AESPRGAlgorithm::MAX_AES_QUERY_BYTES;
+    int test_size = orq::random::AESPRGAlgorithm::MAX_AES_QUERY_BYTES;
 
     auto zeroSharingGenerator = runTime->rand0()->zeroSharingGenerator;
-    
+
     for (std::set<int> group : runTime->getGroups()) {
-        if (!group.contains(rank))
-            continue;
+        if (!group.contains(rank)) continue;
 
         std::vector<Vector<T>> randomness_arithmetic;
         std::vector<Vector<T>> randomness_binary;
@@ -355,7 +357,7 @@ void test_zero_sharing_generator_groups() {
 
         zeroSharingGenerator->groupGetNextArithmetic(randomness_arithmetic, group);
         zeroSharingGenerator->groupGetNextBinary(randomness_binary, group);
-        
+
         // check that the values are not zero
         bool all_zero_a = true, all_zero_b = true;
         if (num_parties > 1) {
@@ -369,7 +371,7 @@ void test_zero_sharing_generator_groups() {
                     }
                 }
             }
-            assert(! all_zero_a && ! all_zero_b);
+            assert(!all_zero_a && !all_zero_b);
         }
 
         // check that the values sum/xor to zero
@@ -387,8 +389,7 @@ void test_zero_sharing_generator_groups() {
 }
 
 int main(int argc, char** argv) {
-    // Initialize Secrecy runtime
-    secrecy_init(argc, argv);
+    orq_init(argc, argv);
     auto pID = runTime->getPartyID();
 
     // test local randomness
@@ -398,7 +399,7 @@ int main(int argc, char** argv) {
     // signed
     test_local_prg_randomness<int32_t>();
     test_local_prg_randomness<int64_t>();
-    if (pID==0) std::cout << "Local Randomness...OK" << std::endl;
+    if (pID == 0) std::cout << "Local Randomness...OK" << std::endl;
 
     // test XChaCha20
     // unsigned
@@ -407,11 +408,11 @@ int main(int argc, char** argv) {
     // signed
     test_xchacha20_randomness<int32_t>();
     test_xchacha20_randomness<int64_t>();
-    if (pID==0) std::cout << "XChaCha20 randomness...OK" << std::endl;
+    if (pID == 0) std::cout << "XChaCha20 randomness...OK" << std::endl;
 
     // test automatic group generation
     test_group_generation();
-    if (pID==0) std::cout << "Automatic Group Generation...OK" << std::endl;
+    if (pID == 0) std::cout << "Automatic Group Generation...OK" << std::endl;
 
     // test common randomness
     if (num_parties == 3) {
@@ -421,26 +422,24 @@ int main(int argc, char** argv) {
         test_4pc_common_prg_correctness<int32_t>();
         test_4pc_common_prg_correctness<int64_t>();
     }
-    if (pID==0) std::cout << "Common Randomness...OK" << std::endl;
+    if (pID == 0) std::cout << "Common Randomness...OK" << std::endl;
 
     // test common group randomness
     test_common_prg_correctness_groups<int32_t>();
     test_common_prg_correctness_groups<int64_t>();
-    if (pID==0) std::cout << "Common Group Randomness...OK" << std::endl;
+    if (pID == 0) std::cout << "Common Group Randomness...OK" << std::endl;
 
     // test random zero sharing
     test_zero_sharing_generator_correctness<int32_t>();
     test_zero_sharing_generator_correctness<int64_t>();
-    if (pID==0) std::cout << "Zero Sharings...OK" << std::endl;
+    if (pID == 0) std::cout << "Zero Sharings...OK" << std::endl;
 
     // test group random zero sharing
     test_zero_sharing_generator_groups<int32_t>();
     test_zero_sharing_generator_groups<int64_t>();
-    if (pID==0) std::cout << "Group Zero Sharings...OK" << std::endl;
+    if (pID == 0) std::cout << "Group Zero Sharings...OK" << std::endl;
 
     // Tear down communication
-#if defined(MPC_USE_MPI_COMMUNICATOR)
-    MPI_Finalize();
-#endif
+
     return 0;
 }

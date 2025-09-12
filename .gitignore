@@ -1,6 +1,15 @@
 .env
 *.png
 
+#docs
+doc/_build
+doc/Doxyfile.bak
+doc/make.bat
+doc/sphinx
+doc/xml
+doc/latex
+doc/Makefile
+
 # local files
 notes
 
@@ -14,6 +23,7 @@ notes
 cmake-*
 build-dir
 build
+html
 
 # Excluding external libraries
 !src/external-lib

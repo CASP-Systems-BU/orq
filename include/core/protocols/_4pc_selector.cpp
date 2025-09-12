@@ -1,6 +1,6 @@
 // Print a warning based on 4PC protocol
 
-#include "../../debug/debug.h"
+#include "../../debug/orq_debug.h"
 
 #ifdef MPC_PROTOCOL_FANTASTIC_FOUR
 #ifdef USE_DALSKOV_FANTASTIC_FOUR

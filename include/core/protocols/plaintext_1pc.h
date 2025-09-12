@@ -1,20 +1,20 @@
-#ifndef SECRECY_PLAINTEXT_1PC_H
-#define SECRECY_PLAINTEXT_1PC_H
+#pragma once
 
-#include "../../debug/debug.h"
-using namespace secrecy::debug;
+#include "debug/orq_debug.h"
+using namespace orq::debug;
 
 #include <algorithm>
 
-namespace secrecy {
+namespace orq {
 /**
- * An INSECURE protocol for testing, benchmarking, and cost models.
- * DO NOT use this protocol for secure computation
+ * @brief An INSECURE protocol for testing and benchmarking.
  *
- * @tparam Data - Plaintext data type.
- * @tparam Share - Replicated share type.
- * @tparam Vector - Data container type.
- * @tparam EVector - Share container type.
+ * DO NOT use this protocol for secure computation.
+ *
+ * @tparam Data Plaintext data type.
+ * @tparam Share Replicated share type.
+ * @tparam Vector Data container type.
+ * @tparam EVector Share container type.
  */
 template <typename Data, typename Share, typename Vector, typename EVector>
 class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
@@ -31,7 +31,11 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
     std::map<std::string, std::optional<uint64_t>> mark_round_counter;
 
     /**
-     * @param _randomnessManager - A pointer to the randomness manager.
+     * @brief Constructor for Plaintext_1PC protocol.
+     *
+     * @param _partyID Party identifier.
+     * @param _communicator Pointer to communicator (should be null).
+     * @param _randomnessManager Pointer to randomness manager.
      */
     Plaintext_1PC(PartyID _partyID, Communicator *_communicator,
                   random::RandomnessManager *_randomnessManager)
@@ -39,6 +43,9 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
           Protocol<Data, Share, Vector, EVector>(_communicator, _randomnessManager, _partyID, 1,
                                                  1) {}
 
+    /**
+     * @brief Print protocol statistics including operation and round counts.
+     */
     void print_statistics() {
 #ifdef PRINT_PROTOCOL_STATISTICS
 
@@ -99,6 +106,9 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
 #endif
     }
 
+    /**
+     * @brief Mark current statistics for relative measurements.
+     */
     void mark_statistics() {
         for (auto [k, v] : op_counter) {
             mark_op_counter[k] = v;
@@ -109,27 +119,74 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
         }
     }
 
+    /**
+     * @brief Plaintext arithmetic addition.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param z Output vector.
+     */
     void add_a(const EVector &x, const EVector &y, EVector &z) {
         z = x + y;
         op_counter[__func__] += x.size();
     }
 
+    /**
+     * @brief Plaintext arithmetic subtraction.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param z Output vector.
+     */
     void sub_a(const EVector &x, const EVector &y, EVector &z) {
         z = x - y;
         op_counter[__func__] += x.size();
     }
 
+    /**
+     * @brief Plaintext arithmetic multiplication.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param z Output vector.
+     */
     void multiply_a(const EVector &x, const EVector &y, EVector &z) {
         z = x * y;
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
+
+        // make sure the precisions line up
+        if (x.getPrecision() != y.getPrecision()) {
+            throw std::runtime_error("Precision mismatch between multiplication inputs");
+        }
+
+        // perform truncation
+        if (x.getPrecision() > 0) {
+            z.matchPrecision(x);
+            this->truncate(z);
+        }
     }
 
+    void truncate(EVector &x) { x(0) /= (1 << x.getPrecision()); }
+
+    /**
+     * @brief Plaintext arithmetic negation.
+     *
+     * @param x Input vector.
+     * @param y Output vector.
+     */
     void neg_a(const EVector &x, EVector &y) {
         op_counter[__func__] += x.size();
         y = -x;
     }
-    
+
+    /**
+     * @brief Plaintext division by constant with error correction.
+     *
+     * @param x Input vector.
+     * @param c Constant divisor.
+     * @return Pair of vectors (quotient and error correction).
+     */
     std::pair<EVector, EVector> div_const_a(const EVector &x, const Data &c) {
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
@@ -139,46 +196,103 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
         return {x / c, err};
     }
 
+    /**
+     * @brief Get the number of vectors returned by div_const_a.
+     *
+     * @return Number of result vectors (always 2).
+     */
     int div_const_a_count() { return 2; }
 
+    /**
+     * @brief Plaintext dot product.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param z Output vector.
+     * @param aggSize Aggregation size.
+     */
     void dot_product_a(const EVector &x, const EVector &y, EVector &z, const int &aggSize) {
         z = x.dot_product(y, aggSize);
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
     }
 
+    /**
+     * @brief Plaintext bitwise XOR.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param z Output vector.
+     */
     void xor_b(const EVector &x, const EVector &y, EVector &z) {
         op_counter[__func__] += x.size();
         z = x ^ y;
     }
 
+    /**
+     * @brief Plaintext bitwise AND.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param z Output vector.
+     */
     void and_b(const EVector &x, const EVector &y, EVector &z) {
         z = x & y;
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
     }
 
+    /**
+     * @brief Plaintext boolean complement.
+     *
+     * @param x Input vector.
+     * @param y Output vector.
+     */
     void not_b(const EVector &x, EVector &y) {
         op_counter[__func__] += x.size();
         y = ~x;
     }
 
+    /**
+     * @brief Plaintext boolean NOT.
+     *
+     * @param x Input vector.
+     * @param y Output vector.
+     */
     void not_b_1(const EVector &x, EVector &y) {
         op_counter[__func__] += x.size();
         y = !x;
     }
 
+    /**
+     * @brief Plaintext less-than-zero comparison.
+     *
+     * @param x Input vector.
+     * @param y Output vector.
+     */
     void ltz(const EVector &x, EVector &y) {
         op_counter[__func__] += x.size();
         y = x.ltz();
     }
 
+    /**
+     * @brief Plaintext boolean-to-arithmetic conversion.
+     *
+     * @param x Input vector.
+     * @param y Output vector.
+     */
     void b2a_bit(const EVector &x, EVector &y) {
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
         y = x & 1;
     }
 
+    /**
+     * @brief Plaintext share redistribution.
+     *
+     * @param x Input vector.
+     * @return Pair of vectors (original and zero).
+     */
     std::pair<EVector, EVector> redistribute_shares_b(const EVector &x) {
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
@@ -186,14 +300,44 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
         return {x, z};
     }
 
+    /**
+     * @brief Plaintext reconstruction from arithmetic shares.
+     *
+     * @param shares Input shares.
+     * @return First element of first share.
+     */
     Data reconstruct_from_a(const std::vector<Share> &shares) { return shares[0][0]; }
 
+    /**
+     * @brief Plaintext vectorized reconstruction from arithmetic shares.
+     *
+     * @param shares Input shared vectors.
+     * @return First share's first element.
+     */
     Vector reconstruct_from_a(const std::vector<EVector> &shares) { return shares[0](0); }
 
+    /**
+     * @brief Plaintext reconstruction from boolean shares.
+     *
+     * @param shares Input shares.
+     * @return First element of first share.
+     */
     Data reconstruct_from_b(const std::vector<Share> &shares) { return shares[0][0]; }
 
+    /**
+     * @brief Plaintext vectorized reconstruction from boolean shares.
+     *
+     * @param shares Input shared vectors.
+     * @return First share's first element.
+     */
     Vector reconstruct_from_b(const std::vector<EVector> &shares) { return shares[0](0); }
 
+    /**
+     * @brief Plaintext opening of arithmetic shares.
+     *
+     * @param shares Input shared vector.
+     * @return First share's vector.
+     */
     Vector open_shares_a(const EVector &shares) {
         assert(!shares.has_mapping());
         op_counter[__func__] += shares.size();
@@ -201,6 +345,12 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
         return shares(0);
     }
 
+    /**
+     * @brief Plaintext opening of boolean shares.
+     *
+     * @param shares Input shared vector.
+     * @return First share's vector.
+     */
     Vector open_shares_b(const EVector &shares) {
         assert(!shares.has_mapping());
         op_counter[__func__] += shares.size();
@@ -208,47 +358,97 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
         return shares(0);
     }
 
+    /**
+     * @brief Generate plaintext arithmetic share for single value.
+     *
+     * @param data Input data value.
+     * @return Vector containing the data.
+     */
     std::vector<Share> get_share_a(const Data &data) { return {{data}}; }
 
+    /**
+     * @brief Generate plaintext arithmetic shares for vector.
+     *
+     * @param data Input data vector.
+     * @return Vector of shared vectors.
+     */
     std::vector<EVector> get_shares_a(const Vector &data) { return {std::vector<Vector>({data})}; }
 
+    /**
+     * @brief Generate plaintext boolean share for single value.
+     *
+     * @param data Input data value.
+     * @return Vector containing the data.
+     */
     std::vector<Share> get_share_b(const Data &data) { return {{data}}; }
 
+    /**
+     * @brief Generate plaintext boolean shares for vector.
+     *
+     * @param data Input data vector.
+     * @return Vector of shared vectors.
+     */
     std::vector<EVector> get_shares_b(const Vector &data) { return {std::vector<Vector>({data})}; }
 
-    void replicate_shares() {
-        // TODO (john): implement this function
-        std::cerr << "Method 'replicate_shares()' is not supported by plaintext 1pc." << std::endl;
-        exit(-1);
-    }
-
+    /**
+     * @brief Plaintext boolean secret sharing.
+     *
+     * @param data Input data vector.
+     * @param data_party Party owning the data.
+     * @return Shared vector.
+     */
     EVector secret_share_b(const Vector &data, const PartyID &data_party = 0) {
         op_counter[__func__] += data.size();
         round_counter[__func__] += 1;
         return get_shares_b(data)[0];
     }
 
+    /**
+     * @brief Plaintext arithmetic secret sharing.
+     *
+     * @param data Input data vector.
+     * @param data_party Party owning the data.
+     * @return Shared vector.
+     */
     EVector secret_share_a(const Vector &data, const PartyID &data_party = 0) {
         op_counter[__func__] += data.size();
         round_counter[__func__] += 1;
         return get_shares_a(data)[0];
     }
 
+    /**
+     * @brief Create plaintext public share.
+     *
+     * @param data Input data vector.
+     * @return Shared vector.
+     */
     EVector public_share(const Vector &data) {
         // doesn't matter if a or b here.
         return get_shares_a(data)[0];
     }
 
+    /**
+     * @brief Plaintext resharing (counts operations and rounds).
+     *
+     * @param v Input/output vector.
+     * @param group Party group.
+     * @param binary Whether shares are binary.
+     */
     void reshare(EVector &v, const std::set<int> group, bool binary) {
         op_counter[__func__] += v.size();
         round_counter[__func__] += 1;
     }
 };
 
+/**
+ * @brief Factory type alias for Plaintext_1PC protocol.
+ *
+ * @tparam Share Share type template.
+ * @tparam Vector Vector type template.
+ * @tparam EVector Encoding vector type template.
+ */
 template <template <typename> class Share, template <typename> class Vector,
           template <typename> class EVector>
 using Plaintext_1PC_Factory = DefaultProtocolFactory<Plaintext_1PC, Share, Vector, EVector>;
 
-}  // namespace secrecy
-
-#endif  // SECRECY_PLAINTEXT_1PC_H
+}  // namespace orq

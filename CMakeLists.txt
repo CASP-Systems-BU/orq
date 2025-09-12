@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(Secrecy VERSION 2.0.0 LANGUAGES CXX)
+project(Orq VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,7 +21,6 @@ endif (PROFILE)
 if (PERF)
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
 endif (PERF)
-
 
 if (NOT NO_X86_SSE)
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mbmi -march=native")
@@ -126,9 +125,9 @@ else()
     add_custom_target(print_4pc_info)
 endif (PROTOCOL EQUAL "4")
 
-# Option: switch between optimized 4PC and original Dalskov et al. protocol
+# Option: switch between custom 4PC and original Dalskov et al. protocol
 option(USE_DALSKOV_FANTASTIC_FOUR
-       "Build with the original Dalskov et al. 4-party protocol (undef = optimized)"
+       "Build with the original Dalskov et al. 4-party protocol (undef = custom)"
        OFF)
 
 if(USE_DALSKOV_FANTASTIC_FOUR)
@@ -151,7 +150,10 @@ function(configure_target _target)
         target_link_libraries(${fileName} ${LINK_LIBRARIES})
     endif()
 
-    target_include_directories(${fileName} PUBLIC ${SODIUM_INCLUDE_DIR})
+    target_include_directories(${fileName}
+        PUBLIC
+            ${SODIUM_INCLUDE_DIR}
+            ${CMAKE_SOURCE_DIR}/include)
 endfunction()
 
 function(aggregate_target agg_name sources)
@@ -166,17 +168,18 @@ endfunction()
 ######################################################
 ##################### EXECUTABLES ####################
 ######################################################
-file(GLOB EXE_EXAMPLES src/examples/*.cpp)
-file(GLOB EXE_MICRO src/micro/*.cpp)
-file(GLOB EXE_QUERIES src/queries/*.cpp)
+file(GLOB EXE_EXAMPLES examples/*.cpp)
+file(GLOB EXE_BENCH bench/*.cpp)
+file(GLOB EXE_MICRO bench/micro/*.cpp)
+file(GLOB EXE_TVA bench/queries/tva/*.cpp)
 file(GLOB EXE_TESTS tests/*.cpp)
 
-file(GLOB TPCH_QUERIES src/queries/tpch/q*.cpp)
-file(GLOB SECRETFLOW_QUERIES src/queries/secretflow/*.cpp)
-file(GLOB OTHER_QUERIES src/queries/2024-paper/*.cpp)
+file(GLOB TPCH_QUERIES bench/queries/tpch/q*.cpp)
+file(GLOB SECRETFLOW_QUERIES bench/queries/secretflow/*.cpp)
+file(GLOB OTHER_QUERIES bench/queries/other/*.cpp)
 
 foreach (_target
-            ${EXE_EXAMPLES} ${EXE_MICRO} ${EXE_QUERIES} ${EXE_TESTS})
+            ${EXE_EXAMPLES} ${EXE_MICRO} ${EXE_TVA} ${EXE_TESTS} ${EXE_BENCH})
     configure_target(${_target})
 endforeach ()
 

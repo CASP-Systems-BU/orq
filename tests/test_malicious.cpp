@@ -1,6 +1,6 @@
-#include "../include/secrecy.h"
+#include "orq.h"
 
-using namespace secrecy::service;
+using namespace orq::service;
 
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
@@ -8,7 +8,7 @@ using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
  * @brief Parties broadcast their checks, and then take AND of all received.
  * This ensure tests pass regardless of which party actually detected the
  * cheating.
- * 
+ *
  */
 bool joint_malicious_check() {
     bool my_check = runTime->malicious_check(false);
@@ -21,12 +21,12 @@ bool joint_malicious_check() {
         runTime->comm0()->receiveShare(r, p);
         my_check &= r;
     }
-   
+
     return my_check;
 }
 
-int main(int argc, char ** argv) {
-    secrecy_init(argc, argv);
+int main(int argc, char** argv) {
+    orq_init(argc, argv);
 
 #ifdef MALICIOUS_PROTOCOL
     auto pid = runTime->getPartyID();
@@ -45,7 +45,7 @@ int main(int argc, char ** argv) {
 
     // Call to `open()` will detect cheating
     a1.open();
-    assert(! joint_malicious_check());
+    assert(!joint_malicious_check());
 
     // Hashes should reset after a failed (non-abort) check. Should pass because
     // only local operations.
@@ -54,7 +54,7 @@ int main(int argc, char ** argv) {
 
     // But open will catch it.
     c->open();
-    assert(! joint_malicious_check());
+    assert(!joint_malicious_check());
 
     // Check passes if we don't use manipulated data
     auto d = a2 * a2;
@@ -62,7 +62,7 @@ int main(int argc, char ** argv) {
 
     // But fails if we do
     auto e = a1 * a2;
-    assert(! joint_malicious_check());
+    assert(!joint_malicious_check());
 
     // Check boolean
 
@@ -78,12 +78,10 @@ int main(int argc, char ** argv) {
     assert(joint_malicious_check());
 
     auto g = b1 & b2;
-    assert(! joint_malicious_check());
+    assert(!joint_malicious_check());
 
     single_cout("Malicious checks... OK");
 #else
     single_cout("Malicious checks... skipped");
 #endif
-
-    MPI_Finalize();
 }

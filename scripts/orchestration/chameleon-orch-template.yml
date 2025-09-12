@@ -29,7 +29,7 @@ parameters:
   repo_name:
     type: string
     description: git clone specification (HTTPS or SSH)
-    default: git@github.com:CASP-Systems-BU/orq.git
+    default: git@github.com:CASP-Systems-BU/secrecy-private.git
   branch_name:
     type: string
     description: default branch to checkout and merge

@@ -1,25 +1,43 @@
-#ifndef SECRECY_OPERATORS_AGGREGATION_H
-#define SECRECY_OPERATORS_AGGREGATION_H
+#pragma once
 
 #include <bit>
 #include <optional>
 #include <tuple>
 
-#include "../../../tests/util.h"
-#include "../../debug/debug.h"
-#include "../containers/a_shared_vector.h"
-#include "../containers/b_shared_vector.h"
+#include "../tests/util.h"
 #include "common.h"
+#include "core/containers/a_shared_vector.h"
+#include "core/containers/b_shared_vector.h"
+#include "debug/orq_debug.h"
 
-using namespace secrecy::operators;
-using namespace secrecy::debug;
+using namespace orq::operators;
+using namespace orq::debug;
 
-namespace secrecy::aggregators {
+namespace orq::aggregators {
+
+/**
+ * @brief Arithmetic sum aggregation.
+ *
+ * @tparam A Arithmetic shared vector type.
+ *
+ * @param group Grouping bits indicating which elements to aggregate.
+ * @param a Accumulator vector (modified in place).
+ * @param b Input vector to be aggregated.
+ */
 template <typename A>
 void sum(const A& group, A& a, const A& b) {
     a = a + group * b;
 }
 
+/**
+ * @brief Boolean OR aggregation.
+ *
+ * @tparam B Boolean shared vector type.
+ *
+ * @param group Grouping bits indicating which elements to aggregate.
+ * @param a Accumulator vector (modified in place).
+ * @param b Input vector to be aggregated.
+ */
 template <typename B>
 void bit_or(const B& group, B& a, const B& b) {
     B ext(group.size());
@@ -27,11 +45,30 @@ void bit_or(const B& group, B& a, const B& b) {
     a = a | (ext & b);
 }
 
+/**
+ * @brief Count aggregation (delegates to sum).
+ *
+ * @tparam A Arithmetic shared vector type.
+ *
+ * @param group Grouping bits indicating which elements to count.
+ * @param a Accumulator vector (modified in place).
+ * @param b Input vector (typically all ones for counting).
+ */
 template <typename A>
 void count(const A& group, A& a, const A& b) {
     sum(group, a, b);
 }
 
+/**
+ * @brief Internal helper for min/max aggregation.
+ *
+ * @tparam B Boolean shared vector type.
+ *
+ * @param group Grouping bits indicating which elements to aggregate.
+ * @param a Accumulator vector (modified in place).
+ * @param b Input vector to be aggregated.
+ * @param minimum If true, computes minimum; if false, computes maximum.
+ */
 template <typename B>
 void _min_max_agg(const B& group, B& a, const B& b, const bool& minimum = false) {
     B b_greater = b > a;
@@ -44,11 +81,29 @@ void _min_max_agg(const B& group, B& a, const B& b, const bool& minimum = false)
     a = multiplex(group, a, multiplex(b_greater, a, b));
 }
 
+/**
+ * @brief Maximum aggregation.
+ *
+ * @tparam B Boolean shared vector type.
+ *
+ * @param group Grouping bits indicating which elements to aggregate.
+ * @param a Accumulator vector (modified in place).
+ * @param b Input vector to be aggregated.
+ */
 template <typename B>
 void max(const B& group, B& a, const B& b) {
     _min_max_agg(group, a, b, false);
 }
 
+/**
+ * @brief Minimum aggregation.
+ *
+ * @tparam B Boolean shared vector type.
+ *
+ * @param group Grouping bits indicating which elements to aggregate.
+ * @param a Accumulator vector (modified in place).
+ * @param b Input vector to be aggregated.
+ */
 template <typename B>
 void min(const B& group, B& a, const B& b) {
     _min_max_agg(group, a, b, true);
@@ -59,9 +114,9 @@ void min(const B& group, B& a, const B& b) {
  * Templated to accept either arithmetic or boolean types. Copies rows from
  * left to the right.
  *
- * @param group grouping bits
- * @param a first vector, which will be updated
- * @param b second vector
+ * @param group grouping bits.
+ * @param a first vector, which will be updated.
+ * @param b second vector.
  */
 template <typename T>
 void copy(const T& group, T& a, const T& b) {
@@ -72,11 +127,11 @@ void copy(const T& group, T& a, const T& b) {
  * @brief validity aggregation. For internal use while updating valid
  * column.
  *
- * @tparam S
- * @tparam E
- * @param group
- * @param a
- * @param b
+ * @tparam B Boolean shared vector type.
+ *
+ * @param group Grouping bits.
+ * @param a Accumulator vector (modified in place).
+ * @param b Input vector.
  */
 template <typename B>
 void valid(const B& group, B& a, const B& b) {
@@ -100,11 +155,8 @@ enum class Direction { Forward, Reverse } Direction;
  * @brief Sorting-network based agregation. Assumes all vectors are the same
  * size.
  *
- * @tparam Share underlying data type of vectors
- * @tparam EVector
- * @tparam SVector data type of the shared vector (either BShared or
- * AShared)
- * @tparam T
+ * @tparam S underlying data type of vectors
+ * @tparam E Share container type.
  *
  * @param keys vector of keys to join and aggregate on
  * @param agg_spec_b boolean aggregations
@@ -153,8 +205,8 @@ void aggregate(
      */
 
     Vector<S> one(1, 1);
-    B_<S, E> shared_one_b = secrecy::service::runTime->public_share<E::replicationNumber>(one);
-    A_<S, E> shared_one_a = secrecy::service::runTime->public_share<E::replicationNumber>(one);
+    B_<S, E> shared_one_b = orq::service::runTime->public_share<E::replicationNumber>(one);
+    A_<S, E> shared_one_a = orq::service::runTime->public_share<E::replicationNumber>(one);
 
     for (auto s : agg_spec_a) {
         auto [in, out, func] = s;
@@ -351,6 +403,4 @@ void tree_prefix_sum(T v, const bool& reverse = false) {
         b = b + a;
     }
 }
-}  // namespace secrecy::aggregators
-
-#endif  // SECRECY_OPERATORS_AGGREGATION_H
+}  // namespace orq::aggregators

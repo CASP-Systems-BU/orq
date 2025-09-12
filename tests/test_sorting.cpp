@@ -2,10 +2,10 @@
 #include <iostream>
 #include <numeric>
 
-#include "../include/secrecy.h"
+#include "orq.h"
 
-using namespace secrecy::debug;
-using namespace secrecy::service;
+using namespace orq::debug;
+using namespace orq::service;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
 #define TEST_SIZE 1000
@@ -30,26 +30,24 @@ void test_bitonicMerge(int test_size) {
     std::vector<T> v3 = v1;
     v3.insert(v3.end(), v2.begin(), v2.end());
 
-    secrecy::Vector<T> v(v3);
+    orq::Vector<T> v(v3);
 
     BSharedVector<T> v_secret = secret_share_b(v, 0);
-    secrecy::operators::bitonic_merge(v_secret);
+    orq::operators::bitonic_merge(v_secret);
     auto v_opened = v_secret.open();
 
     EncodedTable<T> table = secret_share<T>({v}, {"[V]"});
-    table.sort({{"[V]", SortOrder::ASC}}, secrecy::SortingProtocol::BITONICMERGE);
+    table.sort({{"[V]", SortOrder::ASC}}, orq::SortingProtocol::BITONICMERGE);
     auto table_opened = table.open_with_schema();
     auto v_opened_table = table_opened.first[0];
 
     std::sort(v3.begin(), v3.end());
-    if(secrecy::service::runTime->getPartyID() == 0) {
+    if (orq::service::runTime->getPartyID() == 0) {
         assert(v_opened.same_as(v3));
         assert(v_opened.size() == test_size);
         assert(v_opened_table.same_as(v3));
         assert(v_opened_table.size() == test_size);
     }
-
-
 }
 
 // **************************************** //
@@ -74,11 +72,11 @@ void test_quicksort(int test_size) {
     BSharedVector<T> b2_reversed = secret_share_b(shuffled, 0);
 
     // sort b1 and apply the sorting permutation to b2
-    auto permutation = secrecy::operators::quicksort(b1);
+    auto permutation = orq::operators::quicksort(b1);
     oblivious_apply_elementwise_perm(b2, permutation);
 
     // sort b1_reversed in reverse and apply the sorting permutation to b2_reversed
-    auto reversed_permutation = secrecy::operators::quicksort(b1_reversed, SortOrder::DESC);
+    auto reversed_permutation = orq::operators::quicksort(b1_reversed, SortOrder::DESC);
     oblivious_apply_elementwise_perm(b2_reversed, reversed_permutation);
 
     auto b1_opened = b1.open();
@@ -103,7 +101,7 @@ void test_quicksort(int test_size) {
 // void test_gen_bit_perm(int test_size) {
 //     auto pID = runTime->getPartyID();
 
-//     secrecy::Vector<int> v(test_size);
+//     orq::Vector<int> v(test_size);
 //     runTime->populateLocalRandom(v);
 
 //     ASharedVector<int> s(2 * test_size);
@@ -117,7 +115,7 @@ void test_quicksort(int test_size) {
 //         // generate the single bit permutation
 //         auto permutation = gen_bit_perm<E>(*(b >> bit), s);
 
-//         secrecy::operators::oblivious_apply_elementwise_perm(b, permutation);
+//         orq::operators::oblivious_apply_elementwise_perm(b, permutation);
 
 //         // get the sorted bit (shift to avoid negatives in sign bit)
 //         b.mask(1 << bit);
@@ -152,11 +150,11 @@ void test_radix_sort(int test_size) {
     BSharedVector<T> b2_reversed = secret_share_b(shuffled, 0);
 
     // sort b1 and apply the sorting permutation to b2
-    auto permutation = secrecy::operators::radix_sort(b1);
-    secrecy::operators::oblivious_apply_elementwise_perm(b2, permutation);
+    auto permutation = orq::operators::radix_sort(b1);
+    orq::operators::oblivious_apply_elementwise_perm(b2, permutation);
 
     // sort b1_reversed in reverse and apply the sorting permutation to b2_reversed
-    auto reversed_permutation = secrecy::operators::radix_sort(b1_reversed, SortOrder::DESC);
+    auto reversed_permutation = orq::operators::radix_sort(b1_reversed, SortOrder::DESC);
     oblivious_apply_elementwise_perm(b2_reversed, reversed_permutation);
 
     auto b1_opened = b1.open();
@@ -181,7 +179,7 @@ void test_radix_sort(int test_size) {
 void test_valid_bit_sorting(int test_size) {
     auto pID = runTime->getPartyID();
 
-    secrecy::Vector<int> v(test_size);
+    orq::Vector<int> v(test_size);
     runTime->populateLocalRandom(v);
 
     v.mask(1);
@@ -191,11 +189,11 @@ void test_valid_bit_sorting(int test_size) {
     BSharedVector<int> b2 = secret_share_b(v, 0);
     BSharedVector<int> b2_non_sort = secret_share_b(v, 0);
 
-    auto perm1 = secrecy::operators::radix_sort(b1, SortOrder::ASC, 1);
-    auto perm2 = secrecy::operators::radix_sort(b2, SortOrder::DESC, 1);
+    auto perm1 = orq::operators::radix_sort(b1, SortOrder::ASC, 1);
+    auto perm2 = orq::operators::radix_sort(b2, SortOrder::DESC, 1);
 
-    secrecy::operators::oblivious_apply_elementwise_perm(b1_non_sort, perm1);
-    secrecy::operators::oblivious_apply_elementwise_perm(b2_non_sort, perm2);
+    orq::operators::oblivious_apply_elementwise_perm(b1_non_sort, perm1);
+    orq::operators::oblivious_apply_elementwise_perm(b2_non_sort, perm2);
 
     auto o1 = b1.open();
     auto o1_non_sort = b1_non_sort.open();
@@ -213,12 +211,12 @@ void test_valid_bit_sorting(int test_size) {
 // **************************************** //
 //        Test Table Sort (One Column)      //
 // **************************************** //
-void test_table_sort_single(int num_rows, int num_columns, secrecy::SortingProtocol protocol) {
+void test_table_sort_single(int num_rows, int num_columns, orq::SortingProtocol protocol) {
     // generate a table
-    std::vector<secrecy::Vector<int>> table_data;
+    std::vector<orq::Vector<int>> table_data;
     std::vector<std::string> schema;
     for (int i = 0; i < num_columns; i++) {
-        table_data.push_back(secrecy::Vector<int>(num_rows));
+        table_data.push_back(orq::Vector<int>(num_rows));
         // make even columns binary and odd columns arithmetic
         if (i % 2 == 0) {
             schema.push_back("[" + std::to_string(i) + "]");
@@ -239,8 +237,8 @@ void test_table_sort_single(int num_rows, int num_columns, secrecy::SortingProto
     table2.sort({"[0]"}, DESC, protocol);
 
     // open
-    std::vector<secrecy::Vector<int>> opened1 = table1.open();
-    std::vector<secrecy::Vector<int>> opened2 = table2.open();
+    std::vector<orq::Vector<int>> opened1 = table1.open();
+    std::vector<orq::Vector<int>> opened2 = table2.open();
     // make sure all columns have the same value for each row
     for (int i = 0; i < num_rows; i++) {
         for (int j = 0; j < num_columns; j++) {
@@ -250,14 +248,14 @@ void test_table_sort_single(int num_rows, int num_columns, secrecy::SortingProto
     }
 
     // Make sure we used all of our perms
-    assert(secrecy::random::PermutationManager::get()->size() == 0);
-    assert(secrecy::random::PermutationManager::get()->size_pairs() == 0);
+    assert(orq::random::PermutationManager::get()->size() == 0);
+    assert(orq::random::PermutationManager::get()->size_pairs() == 0);
 }
 
 // **************************************** //
 //      Test Table Sort (Multi Column)      //
 // **************************************** //
-void test_table_sort_multi(int num_rows, int num_columns, secrecy::SortingProtocol protocol,
+void test_table_sort_multi(int num_rows, int num_columns, orq::SortingProtocol protocol,
                            bool test_tiebreak_explicit) {
     auto localPRG = runTime->rand0()->localPRG;
 
@@ -265,10 +263,10 @@ void test_table_sort_multi(int num_rows, int num_columns, secrecy::SortingProtoc
     single_cout("## Pairs in Q: " << PermutationManager::get()->size_pairs());
 
     // generate a table
-    std::vector<secrecy::Vector<int>> table_data;
+    std::vector<orq::Vector<int>> table_data;
     std::vector<std::string> schema;
     for (int i = 0; i < num_columns; i++) {
-        table_data.push_back(secrecy::Vector<int>(num_rows));
+        table_data.push_back(orq::Vector<int>(num_rows));
         // make even columns binary and odd columns arithmetic
         if (i % 2 == 0) {
             schema.push_back("[" + std::to_string(i) + "]");
@@ -333,7 +331,7 @@ void test_odd_even_merge(int test_size) {
     v.shuffle();
 
     // sort each half of the list
-    secrecy::Vector<int> shuffled = v.open();
+    orq::Vector<int> shuffled = v.open();
     std::vector<int> first_half(test_size / 2);
     std::vector<int> second_half(test_size / 2);
     for (int i = 0; i < test_size / 2; i++) {
@@ -343,14 +341,14 @@ void test_odd_even_merge(int test_size) {
     std::sort(first_half.begin(), first_half.end());
     std::sort(second_half.begin(), second_half.end());
     // recombine and share
-    secrecy::Vector<int> vec_to_merge(test_size);
+    orq::Vector<int> vec_to_merge(test_size);
     for (int i = 0; i < test_size / 2; i++) {
         vec_to_merge[i] = first_half[i];
         vec_to_merge[test_size / 2 + i] = second_half[i];
     }
     BSharedVector<int> v2 = secret_share_b(vec_to_merge, 0);
 
-    secrecy::operators::odd_even_merge(v2);
+    orq::operators::odd_even_merge(v2);
     auto result = v2.open();
     for (int i = 0; i < test_size; i++) {
         assert(result[i] == i);
@@ -358,8 +356,7 @@ void test_odd_even_merge(int test_size) {
 }
 
 int main(int argc, char** argv) {
-    // Initialize Secrecy runtime
-    secrecy_init(argc, argv);
+    orq_init(argc, argv);
 
     test_bitonicMerge<int>(TEST_SIZE);
     single_cout("Bitonic Merge...OK");
@@ -382,28 +379,26 @@ int main(int argc, char** argv) {
     test_valid_bit_sorting(TEST_SIZE * 10);
     single_cout("Valid Bit Sort...OK");
 
-    // test_table_sort_single(1024, 6, secrecy::SortingProtocol::BITONICSORT);
+    // test_table_sort_single(1024, 6, orq::SortingProtocol::BITONICSORT);
     // single_cout("Table Sort Bitonic...");
     single_cout("TS RS...");
-    test_table_sort_single(1024, 6, secrecy::SortingProtocol::RADIXSORT);
+    test_table_sort_single(1024, 6, orq::SortingProtocol::RADIXSORT);
     single_cout("TS QS...");
-    test_table_sort_single(1024, 6, secrecy::SortingProtocol::QUICKSORT);
+    test_table_sort_single(1024, 6, orq::SortingProtocol::QUICKSORT);
     single_cout("Table Sort (Single Sort Column)...OK");
 
     single_cout("TS Multi RS...");
-    test_table_sort_multi(256, 8, secrecy::SortingProtocol::RADIXSORT, false);
-    test_table_sort_multi(256, 8, secrecy::SortingProtocol::RADIXSORT, true);
+    test_table_sort_multi(256, 8, orq::SortingProtocol::RADIXSORT, false);
+    test_table_sort_multi(256, 8, orq::SortingProtocol::RADIXSORT, true);
     single_cout("TS Multi QS...");
-    test_table_sort_multi(256, 8, secrecy::SortingProtocol::QUICKSORT, false);
-    test_table_sort_multi(256, 8, secrecy::SortingProtocol::QUICKSORT, true);
+    test_table_sort_multi(256, 8, orq::SortingProtocol::QUICKSORT, false);
+    test_table_sort_multi(256, 8, orq::SortingProtocol::QUICKSORT, true);
     single_cout("Table Sort (Multiple Sort Columns)...OK");
 
     test_odd_even_merge(16384);
     single_cout("Odd-Even Merge...OK");
 
     // Tear down communication
-#if defined(MPC_USE_MPI_COMMUNICATOR)
-    MPI_Finalize();
-#endif
+
     return 0;
 }

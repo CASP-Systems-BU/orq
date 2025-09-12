@@ -1,34 +1,39 @@
-#ifndef SECRECY_OPERATORS_RADIXSORT_H
-#define SECRECY_OPERATORS_RADIXSORT_H
+#pragma once
 
-#include "../random/permutations/permutation_manager.h"
 #include "common.h"
+#include "core/random/permutations/permutation_manager.h"
 
-namespace secrecy::operators {
+namespace orq::operators {
 
 template <typename E>
-using ASharedPerm = ASharedVector<int, secrecy::EVector<int, E::replicationNumber>>;
+using ASharedPerm = ASharedVector<int, orq::EVector<int, E::replicationNumber>>;
 template <typename E>
-using BSharedPerm = BSharedVector<int, secrecy::EVector<int, E::replicationNumber>>;
+using BSharedPerm = BSharedVector<int, orq::EVector<int, E::replicationNumber>>;
 
 /**
- * radix_sort_ccs - A direct implementation of the AHI+22 algorithm.
- * @param v - The vector to sort.
- * @param bits - The number of bits to sort.
+ * @brief Direct implementation of the AHI+22 radix sort algorithm.
+ *
+ * @tparam S Share data type.
+ * @tparam E Share container type.
+ * @param v Vector to sort.
+ * @param bits Number of bits to sort on.
+ * @param full_width Whether sorting on full bitwidth (affects sign bit handling).
+ * @return Permutation representing the sort order.
  */
 template <typename S, typename E>
-static ElementwisePermutation<E> radix_sort_ccs(BSharedVector<S, E> &v, const int bits, const bool full_width = true) {
+static ElementwisePermutation<E> radix_sort_ccs(BSharedVector<S, E> &v, const int bits,
+                                                const bool full_width = true) {
     const size_t n = v.size();
 
     // need 2 extra permutations for padding/inversion
-    secrecy::random::PermutationManager::get()->reserve(n, bits + 2);
+    orq::random::PermutationManager::get()->reserve(n, bits + 2);
 
     // Reserve temporaries for gen_bit_perm
     BSharedVector<S, E> v_shift(n);
     BSharedPerm<E> vprime(n);
     ASharedPerm<E> s(2 * n);
-    ASharedPerm<E> one = secrecy::service::runTime->public_share<E::replicationNumber>(
-        secrecy::Vector<int>({1}).repeated_subset_reference(n));
+    ASharedPerm<E> one = orq::service::runTime->public_share<E::replicationNumber>(
+        orq::Vector<int>({1}).repeated_subset_reference(n));
 
     // Create views of each half of s
     auto s0 = s.slice(0, n);
@@ -98,9 +103,15 @@ static ElementwisePermutation<E> radix_sort_ccs(BSharedVector<S, E> &v, const in
 // end AHI+22 radixsort algorithm
 
 /**
- * radix_sort_body - The radix sort protocol.
- * @param v - The vector to sort.
- * @param bits - The number of bits to sort.
+ * @brief The radix sort protocol.
+ *
+ * Implements the radix sort protocol for a given number of bits.
+ *
+ * @tparam S Share data type.
+ * @tparam E Share container type.
+ * @param v Vector to sort.
+ * @param bits Number of bits to sort on.
+ * @param full_width Whether sorting on full bitwidth (affects sign bit handling).
  */
 template <typename S, typename E>
 static void radix_sort_body(BSharedVector<S, E> &v, const int bits, const bool full_width = true) {
@@ -114,14 +125,14 @@ static void radix_sort_body(BSharedVector<S, E> &v, const int bits, const bool f
     }
     // 1 pair per call to oblivious_apply_elementwise_perm + 1 pair for invert
     int num_pairs = bits + 1;
-    secrecy::random::PermutationManager::get()->reserve(n, num_permutations, num_pairs);
+    orq::random::PermutationManager::get()->reserve(n, num_permutations, num_pairs);
 
     // Reserve temporaries for gen_bit_perm
     BSharedVector<S, E> v_shift(n);
     BSharedPerm<E> vprime(n);
     ASharedPerm<E> s(2 * n);
-    ASharedPerm<E> one = secrecy::service::runTime->public_share<E::replicationNumber>(
-        secrecy::Vector<int>({1}).repeated_subset_reference(n));
+    ASharedPerm<E> one = orq::service::runTime->public_share<E::replicationNumber>(
+        orq::Vector<int>({1}).repeated_subset_reference(n));
 
     // Create views of each half of s
     auto s0 = s.slice(0, n);
@@ -182,16 +193,14 @@ static void radix_sort_body(BSharedVector<S, E> &v, const int bits, const bool f
 }
 
 /**
- * radix_sort - The radix sort protocol.
+ * @brief The radix sort protocol entry point.
  *
- * @tparam S share type
- * @tparam E EVector type
- *
- * @param v - The vector to sort.
- * @param reversed_order - Flag which determines whether the sort is
- * ascending or descending. Default: ascending.
- * @param bits - The number of bits to sort. Default: full bitwidth.
- * @return An elementwise secret-sharing of the applied permutation.
+ * @tparam S Share data type.
+ * @tparam E Share container type.
+ * @param v Vector to sort.
+ * @param order Sort order (ascending or descending).
+ * @param bits Number of bits to sort on.
+ * @return Permutation representing the applied sort order.
  */
 template <typename S, typename E>
 static ElementwisePermutation<E> radix_sort(BSharedVector<S, E> &v, SortOrder order,
@@ -218,6 +227,4 @@ static ElementwisePermutation<E> radix_sort(BSharedVector<S, E> &v, SortOrder or
 
     return permutation;
 }
-}  // namespace secrecy::operators
-
-#endif  // SECRECY_OPERATORS_QUICKSORT_H
+}  // namespace orq::operators

@@ -1,45 +1,44 @@
 /**
  * @file test_libote.cpp
  * @brief Test that libOTe is properly installed and basic functionality works.
- * 
+ *
  */
 
-#include "../include/secrecy.h"
+#include "orq.h"
 
 // This test only runs on 2pc
 #ifdef MPC_PROTOCOL_BEAVER_TWO
 
 #include "coproto/Socket/AsioSocket.h"
 #include "coproto/Socket/BufferingSocket.h"
-#include "libOTe/config.h"
+#include "cryptoTools/Common/MatrixView.h"
 #include "libOTe/Tools/CoeffCtx.h"
+#include "libOTe/TwoChooseOne/Silent/SilentOtExtReceiver.h"
+#include "libOTe/TwoChooseOne/Silent/SilentOtExtSender.h"
 #include "libOTe/Vole/Noisy/NoisyVoleReceiver.h"
 #include "libOTe/Vole/Noisy/NoisyVoleSender.h"
 #include "libOTe/Vole/Silent/SilentVoleReceiver.h"
 #include "libOTe/Vole/Silent/SilentVoleSender.h"
-#include "libOTe/TwoChooseOne/Silent/SilentOtExtReceiver.h"
-#include "libOTe/TwoChooseOne/Silent/SilentOtExtSender.h"
-#include "cryptoTools/Common/MatrixView.h"
+#include "libOTe/config.h"
 
 using namespace oc;
 
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
-#include <string>
-#include <bit>
-
 #include <macoro/sync_wait.h>
 #include <macoro/task.h>
 #include <macoro/when_all.h>
 
+#include <bit>
+#include <string>
+
 // Globally working over arithmetic VOLE (integer context) for now
 using Ctx = CoeffCtxInteger;
 
-// Don't conflict with Secrecy's libOTe instance
+// Don't conflict with ORQ's libOTe instance
 #define TESTING_ADDRESS "localhost:29876"
 
-inline auto eval(macoro::task<>& t0, macoro::task<>& t1)
-{
+inline auto eval(macoro::task<>& t0, macoro::task<>& t1) {
     auto r = macoro::sync_wait(macoro::when_all_ready(std::move(t0), std::move(t1)));
     std::get<0>(r).result();
     std::get<1>(r).result();
@@ -48,21 +47,19 @@ inline auto eval(macoro::task<>& t0, macoro::task<>& t1)
 /**
  * @brief Test Noisy VOLE over a local socket (i.e., sender and receiver are two
  * threads of the same process)
- * 
+ *
  * @tparam F
- * @param n 
+ * @param n
  */
-template<typename F>
-void test_noisy_vole_local(u64 n)
-{
-
+template <typename F>
+void test_noisy_vole_local(u64 n) {
     auto L = std::numeric_limits<std::make_unsigned_t<F>>::digits;
     std::cout << "Local Noisy VOLE " << L << "-bit... ";
 
     std::vector<F> A(n), B(n), C(n);
 
     PRNG prng(sysRandomSeed());
-    
+
     // Generate (delta, C) randomly
     F delta = prng.get();
     prng.get(C.data(), C.size());
@@ -90,13 +87,13 @@ void test_noisy_vole_local(u64 n)
     bool all_zero = true;
 
     for (int i = 0; i < A.size(); i++) {
-        assert(A[i] == (F) (B[i] + C[i] * delta));
+        assert(A[i] == (F)(B[i] + C[i] * delta));
         if (A[i] != 0) {
             all_zero = false;
         }
     }
     // Make sure this isn't the trivial (zero) correlation
-    assert(! all_zero);
+    assert(!all_zero);
 
     std::cout << "OK\n";
 }
@@ -104,14 +101,13 @@ void test_noisy_vole_local(u64 n)
 /**
  * @brief Test Silent OLE over a local socket (i.e., sender and receiver are
  * two threads of the same process)
- * 
- * @tparam F 
- * @tparam Ctx 
- * @param n 
+ *
+ * @tparam F
+ * @tparam Ctx
+ * @param n
  */
-template<typename F>
-void test_silent_vole_local(u64 n)
-{
+template <typename F>
+void test_silent_vole_local(u64 n) {
     auto L = std::numeric_limits<std::make_unsigned_t<F>>::digits;
     std::cout << "Local Silent VOLE " << L << "-bit... ";
 
@@ -136,13 +132,13 @@ void test_silent_vole_local(u64 n)
     bool all_zero = true;
 
     for (int i = 0; i < A.size(); i++) {
-        assert(A[i] == (F) (B[i] + C[i] * delta));
+        assert(A[i] == (F)(B[i] + C[i] * delta));
         if (A[i] != 0) {
             all_zero = false;
         }
     }
 
-    assert(! all_zero);
+    assert(!all_zero);
 
     std::cout << "OK\n";
 }
@@ -153,12 +149,11 @@ const uint LOG_OT_BLOCK_SIZE = std::bit_width(OT_BLOCK_SIZE) - 1;
 /**
  * @brief Test Silent OT extension over a local socket. After performing 128-bit
  * OTs, transform them into the normal VOLE-like form, where `Mb = A ^ (d & ch)`
- * 
+ *
  * @param n input size, which must be a multiple of 128
  */
-template<typename F>
-void test_silent_ot_local(u64 n)
-{
+template <typename F>
+void test_silent_ot_local(u64 n) {
     assert(n % OT_BLOCK_SIZE == 0);
     auto L = std::numeric_limits<std::make_unsigned_t<F>>::digits;
     std::cout << "Local Silent OT " << L << "-bit... ";
@@ -190,7 +185,7 @@ void test_silent_ot_local(u64 n)
         A[i] = s_msg[i][0];
         delta[i] = A[i] ^ s_msg[i][1];
     }
-    
+
     std::span<block> Am(A);
     std::span<block> dm(delta);
     std::span<block> Mb(r_msg);
@@ -202,7 +197,6 @@ void test_silent_ot_local(u64 n)
         transpose128(Mb.data() + offset);
     }
 
-    
     auto ch = choice.blocks();
 
     // Check relationship over 128-bit blocks
@@ -216,7 +210,7 @@ void test_silent_ot_local(u64 n)
     std::span<F> dF(reinterpret_cast<F*>(dm.data()), scaled_n);
     std::span<F> MF(reinterpret_cast<F*>(Mb.data()), scaled_n);
     std::span<F> chF = choice.getSpan<F>();
-    
+
     auto z = chF.size();
     auto scale = OT_BLOCK_SIZE / (8 * sizeof(F));
     auto scale_mask = scale - 1;
@@ -236,13 +230,12 @@ void test_silent_ot_local(u64 n)
  * test; e.g., over MPI). Set up an actual network connection between the two
  * parties over the loopback interface. This test exercises the real deployment
  * scenario.
- * 
- * @tparam F 
- * @param n 
+ *
+ * @tparam F
+ * @param n
  */
-template<typename F>
-void test_silent_vole_loopback(u64 n)
-{
+template <typename F>
+void test_silent_vole_loopback(u64 n) {
     auto L = std::numeric_limits<std::make_unsigned_t<F>>::digits;
     single_cout_nonl("LAN Silent OLE " << L << "-bit... ");
 
@@ -280,21 +273,22 @@ void test_silent_vole_loopback(u64 n)
     cp::sync_wait(sock.flush());
 
     // Only server (P0) does the check
-    if (! isServer) {
+    if (!isServer) {
         return;
     }
 
     bool all_zero = true;
 
     for (int i = 0; i < A.size(); i++) {
-        // std::cout << i << " " << (int64_t) A[i] << "\t== " << (int64_t) B[i] << "\t+ " << (int64_t) C[i] << "\t* " << (int64_t) delta << "\n";
-        assert(A[i] == (F) (B[i] + C[i] * delta));
+        // std::cout << i << " " << (int64_t) A[i] << "\t== " << (int64_t) B[i] << "\t+ " <<
+        // (int64_t) C[i] << "\t* " << (int64_t) delta << "\n";
+        assert(A[i] == (F)(B[i] + C[i] * delta));
         if (A[i] != 0) {
             all_zero = false;
         }
     }
 
-    assert(! all_zero);
+    assert(!all_zero);
 
     std::cout << "OK\n";
 }
@@ -303,19 +297,18 @@ void test_silent_vole_loopback(u64 n)
  * @brief Test silent OT with two parties. Set up an actual network connection
  * between the two parties over the loopback interface. This test exercises the
  * real deployment scenario.
- * 
- * @tparam F 
+ *
+ * @tparam F
  * @param n input size, which must be a multiple of 128
  */
-template<typename F>
-void test_silent_ot_loopback(u64 n)
-{
+template <typename F>
+void test_silent_ot_loopback(u64 n) {
     assert(n % OT_BLOCK_SIZE == 0);
     auto L = std::numeric_limits<std::make_unsigned_t<F>>::digits;
 
     bool isServer = (runTime->getPartyID() == 0);
 
-    if (! isServer) {
+    if (!isServer) {
         std::cout << "LAN Silent OT " << L << "-bit... ";
     }
 
@@ -361,7 +354,7 @@ void test_silent_ot_loopback(u64 n)
         send->configure(numGen);
 
         // each vector element consists of (m0, m1)
-        std::vector<std::array<block, 2>> s_msg(numGen); 
+        std::vector<std::array<block, 2>> s_msg(numGen);
         cp::sync_wait(send->silentSend(s_msg, prng, sock));
 
         AlignedUnVector<block> A(n), delta(n);
@@ -393,8 +386,9 @@ void test_silent_ot_loopback(u64 n)
             // see ...TODO... for explanation of this logic
             auto ch_idx = (i & scale_mask) + ((i >> (::LOG_OT_BLOCK_SIZE)) & ~scale_mask);
             auto ch_i = ch_F[ch_idx];
-            // std::cout << VAR(i) << VAR(ch_idx) << (int64_t) mR_F[i] << "\t== " << (int64_t) mA_F[i] << "\t^ " << (int64_t) ch_i << "\t& " << (int64_t) mD_F[i] << "\n";
-            assert(mR_F[i] == (F) (mA_F[i] ^ (mD_F[i] & ch_i)));
+            // std::cout << VAR(i) << VAR(ch_idx) << (int64_t) mR_F[i] << "\t== " << (int64_t)
+            // mA_F[i] << "\t^ " << (int64_t) ch_i << "\t& " << (int64_t) mD_F[i] << "\n";
+            assert(mR_F[i] == (F)(mA_F[i] ^ (mD_F[i] & ch_i)));
         }
 
         std::cout << "OK\n";
@@ -403,13 +397,13 @@ void test_silent_ot_loopback(u64 n)
     cp::sync_wait(sock.flush());
 }
 
-template<typename F>
+template <typename F>
 void test_silent_ot_chosen(u64 n) {
     auto L = std::numeric_limits<std::make_unsigned_t<F>>::digits;
 
     bool isServer = (runTime->getPartyID() == 0);
 
-    if (! isServer) {
+    if (!isServer) {
         std::cout << "LAN Silent OT Chosen Message " << L << "-bit... ";
     }
 
@@ -452,7 +446,8 @@ void test_silent_ot_chosen(u64 n) {
         cp::sync_wait(sock.recv(ch));
 
         for (int i = 0; i < n; i++) {
-            // std::cout << r[i] << " == " << s_msg[i][0] << " " << s_msg[i][1] << " [" << ch[i] << "]\n";
+            // std::cout << r[i] << " == " << s_msg[i][0] << " " << s_msg[i][1] << " [" << ch[i] <<
+            // "]\n";
             assert(r[i] == s_msg[i][ch[i]]);
         }
 
@@ -465,7 +460,7 @@ void test_silent_ot_chosen(u64 n) {
 void test_softspoken(u64 n) {
     bool isRecv = (runTime->getPartyID() == 0);
 
-    if (! isRecv) {
+    if (!isRecv) {
         std::cout << "LAN SoftSpoken OT... ";
     }
 
@@ -474,7 +469,7 @@ void test_softspoken(u64 n) {
 
     BitVector ch(n);
     AlignedUnVector<block> r_msg(n);
-    
+
     if (isRecv) {
         auto recv = SoftSpokenShOtReceiver<>();
 
@@ -487,7 +482,7 @@ void test_softspoken(u64 n) {
         cp::sync_wait(sock.send(ch));
     } else {
         auto send = SoftSpokenShOtSender<>();
-        
+
         AlignedUnVector<std::array<block, 2>> msg(n);
 
         cp::sync_wait(send.send(msg, prng, sock));
@@ -504,8 +499,8 @@ void test_softspoken(u64 n) {
     }
 }
 
-int main(int argc, char** argv)  {
-    secrecy_init(argc, argv);
+int main(int argc, char** argv) {
+    orq_init(argc, argv);
 
     auto pID = runTime->getPartyID();
 
@@ -539,21 +534,16 @@ int main(int argc, char** argv)  {
     test_silent_ot_chosen<int32_t>(test_size);
 
     test_softspoken(test_size);
-
-    MPI_Finalize();
 }
-#else // MPC_PROTOCOL_BEAVER_TWO
+#else  // MPC_PROTOCOL_BEAVER_TWO
 
 // Dummy test for non-2pc
 
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
 int main(int argc, char** argv) {
-    secrecy_init(argc, argv);
+    orq_init(argc, argv);
     single_cout("libOTe tests only for 2PC");
-#if defined(MPC_USE_MPI_COMMUNICATOR)
-    MPI_Finalize();
-#endif
 }
 
-#endif // MPC_PROTOCOL_BEAVER_TWO
+#endif  // MPC_PROTOCOL_BEAVER_TWO

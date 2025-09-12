@@ -1,22 +1,20 @@
-#ifndef SECRECY_REPLICATED_3PC_H
-#define SECRECY_REPLICATED_3PC_H
+#pragma once
 
-#include "../../debug/debug.h"
+#include "debug/orq_debug.h"
 #include "protocol.h"
 #include "protocol_factory.h"
 
-using namespace secrecy::debug;
+using namespace orq::debug;
 
-namespace secrecy {
-// Assumes: ShareVector has type of pair of gavel::vector
-// Communicator and random data generator still expects gavel::vector
+namespace orq {
 /**
- * Implements the secure primitives for the 3-party semi-honest protocol
- * by Araki et al. that uses replicated secret sharing.
- * @tparam Data - Plaintext data type.
- * @tparam Share - Replicated share type.
- * @tparam Vector - Data container type.
- * @tparam EVector - Share container type.
+ * @brief Implements the secure primitives for the 3-party semi-honest protocol by Araki et al.
+ * that uses replicated secret sharing.
+ *
+ * @tparam Data Plaintext data type.
+ * @tparam Share Replicated share type.
+ * @tparam Vector Data container type.
+ * @tparam EVector Share container type.
  */
 template <typename Data, typename Share, typename Vector, typename EVector>
 class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
@@ -25,16 +23,24 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
     static int parties_num;
 
     /**
-     * Constructor for the semi-honest replicated 3-party protocol by Araki et al.
-     * @param _partyID - The (globally) unique id of the party that calls this constructor.
-     * @param _communicator - A pointer to the communicator.
-     * @param _randomnessManager - A pointer to the randomness manager.
+     * @brief Constructor for the semi-honest replicated 3-party protocol by Araki et al.
+     *
+     * @param _partyID The (globally) unique id of the party that calls this constructor.
+     * @param _communicator A pointer to the communicator.
+     * @param _randomnessManager A pointer to the randomness manager.
      */
     Replicated_3PC(PartyID _partyID, Communicator *_communicator,
                    random::RandomnessManager *_randomnessManager)
         : Protocol<Data, Share, Vector, EVector>(_communicator, _randomnessManager, _partyID, 3,
                                                  2) {}
 
+    /**
+     * @brief Secure arithmetic multiplication using replicated secret sharing.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param z Output vector.
+     */
     void multiply_a(const EVector &x, const EVector &y, EVector &z) {
         // Number of elements
         long long size = x.size();
@@ -55,29 +61,26 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         // Return output shared vector
         z(0) = local;
         z(1) = remote;
+
+        this->handle_precision(x, y, z);
+        this->truncate(z);
     }
 
-    // Algrithm:
-    //  1- We start input with 3 secret shares (x1, x2, x3).
-    //      However, our division algorithm requires 2 secret shares.
-    //  2- Given replication, we can merge the first 2 shares to get x1' = x1 + x2.
-    //  3- We have shares (x1', x3) which we can use to do trivial division on secret shares.
-    //  4- We end up with (x1/c, x3/c) which are only two shares. However, we need 3 shares.
-    //  5- We redistribute the shares (y1, y2) to be (y1 - r, r, y2) where r is a random number.
-    //      r can be retrieved using a common seed between the parties. [y1 = x1/c, y2 = x3/c].
-    //  6- The logic for calculating result and error used for correction is identical to that of
-    //  2pc. 7- Based on inputs (x1', x3), We adjust it using remainder so that it is always
-    //  positive. 8- We then check if the positive remainder is greater than the divisor. If so, we
-    //  adjust the result.
-
-    // *Moreover, for shares redistribution:
-    //  The idea is that after the trivial division, we have 2 secret shares instead of 3 secret
-    //  shares. In order, to redistribute the 2 secret shares into 3:
-    //      1- We let one party generate random shares using a common seed.
-    //      2- The other party who knows the seed can generate the same numbers and subtract them
-    //      from its share. 3- In summary, we start with (x1, 0, x2) -> to end with (x1 - r, r, x2).
-    //      Both are equal to x1+x2.
-
+    /**
+     * @brief Division by constant with share redistribution.
+     *
+     * Algorithm:
+     * 1. Start with 3 secret shares (x1, x2, x3), but division requires 2 shares.
+     * 2. Merge first 2 shares to get x1' = x1 + x2.
+     * 3. Use shares (x1', x3) for division on secret shares.
+     * 4. End up with (x1/c, x3/c) which are only two shares, but we need 3 shares.
+     * 5. Redistribute shares (y1, y2) to be (y1 - r, r, y2) where r is random.
+     * 6. Logic for calculating result and error is identical to 2PC.
+     *
+     * @param x Input vector.
+     * @param c Constant divisor.
+     * @return Pair of vectors (quotient and error correction).
+     */
     std::pair<EVector, EVector> div_const_a(const EVector &x, const Data &c) {
         auto size = x.size();
         EVector res(size), err(size);
@@ -123,6 +126,14 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         return {res, err};
     }
 
+    /**
+     * @brief Secure dot product using replicated secret sharing.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param aggSize Aggregation size.
+     * @return Output vector containing dot products.
+     */
     EVector dot_product_a(const EVector &x, const EVector &y, const int &aggSize) {
         // Number of elements
         const size_t size = x.size();
@@ -145,6 +156,13 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         return std::vector<Vector>({local, remote});
     }
 
+    /**
+     * @brief Secure bitwise AND using replicated secret sharing.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param z Output vector.
+     */
     void and_b(const EVector &x, const EVector &y, EVector &z) {
         // Number of elements
         long long size = x.size();
@@ -168,15 +186,37 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         // These need to be copies, due to access patterns!
         z(0) = local;
         z(1) = remote;
+
+        this->handle_precision(x, y, z);
     }
 
+    /**
+     * @brief Boolean complement operation.
+     *
+     * @param x Input vector.
+     * @param y Output vector.
+     */
     void not_b(const EVector &x, EVector &y) { y = ~x; }
 
+    /**
+     * @brief Boolean NOT operation (LSB only).
+     *
+     * @param x Input vector.
+     * @param y Output vector.
+     */
     void not_b_1(const EVector &x, EVector &y) { y = !(x & 1); }
 
-    // this should not be final
-    // probably extra communication
-    // for now, this should only be used for the least significant bit
+    /**
+     * @brief Convert boolean-shared bit to arithmetic sharing.
+     *
+     * Converts a boolean-shared bit (LSB only) to arithmetic sharing using
+     * replicated secret sharing protocol.
+     *
+     * Should only be used for the least significant bit.
+     *
+     * @param x Input boolean shared vector.
+     * @param y Output arithmetic shared vector.
+     */
     void b2a_bit(const EVector &x, EVector &y) {
         // make secret sharings of s0 and s1
         // Reuse s0(1) to store the LSB-masked version of x
@@ -184,6 +224,7 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         EVector s1(x.size());
 
         s0 = x;
+        s0.setPrecision(0);
         s0.mask(1);
 
         // only P0 XORs its two shares. Store in s0(1)
@@ -209,27 +250,63 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         multiply_a(s0, s0, y);
     }
 
+    /**
+     * @brief Redistribute boolean shares.
+     *
+     * @param x Input vector.
+     * @return Pair of redistributed shared vectors.
+     */
     std::pair<EVector, EVector> redistribute_shares_b(const EVector &x) {
         Vector vec = x(0) + x(1);
         return {secret_share_b(vec, 0), secret_share_b(x(0), 2)};
     }
 
+    /**
+     * @brief Reconstruct plaintext from arithmetic shares.
+     *
+     * @param shares Input shares from all three parties.
+     * @return Reconstructed plaintext value.
+     */
     Data reconstruct_from_a(const std::vector<Share> &shares) {
         return shares[0][0] + shares[1][0] + shares[2][0];
     }
 
+    /**
+     * @brief Reconstruct plaintext vector from arithmetic shares.
+     *
+     * @param shares Input shared vectors from all three parties.
+     * @return Reconstructed plaintext vector.
+     */
     Vector reconstruct_from_a(const std::vector<EVector> &shares) {
         return shares[0](0) + shares[1](0) + shares[2](0);
     }
 
+    /**
+     * @brief Reconstruct plaintext from boolean shares.
+     *
+     * @param shares Input shares from all three parties.
+     * @return Reconstructed plaintext value.
+     */
     Data reconstruct_from_b(const std::vector<Share> &shares) {
         return shares[0][0] ^ shares[1][0] ^ shares[2][0];
     }
 
+    /**
+     * @brief Reconstruct plaintext vector from boolean shares.
+     *
+     * @param shares Input shared vectors from all three parties.
+     * @return Reconstructed plaintext vector.
+     */
     Vector reconstruct_from_b(const std::vector<EVector> &shares) {
         return shares[0](0) ^ shares[1](0) ^ shares[2](0);
     }
 
+    /**
+     * @brief Open arithmetic shares to reveal plaintext.
+     *
+     * @param shares Input shared vector.
+     * @return Opened plaintext vector.
+     */
     Vector open_shares_a(const EVector &shares) {
         // Parties open their local shares to other parties
         size_t size = shares.size();
@@ -238,6 +315,12 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         return shares(0) + shares(1) + shares_3;
     }
 
+    /**
+     * @brief Open boolean shares to reveal plaintext.
+     *
+     * @param shares Input shared vector.
+     * @return Opened plaintext vector.
+     */
     Vector open_shares_b(const EVector &shares) {
         // Parties open their local shares to other parties
         size_t size = shares.size();
@@ -246,6 +329,12 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         return shares(0) ^ shares(1) ^ shares_3;
     }
 
+    /**
+     * @brief Generate replicated arithmetic shares for a single value.
+     *
+     * @param data Input plaintext value.
+     * @return Vector of replicated arithmetic shares for all parties.
+     */
     std::vector<Share> get_share_a(const Data &data) {
         Data share_1, share_2;
         this->randomnessManager->localPRG->getNext(share_1);
@@ -255,6 +344,12 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         return {{share_1, share_2}, {share_2, share_3}, {share_3, share_1}};
     }
 
+    /**
+     * @brief Generate replicated arithmetic shares for a vector.
+     *
+     * @param data Input plaintext vector.
+     * @return Vector of replicated arithmetic shared vectors for all parties.
+     */
     std::vector<EVector> get_shares_a(const Vector &data) {
         Vector share_1(data.size()), share_2(data.size());
         this->randomnessManager->localPRG->getNext(share_1);
@@ -265,6 +360,12 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
                 std::vector<Vector>({share_3, share_1})};
     }
 
+    /**
+     * @brief Generate replicated boolean shares for a single value.
+     *
+     * @param data Input plaintext value.
+     * @return Vector of replicated boolean shares for all parties.
+     */
     std::vector<Share> get_share_b(const Data &data) {
         Data share_1, share_2;
         this->randomnessManager->localPRG->getNext(share_1);
@@ -274,6 +375,12 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         return {{share_1, share_2}, {share_2, share_3}, {share_3, share_1}};
     }
 
+    /**
+     * @brief Generate replicated boolean shares for a vector.
+     *
+     * @param data Input plaintext vector.
+     * @return Vector of replicated boolean shared vectors for all parties.
+     */
     std::vector<EVector> get_shares_b(const Vector &data) {
         Vector share_1(data.size()), share_2(data.size());
         this->randomnessManager->localPRG->getNext(share_1);
@@ -284,12 +391,13 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
                 std::vector<Vector>({share_3, share_1})};
     }
 
-    void replicate_shares() {
-        // TODO (john): implement this function
-        std::cerr << "Method 'replicate_shares()' is not supported by Replicated_3PC." << std::endl;
-        exit(-1);
-    }
-
+    /**
+     * @brief Secret share a boolean vector using replicated sharing.
+     *
+     * @param data Input plaintext vector.
+     * @param data_party Party that owns the data.
+     * @return This party's replicated boolean shared vector.
+     */
     EVector secret_share_b(const Vector &data, const PartyID &data_party = 0) {
         auto size = data.size();
         if (this->partyID == data_party) {
@@ -311,6 +419,13 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         }
     }
 
+    /**
+     * @brief Secret share an arithmetic vector using replicated sharing.
+     *
+     * @param data Input plaintext vector.
+     * @param data_party Party that owns the data.
+     * @return This party's replicated arithmetic shared vector.
+     */
     EVector secret_share_a(const Vector &data, const PartyID &data_party = 0) {
         auto size = data.size();
         if (this->partyID == data_party) {
@@ -332,6 +447,12 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         }
     }
 
+    /**
+     * @brief Create public shares from plaintext data using replicated sharing.
+     *
+     * @param x Input plaintext vector.
+     * @return Public replicated shared vector.
+     */
     EVector public_share(const Vector &x) {
         auto size = x.size();
         auto zero1 = Vector(size);
@@ -348,14 +469,19 @@ class Replicated_3PC : public Protocol<Data, Share, Vector, EVector> {
         }
     }
 };
-// TODO (john): Why not initializing parties_num as static const int?
+
 template <typename Data, typename Share, typename Vector, typename EVector>
 int Replicated_3PC<Data, Share, Vector, EVector>::parties_num = 3;
 
+/**
+ * @brief Factory type alias for Replicated_3PC protocol.
+ *
+ * @tparam Share Share type template.
+ * @tparam Vector Vector type template.
+ * @tparam EVector Encoding vector type template.
+ */
 template <template <typename> class Share, template <typename> class Vector,
           template <typename> class EVector>
 using Replicated_3PC_Factory = DefaultProtocolFactory<Replicated_3PC, Share, Vector, EVector>;
 
-}  // namespace secrecy
-
-#endif  // SECRECY_REPLICATED_3PC_H
+}  // namespace orq

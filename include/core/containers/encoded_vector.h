@@ -1,16 +1,15 @@
-#ifndef SECRECY_ENCODED_VECTOR_H
-#define SECRECY_ENCODED_VECTOR_H
+#pragma once
 
 #include <memory>
 
-#include "../../debug/debug.h"
-#include "../../service/common/runtime.h"
+#include "backend/common/runtime.h"
+#include "debug/orq_debug.h"
 #include "encoding.h"
 
 #define shares_define_pointer_reference_operator(op)                      \
     template <typename T>                                                 \
     std::unique_ptr<T> operator op(std::unique_ptr<T>&& x, const T & y) { \
-        auto& x_ = *x.get();                                            \
+        auto& x_ = *x.get();                                              \
         assert(x_.size() == y.size());                                    \
         return x_ op y;                                                   \
     }
@@ -38,8 +37,8 @@
 #define shares_define_pointers_operator(op)                                          \
     template <typename T>                                                            \
     std::unique_ptr<T> operator op(std::unique_ptr<T>&& x, std::unique_ptr<T>&& y) { \
-        auto& x_ = *x.get();                                                       \
-        auto& y_ = *y.get();                                                       \
+        auto& x_ = *x.get();                                                         \
+        auto& y_ = *y.get();                                                         \
         assert(x_.size() == y_.size());                                              \
         return x_ op y_;                                                             \
     }
@@ -47,14 +46,14 @@
 #define shares_define_pointer_operator(op)                   \
     template <typename T>                                    \
     std::unique_ptr<T> operator op(std::unique_ptr<T>&& x) { \
-        auto& x_ = *x.get();                               \
+        auto& x_ = *x.get();                                 \
         return op x_;                                        \
     }
 
 #define shares_define_pointer_reference_operator_no_move(op)             \
     template <typename T>                                                \
     std::unique_ptr<T> operator op(std::unique_ptr<T>& x, const T & y) { \
-        auto& x_ = *x.get();                                           \
+        auto& x_ = *x.get();                                             \
         assert(x_.size() == y.size());                                   \
         return x_ op y;                                                  \
     }
@@ -62,7 +61,7 @@
 #define shares_define_reference_pointer_operator_no_move(op)             \
     template <typename T>                                                \
     std::unique_ptr<T> operator op(const T & x, std::unique_ptr<T>& y) { \
-        auto& y_ = *y.get();                                           \
+        auto& y_ = *y.get();                                             \
         assert(x.size() == y_.size());                                   \
         return x op y_;                                                  \
     }
@@ -79,7 +78,7 @@
 #define shares_define_pointer_operator_no_move(op)          \
     template <typename T>                                   \
     std::unique_ptr<T> operator op(std::unique_ptr<T>& x) { \
-        auto& x_ = *x.get();                              \
+        auto& x_ = *x.get();                                \
         return op x_;                                       \
     }
 
@@ -90,14 +89,15 @@
         assert(x_vector.size() == y_vector.size());                 \
         auto res = std::make_unique<type>(x_vector.size());         \
         service::runTime->func(x_vector, y_vector, res->vector);    \
+        res->vector.matchPrecision(this->vector);                   \
         return res;                                                 \
     }
 
-#define binary_element_op(_op_, func, T, S)                                                 \
-    std::unique_ptr<T> operator _op_(S y) const {                                           \
-        Vector<S> yv({y});                                                                  \
-        auto ypv = secrecy::service::runTime->public_share<EVector::replicationNumber>(yv); \
-        return *this _op_ ypv.repeated_subset_reference(this->size());                      \
+#define binary_element_op(_op_, func, T, S)                                             \
+    std::unique_ptr<T> operator _op_(S y) const {                                       \
+        Vector<S> yv({y});                                                              \
+        auto ypv = orq::service::runTime->public_share<EVector::replicationNumber>(yv); \
+        return *this _op_ ypv.repeated_subset_reference(this->size());                  \
     }
 
 // TODO: actually reimplement as above, rather than just calling, so we can
@@ -111,11 +111,11 @@
         return *this;                                            \
     }
 
-#define compound_assignment_element_op(_op_, func, T, S)                                    \
-    inline void operator _op_(S y) {                                                        \
-        Vector<S> yv({y});                                                                  \
-        auto ypv = secrecy::service::runTime->public_share<EVector::replicationNumber>(yv); \
-        *this _op_ ypv.cyclic_subset_reference(this->size());                               \
+#define compound_assignment_element_op(_op_, func, T, S)                                \
+    inline void operator _op_(S y) {                                                    \
+        Vector<S> yv({y});                                                              \
+        auto ypv = orq::service::runTime->public_share<EVector::replicationNumber>(yv); \
+        *this _op_ ypv.cyclic_subset_reference(this->size());                           \
     }
 
 #define compound_assignment_ptr_op(_op_, func, T)  \
@@ -153,28 +153,22 @@
         return TYPE(this->vector.REF(args...)); \
     }
 
-namespace secrecy {
+namespace orq {
 /**
- * A EncodedVector is the main programming abstraction in Secrecy. All secure operators are applied
- to encoded
- * vectors, i.e., they take one or more encoded vectors as input and generate one or more encoded
- vectors as output.
- *
- * Secrecy computing parties perform secure operations on their encoded vectors as if they were
- performing plaintext
- * operations on the original (secret) vectors. For example, given two secret vectors v1 and v2,
- Secrecy parties
- * can execute the elementwise addition of the secret vectors by simply running v1 + v2 using their
- local encoded
- * vectors. This way, the Secrecy program looks identical to the respective plaintext program, as
- shown below:
+ * A EncodedVector is the main programming abstraction in ORQ. All secure operators are applied
+ * to encoded vectors, i.e., they take one or more encoded vectors as input and generate one or more
+ * encoded vectors as output. ORQ computing parties perform secure operations on their encoded
+ * vectors as if they were performing plaintext operations on the original (secret) vectors. For
+ * example, given two secret vectors v1 and v2, ORQ parties can execute the elementwise addition of
+ * the secret vectors by simply running v1 + v2 using their local encoded vectors. This way, the ORQ
+ * program looks identical to the respective plaintext program, as shown below:
  *
  * **Plaintext program** (not secure)
  \verbatim
    // Executed by a trusted party
    auto w = v1 + v2;   // These are C++ vectors and '+' is the elementwise plaintext addition
  \endverbatim
- * **Secrecy program** (secure)
+ * **ORQ program** (secure)
  \verbatim
    // Executed by an untrusted party
    auto w = v1 + v2;   // These are EncodedVectors and '+' is the elementwise secure addition
@@ -189,7 +183,7 @@ class EncodedVector {
 
     /**
      * Constructor
-     * @param eType - The vector's encoding (e.g., A-shared, B-shared, etc.)
+     * @param eType The vector's encoding (e.g., A-shared, B-shared, etc.)
      */
     EncodedVector(const Encoding& eType) : encoding(eType) {};
 
@@ -199,7 +193,7 @@ class EncodedVector {
     virtual VectorSizeType size() const = 0;
 
     // TODO: how to generalize this "int"?
-    // virtual inline secrecy::Vector<int>& operator()(const int& index) = 0;
+    // virtual inline orq::Vector<int>& operator()(const int& index) = 0;
 
     // Friend class
     friend class EncodedColumn;
@@ -249,6 +243,4 @@ define_assignment_ptr_operator(^=);
 shares_define_pointer_operator(-);
 shares_define_pointer_operator(~);
 shares_define_pointer_operator(!);
-}  // namespace secrecy
-
-#endif  // SECRECY_ENCODED_VECTOR_H
+}  // namespace orq

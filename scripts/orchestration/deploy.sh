@@ -57,13 +57,13 @@ cd build
 # setup on the host
 ../scripts/setup.sh
 
-echo 'Testing MPI execution of `example2`...'
-cmake .. -DPROTOCOL=$NUM_NODES -DCOMM=MPI &&
-make -j $(nproc) example2
+echo 'Testing MPI execution of `test_primitives`...'
+cmake .. -DPROTOCOL=$NUM_NODES &&
+make -j $(nproc) test_primitives
 
 for W in "$@"; do
-    scp example2 $W:$REPO_NAME/build
+    scp test_primitives $W:$REPO_NAME/build
 done
 
-mpirun --host $ALL_NODES -np $NUM_NODES example2 &&
+mpirun --host $ALL_NODES -np $NUM_NODES test_primitives &&
 echo 'Installation complete.'

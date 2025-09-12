@@ -1,8 +1,4 @@
-#ifndef SECRECY_FANTASTIC_4PC_H
-#define SECRECY_FANTASTIC_4PC_H
-
-//      x2,x3,x4           x3,x4,x1           x4,x1,x2           x1,x2,x3
-//      x0,x1,x2           x1,x2,x3           x2,x3,x0           x3,x0,x1
+#pragma once
 
 #include "protocol_factory.h"
 
@@ -10,23 +6,28 @@
 #pragma message "Using custom 4PC protcol."
 #endif
 
-namespace secrecy {
+namespace orq {
 /**
- * Implements the secure primitives for the 4-party malicious protocol
- * by Dalskov et al. that uses replicated secret sharing.
- * @tparam Data - Plaintext data type.
- * @tparam Share - Replicated share type.
- * @tparam Vector - Data container type.
- * @tparam EVector - Share container type.
+ * @brief Implements the secure primitives for the 4-party malicious protocol by Dalskov et al.
+ * that uses replicated secret sharing.
+ *
+ * @tparam Data Plaintext data type.
+ * @tparam Share Replicated share type.
+ * @tparam Vector Data container type.
+ * @tparam EVector Share container type.
  */
 template <typename Data, typename Share, typename Vector, typename EVector>
 class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
     /**
-     * malicious_check - Given two vectors x and y, assert that they are the same.
-     * @param x - The first vector.
-     * @param y - The second vector.
-     * @param p1 - The first party relative ID to accuse if they are not the same.
-     * @param p2 - The second party relative ID to accuse if they are not the same.
+     * @brief Malicious check to assert that two vectors are the same.
+     *
+     * Given two vectors x and y, assert that they are the same. If they are not,
+     * accuse the specified parties and abort.
+     *
+     * @param x The first vector.
+     * @param y The second vector.
+     * @param p1 The first party relative ID to accuse if they are not the same.
+     * @param p2 The second party relative ID to accuse if they are not the same.
      */
     void malicious_check(const Vector &x, const Vector &y, const int p1, const int p2) {
         if (!x.same_as(y)) {
@@ -37,8 +38,13 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
     }
 
    public:
-    // this is an override of the default groups so we can achieve malicious security
-    // this group selection gives us two copies of each share per group (redundancy)
+    /**
+     * @brief Override of default groups to achieve malicious security.
+     *
+     * This group selection gives us two copies of each share per group (redundancy).
+     *
+     * @return Vector of party groups for malicious security.
+     */
     std::vector<std::set<int>> getGroups() const {
         return {{0, 1, 2}, {1, 2, 3}, {2, 3, 0}, {3, 0, 1}};
     }
@@ -46,12 +52,25 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
     // Configuration Parameters
     static int parties_num;
 
+    /**
+     * @brief Constructor for Fantastic_4PC protocol.
+     *
+     * @param _partyID Party identifier.
+     * @param _communicator Pointer to communicator.
+     * @param _randomnessManager Pointer to randomness manager.
+     */
     Fantastic_4PC(PartyID _partyID, Communicator *_communicator,
                   random::RandomnessManager *_randomnessManager)
         : Protocol<Data, Share, Vector, EVector>(_communicator, _randomnessManager, _partyID, 4,
                                                  3) {}
 
-    // TODO: Merge communication in one request
+    /**
+     * @brief Secure arithmetic multiplication with malicious security.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param z Output vector.
+     */
     void multiply_a(const EVector &x, const EVector &y, EVector &z) {
         long long size = x.size();
 
@@ -144,11 +163,24 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
             z(1) += r_opp;
             z(2) += r_prev;
         }
+
+        this->handle_precision(x, y, z);
+        this->truncate(z);
     }
 
-    // TODO: modify inp to work any sequence of parties.
-    // Note: this inp is for the div function pattern only.
-    // [i precedes j precedes g precedes h].
+    /**
+     * @brief Input sharing protocol for specific party sequence.
+     *
+     * Note: this inp is for the div function pattern only.
+     * [i precedes j precedes g precedes h].
+     *
+     * @param x Input vector to be shared.
+     * @param i First party in sequence.
+     * @param j Second party in sequence.
+     * @param g Third party in sequence (receiver).
+     * @param h Fourth party in sequence (randomness generator).
+     * @return Shared vector.
+     */
     EVector inp_a(const Vector &x, const int &i, const int &j, const int &g, const int &h) {
         EVector res(x.size());
         long long size = x.size();
@@ -185,6 +217,13 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         return res;
     }
 
+    /**
+     * @brief Division by constant with malicious security.
+     *
+     * @param x Input vector.
+     * @param c Constant divisor.
+     * @return Pair of vectors (quotient and error correction).
+     */
     std::pair<EVector, EVector> div_const_a(const EVector &x, const Data &c) {
         auto size = x.size();
         EVector res(size), err(size);
@@ -206,17 +245,11 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
                 err_ = err_ - c;
             }
 
-            // res = inp_a(res_, 0, 3, 1, 2)
-            //         + inp_a(res_, 2, 1, 3, 0);
             res = inp_a(res_, 3, 2, 0, 1) + inp_a(res_, 1, 0, 2, 3);
 
-            // err = inp_a(err_, 0, 3, 1, 2)
-            //       + inp_a(err_, 2, 1, 3, 0);
             err = inp_a(err_, 3, 2, 0, 1) + inp_a(err_, 1, 0, 2, 3);
 #else
             auto res_ = res(1) / c;
-            // res = inp_a(res_, 0, 3, 1, 2)
-            //       + inp_a(res_, 2, 1, 3, 0);
             res = inp_a(res_, 3, 2, 0, 1) + inp_a(res_, 1, 0, 2, 3);
 #endif
 
@@ -231,17 +264,11 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
                 err_ = err_ - c;
             }
 
-            // res = inp_a(res_, 0, 3, 1, 2)
-            //       + inp_a(res_, 2, 1, 3, 0);
             res = inp_a(res_, 3, 2, 0, 1) + inp_a(res_, 1, 0, 2, 3);
 
-            // err = inp_a(err_, 0, 3, 1, 2)
-            //       + inp_a(err_, 2, 1, 3, 0);
             err = inp_a(err_, 3, 2, 0, 1) + inp_a(err_, 1, 0, 2, 3);
 #else
             auto res_ = res(2) / c;
-            // res = inp_a(res_, 0, 3, 1, 2)
-            //       + inp_a(res_, 2, 1, 3, 0);
             res = inp_a(res_, 3, 2, 0, 1) + inp_a(res_, 1, 0, 2, 3);
 #endif
         }
@@ -249,9 +276,19 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         return {res, err};
     }
 
-    // TODO: modify inp to work any sequence of parties.
-    // Note: this inp is for the div function pattern only
-    // [i precedes j precedes g precedes h].
+    /**
+     * @brief Boolean input sharing protocol for specific party sequence.
+     *
+     * Note: this inp is for the div function pattern only.
+     * [i precedes j precedes g precedes h].
+     *
+     * @param x Input vector to be shared.
+     * @param i First party in sequence.
+     * @param j Second party in sequence.
+     * @param g Third party in sequence (receiver).
+     * @param h Fourth party in sequence (randomness generator).
+     * @return Shared vector.
+     */
     EVector inp_b(const Vector &x, const int &i, const int &j, const int &g, const int &h) {
         EVector res(x.size());
         long long size = x.size();
@@ -291,6 +328,13 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         return res;
     }
 
+    /**
+     * @brief Secure bitwise AND with malicious security.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param z Output vector.
+     */
     void and_b(const EVector &x, const EVector &y, EVector &z) {
         long long size = x.size();
 
@@ -383,10 +427,16 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
             z(1) ^= r_opp;
             z(2) ^= r_prev;
         }
+
+        this->handle_precision(x, y, z);
     }
 
-    //      x2,x3,x4           x3,x4,x1           x4,x1,x2           x1,x2,x3
-    // TODO: does the copy constructor here makes problems?
+    /**
+     * @brief Boolean NOT operation.
+     *
+     * @param x Input vector.
+     * @param y Output vector.
+     */
     void not_b(const EVector &x, EVector &y) {
         if (this->partyID == 0) {
             y = {x(0), x(1), ~x(2)};
@@ -399,6 +449,12 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         }
     }
 
+    /**
+     * @brief Boolean NOT operation for the least significant bit.
+     *
+     * @param x Input vector.
+     * @param y Output vector.
+     */
     void not_b_1(const EVector &x, EVector &y) {
         if (this->partyID == 0) {
             y = {x(0) & 1, x(1) & 1, !(x(2) & 1)};
@@ -412,8 +468,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
     }
 
     /**
-     * @brief Convert a boolean-shared bit in the least significant position
-     * to an arithmetic sharing:
+     * @brief Convert a boolean-shared bit to arithmetic sharing.
      *
      * 4PC share distribution:
      * P0: [B, C, D]  ->       B   C   D
@@ -433,8 +488,8 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      *
      * XOR evaluated as: x ^ y = (x - y)^2 (holds true for binary input)
      *
-     * @param x
-     * @return EVector
+     * @param x Input boolean shared vector.
+     * @param y Output arithmetic shared vector.
      */
     void b2a_bit(const EVector &x, EVector &y) {
         EVector x_prime(x);
@@ -458,13 +513,20 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         auto share0 = inp_a(s0, 1, 0, 2, 3);
         auto share1 = inp_a(s1, 3, 2, 0, 1);
 
+        // precision is 0 automatically
+
         // XOR: (x-y)^2
         share0 -= share1;
         // y = share0^2
         multiply_a(share0, share0, y);
     }
 
-    // TODO: Check this function correctness
+    /**
+     * @brief Redistribute boolean shares.
+     *
+     * @param x Input vector.
+     * @return Pair of redistributed shared vectors.
+     */
     std::pair<EVector, EVector> redistribute_shares_b(const EVector &x) {
         auto size = x.size();
         EVector res_1(size), res_2(size);
@@ -491,24 +553,54 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         return {res_1, res_2};
     }
 
-    // Shares Opening without communication
+    /**
+     * @brief Reconstruct plaintext from arithmetic shares.
+     *
+     * @param shares Input shares from all four parties.
+     * @return Reconstructed plaintext value.
+     */
     Data reconstruct_from_a(const std::vector<Share> &shares) {
         return shares[0][0] + shares[1][0] + shares[2][0] + shares[3][0];
     }
 
+    /**
+     * @brief Reconstruct plaintext vector from arithmetic shares.
+     *
+     * @param shares Input shared vectors from all four parties.
+     * @return Reconstructed plaintext vector.
+     */
     Vector reconstruct_from_a(const std::vector<EVector> &shares) {
         return shares[0](0) + shares[1](0) + shares[2](0) + shares[3](0);
     }
 
+    /**
+     * @brief Reconstruct plaintext from boolean shares.
+     *
+     * @param shares Input shares from all four parties.
+     * @return Reconstructed plaintext value.
+     */
     Data reconstruct_from_b(const std::vector<Share> &shares) {
         return shares[0][0] ^ shares[1][0] ^ shares[2][0] ^ shares[3][0];
     }
 
+    /**
+     * @brief Reconstruct plaintext vector from boolean shares.
+     *
+     * @param shares Input shared vectors from all four parties.
+     * @return Reconstructed plaintext vector.
+     */
     Vector reconstruct_from_b(const std::vector<EVector> &shares) {
         return shares[0](0) ^ shares[1](0) ^ shares[2](0) ^ shares[3](0);
     }
 
-    // TODO: malicious check here
+    /**
+     * @brief Open arithmetic shares to reveal plaintext.
+
+     * TODO: malicious check
+     *
+     * @param shares Input shared vector.
+     * @return Opened plaintext vector.
+     */
     Vector open_shares_a(const EVector &shares) {
         // shares have 0 & 1 & 2 ... go fetch 3
         size_t size = shares.size();
@@ -517,6 +609,14 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         return shares(0) + shares(1) + shares(2) + shares_4;
     }
 
+    /**
+     * @brief Open boolean shares to reveal plaintext.
+     *
+     * TODO: malicious check
+     *
+     * @param shares Input shared vector.
+     * @return Opened plaintext vector.
+     */
     Vector open_shares_b(const EVector &shares) {
         // shares have 0 & 1 & 2 ... go fetch 3
         size_t size = shares.size();
@@ -525,7 +625,12 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         return shares(0) ^ shares(1) ^ shares(2) ^ shares_4;
     }
 
-    // Shares Generation
+    /**
+     * @brief Generate arithmetic shares for a single value.
+     *
+     * @param data Input data value.
+     * @return Vector of shares for all parties.
+     */
     std::vector<Share> get_share_a(const Data &data) {
         Data share_1, share_2, share_3;
         this->randomnessManager->localPRG->getNext(share_1);
@@ -538,6 +643,12 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
                 {share_4, share_1, share_2}};
     }
 
+    /**
+     * @brief Generate arithmetic shares for a vector.
+     *
+     * @param data Input data vector.
+     * @return Vector of shares for all parties.
+     */
     std::vector<EVector> get_shares_a(const Vector &data) {
         Vector share_1(data.size()), share_2(data.size()), share_3(data.size());
         this->randomnessManager->localPRG->getNext(share_1);
@@ -550,6 +661,12 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
                 std::vector<Vector>({share_4, share_1, share_2})};
     }
 
+    /**
+     * @brief Generate boolean shares for a single value.
+     *
+     * @param data Input data value.
+     * @return Vector of shares for all parties.
+     */
     std::vector<Share> get_share_b(const Data &data) {
         Data share_1, share_2, share_3;
         this->randomnessManager->localPRG->getNext(share_1);
@@ -562,6 +679,12 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
                 {share_4, share_1, share_2}};
     }
 
+    /**
+     * @brief Generate boolean shares for a vector.
+     *
+     * @param data Input data vector.
+     * @return Vector of shares for all parties.
+     */
     std::vector<EVector> get_shares_b(const Vector &data) {
         Vector share_1(data.size()), share_2(data.size()), share_3(data.size());
         this->randomnessManager->localPRG->getNext(share_1);
@@ -574,12 +697,13 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
                 std::vector<Vector>({share_4, share_1, share_2})};
     }
 
-    void replicate_shares() {
-        // TODO (john): implement this function
-        std::cerr << "Method 'replicate_shares()' is not supported by Fantastic_4PC." << std::endl;
-        exit(-1);
-    }
-
+    /**
+     * @brief Secret share data using the custom 4PC protocol.
+     *
+     * @param data Input data vector.
+     * @param data_party Party ID of the data party.
+     * @return Secret shared vector.
+     */
     EVector secret_share_b(const Vector &data, const PartyID &data_party = 0) {
         auto size = data.size();
         if (this->partyID == data_party) {
@@ -608,6 +732,13 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         }
     }
 
+    /**
+     * @brief Secret share data using the custom 4PC protocol.
+     *
+     * @param data Input data vector.
+     * @param data_party Party ID of the data party.
+     * @return Secret shared vector.
+     */
     EVector secret_share_a(const Vector &data, const PartyID &data_party = 0) {
         auto size = data.size();
         if (this->partyID == data_party) {
@@ -643,7 +774,8 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * P1 gets: (   0, 0, x)
      * P2 gets: (0,    0, x)
      * P3 gets: (0, 0,    x)
-     * @param x
+     *
+     * @param x Input data vector.
      * @return EVector
      */
     EVector public_share(const Vector &x) {
@@ -666,10 +798,11 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
     }
 
     /**
-     * reshare - An override version of reshare for malicious security in 4PC.
-     * @param v - The vector to be rerandomized and reshared.
-     * @param group - The group performing the resharing.
-     * @param binary - A flag indicating an arithmetic or binary encoding of the vector.
+     * @brief An override version of reshare for malicious security in 4PC.
+     *
+     * @param v The vector to be rerandomized and reshared.
+     * @param group The group performing the resharing.
+     * @param binary A flag indicating an arithmetic or binary encoding of the vector.
      */
     void reshare(EVector &v, const std::set<int> group, bool binary) {
         assert(group.size() == 3);
@@ -757,12 +890,15 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
 template <typename Data, typename Share, typename Vector, typename EVector>
 int Fantastic_4PC<Data, Share, Vector, EVector>::parties_num = 4;
 
-// template <ReplicatedShare, Vector,
-
+/**
+ * @brief Factory type alias for Fantastic_4PC protocol.
+ *
+ * @tparam Share Share type template.
+ * @tparam Vector Vector type template.
+ * @tparam EVector Encoding vector type template.
+ */
 template <template <typename> class Share, template <typename> class Vector,
           template <typename> class EVector>
 using Fantastic_4PC_Factory = DefaultProtocolFactory<Fantastic_4PC, Share, Vector, EVector>;
 
-}  // namespace secrecy
-
-#endif  // SECRECY_FANTASTIC_4PC_H
+}  // namespace orq
