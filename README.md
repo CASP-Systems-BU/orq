@@ -2,8 +2,8 @@
 
 ORQ is a multi-party computation framework for relational analytics. For more information, see our paper at SOSP '25.
 
-- Paper
-- Documentation
+- [Paper](https://arxiv.org/abs/2509.10793)
+- [Documentation](https://casp-systems-bu.github.io/orq/)
 - [Our Lab](https://sites.bu.edu/casp/)
 
 > ORQ has received all SOSP artifact evaluation badges. Evaluation occurred on the `sosp-artifact` tag, available [here](https://github.com/CASP-Systems-BU/orq/tree/sosp-artifact). The current version of the repository has gone through a substantial cleanup for public release, but is functionally identical.
