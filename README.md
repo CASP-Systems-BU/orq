@@ -12,6 +12,9 @@ ORQ is a multi-party computation framework for relational analytics. For more in
 >
 > [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17027577.svg)](https://doi.org/10.5281/zenodo.17027577)
 
+> [!NOTE]
+> _(March 2026)_ We have been notified of an [attack on the Fantastic Four protocol](https://eprint.iacr.org/2026/234) (to appear at Eurocrypt'26). An implementation of the fix following $\Pi_\mathrm{CheckEqs}$ (Fig. 6 of [BS26]) is currently under development. Separately, we also identified some issues with our malicious-secure opening protocol. We will push both fixes to this repository soon.
+
 ## Table of Contents
 
 - [Dependencies](#dependencies)
@@ -129,7 +132,7 @@ Various options can be specified to `cmake`.
    - `-DPROTOCOL=1` a single-party plaintext test protocol
    - `-DPROTOCOL=2` [ABY](https://www.ndss-symposium.org/ndss2015/ndss-2015-programme/aby-framework-efficient-mixed-protocol-secure-two-party-computation/) two party dishonest majority protocol with Beaver Triples
    - `-DPROTOCOL=3` [Araki et al.](https://eprint.iacr.org/2016/768) three party replicated honest majority protocol (the default)
-   - `-DPROTOCOL=4` [Fantastic Four](https://eprint.iacr.org/2020/1330) honest-majority malicious 4PC protocol
+   - `-DPROTOCOL=4` [Fantastic Four](https://eprint.iacr.org/2020/1330) honest-majority malicious 4PC protocol (**Note:** security fix in progress)
 - `-DNO_X86_SSE=1` to disable x86 hardware optimizations (you will get warnings otherwise if built on ARM platforms, like newer Macs)
 - `-DPROFILE=1` enable profiling (compile with `-pg`)
 - `-DEXTRA=XXX` pass the additional argument `XXX` to `make`
