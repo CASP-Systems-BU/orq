@@ -143,7 +143,7 @@
 #define PRINT_PROTOCOL_STATISTICS
 
 // Print communicator statistics
-// #define PRINT_COMMUNICATOR_STATISTICS
+#define PRINT_COMMUNICATOR_STATISTICS
 
 /**
  * @brief Preprocessor defines to generate proper namespaces

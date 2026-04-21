@@ -977,7 +977,7 @@ class RunTime {
     void print_communicator_statistics() {
 #ifdef PRINT_COMMUNICATOR_STATISTICS
         const std::string _spacer = " ";
-        const std::string title = "Communicator (Bytes sent):";
+        const std::string title = "Communicator (MB sent):";
         const std::string lhs_prefix = "Thread ";
 
         int lhs_width = lhs_prefix.size() + std::ceil(std::log10(num_threads)) + 1;
@@ -990,16 +990,16 @@ class RunTime {
 
         size_t total_bytes_sent = 0;
         for (int i = 0; i < num_threads; ++i) {
-            size_t bytes_sent = communicators[i]->getBytesSent();
+            size_t bytes_sent = workers[i].getCommunicator()->getBytesSent();
             total_bytes_sent += bytes_sent;
 
             std::cout << _spacer << std::setw(lhs_width) << std::left
                       << lhs_prefix + std::to_string(i);
-            std::cout << _spacer << std::setw(max_bytes_width) << std::right << bytes_sent << "\n";
+            std::cout << _spacer << std::setw(max_bytes_width) << std::right << bytes_sent / 1e6 << "\n";
         }
         std::cout << "\n"
                   << "P" << getPartyID() << std::setw(lhs_width) << std::left << " Total";
-        std::cout << _spacer << std::setw(max_bytes_width) << std::right << total_bytes_sent
+        std::cout << _spacer << std::setw(max_bytes_width) << std::right << total_bytes_sent / 1e6
                   << "\n";
 
         std::cout << std::string(total_width, '=') << "\n";

@@ -1,10 +1,10 @@
 /**
  * @file distinct_patients.cpp
- * @brief Query to find distinct patients who have been diagnosed with "hd" and prescribed
- * "aspirin".
+ * @brief Query to find distinct patients who have been diagnosed with heart disease (`hd`) and
+ * prescribed `aspirin`.
  * @date 2024-10-22
  *
- * SQL:
+ * Equivalent SQL:
  *   SELECT
  *       DISTINCT pid
  *   FROM
@@ -19,37 +19,22 @@
  *
  * SCHEMA:
  *   - demographic: [pid]
- *   - diagnosis: [code, diag]
- *   - medication: [pid, code, med]
+ *   - diagnosis:   [code, diag]
+ *   - medication:  [pid, code, med]
+ *
+ * This query has been slightly modified from the version presented in the ORQ paper for improved
+ * clarity.
  *
  */
 
+// To run correctness tests
 #include <sqlite3.h>
-#include <sys/time.h>
 
+// Include the ORQ library
 #include "orq.h"
-#include "profiling/stopwatch.h"
 
-using namespace orq::debug;
-using namespace orq::service;
-using namespace orq::operators;
-using namespace std::chrono;
-using namespace orq::aggregators;
-using namespace orq::benchmarking;
+// Macro to tell ORQ to run whichever protocol we compiled with
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
-
-using sec = duration<float, seconds::period>;
-
-// #define QUERY_PROFILE
-
-// #define PRINT_TABLES
-
-#ifndef PRINT_TABLES
-#define print_table(...)
-#endif
-
-using T = int64_t;
-using uT = std::make_unsigned_t<T>;
 
 // Setting these up to be roughly similar in size to TPCH, SF 1 -> ~5M rows
 // Update later based on dataset if required
@@ -71,230 +56,90 @@ size_t medicationSize(const double scaleFactor) {
     return std::round(scaleFactor * MEDICATION_MULTIPLIER);
 }
 
-template <typename T>
-EncodedTable<T> getDemographicTable(const double scaleFactor, sqlite3* sqlite_db) {
-    auto S = demographicSize(scaleFactor);
+// These functions will generate a table (of the appropriate size) with random data and load them
+// into SQLite.
+EncodedTable<int> getDemographicTable(const double, sqlite3*);
+EncodedTable<int> getDiagnosisTable(const double, sqlite3*);
+EncodedTable<int> getMedicationTable(const double, sqlite3*);
 
-    Vector<uT> u_pid(S);
-    runTime->populateLocalRandom(u_pid);
-    Vector<T> pid(S);
-    pid = u_pid % demographicSize(scaleFactor);
-
-    std::vector<std::string> schema = {"[pid]"};
-    EncodedTable<T> table = secret_share<T>({pid}, schema);
-    table.tableName = "DEMOGRAPHIC";
-
-    // SQLite table setup
-    if (sqlite_db != nullptr) {
-        int ret;
-        sqlite3_exec(sqlite_db, "BEGIN TRANSACTION;", 0, 0, NULL);
-
-        // Create table
-        const char* sqlCreate = R"sql(
-            CREATE TABLE DEMOGRAPHIC (pid INTEGER);
-        )sql";
-        ret = sqlite3_exec(sqlite_db, sqlCreate, 0, 0, NULL);
-        if (ret != SQLITE_OK) {
-            single_cout("Create error (Demographic): " << sqlite3_errmsg(sqlite_db))
-        }
-
-        // Prepare insert statement
-        sqlite3_stmt* stmt = nullptr;
-        const char* sqlInsert = R"sql(
-            INSERT INTO DEMOGRAPHIC (pid) VALUES (?);
-        )sql";
-        sqlite3_prepare_v2(sqlite_db, sqlInsert, -1, &stmt, nullptr);
-
-        // Insert data
-        for (size_t i = 0; i < S; ++i) {
-            sqlite3_bind_int(stmt, 1, pid[i]);
-
-            ret = sqlite3_step(stmt);
-            if (ret != SQLITE_DONE) {
-                single_cout("Insert error (Demographic): " << sqlite3_errmsg(sqlite_db))
-            }
-            sqlite3_reset(stmt);
-        }
-        sqlite3_finalize(stmt);
-
-        ret = sqlite3_exec(sqlite_db, "COMMIT;", 0, 0, NULL);
-        if (ret != SQLITE_OK) {
-            single_cout("Commit error (Demographic): " << sqlite3_errmsg(sqlite_db))
-        }
-    }
-
-    return table;
-}
-
-template <typename T>
-EncodedTable<T> getDiagnosisTable(const double scaleFactor, sqlite3* sqlite_db) {
-    auto S = diagnosisSize(scaleFactor);
-
-    Vector<uT> u_code(S);
-    runTime->populateLocalRandom(u_code);
-    Vector<T> code(S);
-    code = u_code % CODE_TYPES;
-
-    Vector<uT> u_diag(S);
-    runTime->populateLocalRandom(u_diag);
-    Vector<T> diag(S);
-    diag = u_diag % DIAG_TYPES;
-
-    std::vector<std::string> schema = {"[code]", "[diag]"};
-    EncodedTable<T> table = secret_share<T>({code, diag}, schema);
-    table.tableName = "DIAGNOSIS";
-
-    // SQLite table setup
-    if (sqlite_db != nullptr) {
-        int ret;
-        sqlite3_exec(sqlite_db, "BEGIN TRANSACTION;", 0, 0, NULL);
-
-        // Create table
-        const char* sqlCreate = R"sql(
-            CREATE TABLE DIAGNOSIS (code INTEGER, diag INTEGER);
-        )sql";
-        ret = sqlite3_exec(sqlite_db, sqlCreate, 0, 0, NULL);
-        if (ret != SQLITE_OK) {
-            single_cout("Create error (Diagnosis): " << sqlite3_errmsg(sqlite_db))
-        }
-
-        // Prepare insert statement
-        sqlite3_stmt* stmt = nullptr;
-        const char* sqlInsert = R"sql(
-            INSERT INTO DIAGNOSIS (code, diag) VALUES (?, ?);
-        )sql";
-        sqlite3_prepare_v2(sqlite_db, sqlInsert, -1, &stmt, nullptr);
-
-        // Insert data
-        for (size_t i = 0; i < S; ++i) {
-            sqlite3_bind_int(stmt, 1, code[i]);
-            sqlite3_bind_int(stmt, 2, diag[i]);
-
-            ret = sqlite3_step(stmt);
-            if (ret != SQLITE_DONE) {
-                single_cout("Insert error (Diagnosis): " << sqlite3_errmsg(sqlite_db))
-            }
-            sqlite3_reset(stmt);
-        }
-        sqlite3_finalize(stmt);
-
-        ret = sqlite3_exec(sqlite_db, "COMMIT;", 0, 0, NULL);
-        if (ret != SQLITE_OK) {
-            single_cout("Commit error (Diagnosis): " << sqlite3_errmsg(sqlite_db))
-        }
-    }
-
-    return table;
-}
-
-template <typename T>
-EncodedTable<T> getMedicationTable(const double scaleFactor, sqlite3* sqlite_db) {
-    auto S = medicationSize(scaleFactor);
-
-    Vector<uT> u_pid(S);
-    runTime->populateLocalRandom(u_pid);
-    Vector<T> pid(S);
-    pid = u_pid % medicationSize(scaleFactor);
-
-    Vector<uT> u_code(S);
-    runTime->populateLocalRandom(u_code);
-    Vector<T> code(S);
-    code = u_code % CODE_TYPES;
-
-    Vector<uT> u_med(S);
-    runTime->populateLocalRandom(u_med);
-    Vector<T> med(S);
-    med = u_med % MED_TYPES;
-
-    std::vector<std::string> schema = {"[pid]", "[code]", "[med]"};
-    EncodedTable<T> table = secret_share<T>({pid, code, med}, schema);
-    table.tableName = "MEDICATION";
-
-    // SQLite table setup
-    if (sqlite_db != nullptr) {
-        int ret;
-        sqlite3_exec(sqlite_db, "BEGIN TRANSACTION;", 0, 0, NULL);
-
-        // Create table
-        const char* sqlCreate = R"sql(
-            CREATE TABLE MEDICATION (pid INTEGER, code INTEGER, med INTEGER);
-        )sql";
-        ret = sqlite3_exec(sqlite_db, sqlCreate, 0, 0, NULL);
-        if (ret != SQLITE_OK) {
-            single_cout("Create error (Medication): " << sqlite3_errmsg(sqlite_db))
-        }
-
-        // Prepare insert statement
-        sqlite3_stmt* stmt = nullptr;
-        const char* sqlInsert = R"sql(
-            INSERT INTO MEDICATION (pid, code, med) VALUES (?, ?, ?);
-        )sql";
-        sqlite3_prepare_v2(sqlite_db, sqlInsert, -1, &stmt, nullptr);
-
-        // Insert data
-        for (size_t i = 0; i < S; ++i) {
-            sqlite3_bind_int(stmt, 1, pid[i]);
-            sqlite3_bind_int(stmt, 2, code[i]);
-            sqlite3_bind_int(stmt, 3, med[i]);
-
-            ret = sqlite3_step(stmt);
-            if (ret != SQLITE_DONE) {
-                single_cout("Insert error (Medication): " << sqlite3_errmsg(sqlite_db))
-            }
-            sqlite3_reset(stmt);
-        }
-        sqlite3_finalize(stmt);
-
-        ret = sqlite3_exec(sqlite_db, "COMMIT;", 0, 0, NULL);
-        if (ret != SQLITE_OK) {
-            single_cout("Commit error (Medication): " << sqlite3_errmsg(sqlite_db))
-        }
-    }
-
-    return table;
-}
-
+/**
+ * @brief Main function. ALL parties will execute this code in (approximate) lock step.
+ */
 int main(int argc, char** argv) {
+    // Initialize the ORQ framework. Specifically, sets up:
+    //   - inter-party communication backend (either MPI or NoCopy)
+    //   - Constructs the RunTime object
+    //   - Sets up worker threads
+    //   - Sets up randomness generation (shared-key PRGs, etc.)
+    //
+    // See include/backend/common/setup.h for more.
     orq_init(argc, argv);
-    auto pid = runTime->getPartyID();
 
     float sf = 0.01;
     if (argc >= 5) {
         sf = strtod(argv[4], NULL);
     }
 
-    // Query parameters
-    const int DIAG = 0;  // "hd"
-    const int MED = 0;   // "aspirin"
+    // single_count is a helper macro which only runs outputs to Party 0's std::cout.
+    // Since all parties run the same program, regular std::cout calls will all appear at the same
+    // time and clobber each other.
+    single_cout("Distinct Patients, SF " << sf);
 
-    // Setup SQL DB
+    // Query parameters. We assume an arbitrary enumeration.
+    const int DIAG = 392;  // "hd"
+    const int MED = 16;    // "aspirin"
+
+    // Setup SQL DB. Only Party 0 does this (and only Party 0 will run the correctness check)
     sqlite3* sqlite_db = nullptr;
-#ifndef QUERY_PROFILE
-    if (pid == 0) {
+    if (runTime->getPartyID() == 0) {
         int err = sqlite3_open(NULL, &sqlite_db);  // NULL -> Create in-memory database
         if (err) {
             throw std::runtime_error(sqlite3_errmsg(sqlite_db));
         } else {
-            single_cout("SQLite DB created");
+            std::cout << "SQLite DB created\n";
         }
     }
-#endif
 
-    using A = ASharedVector<T>;
-    using B = BSharedVector<T>;
+    // Generate tables with random data. In reality, multiple data owners would each contribute a
+    // table (in this example, maybe an insurance company has one table, and a hospital another).
+    // Alternatively, we could imagine each data owner having a disjoint set of rows, and all tables
+    // being joined under secret sharing into one larger table. (This scenario would occur if, say,
+    // many hospitals wanted to run a large analysis together but were unable or unwilling to share
+    // plaintext data.)
+    auto Demographic = getDemographicTable(sf, sqlite_db);
+    auto Diagnosis = getDiagnosisTable(sf, sqlite_db);
+    auto Medication = getMedicationTable(sf, sqlite_db);
 
-    auto Demographic = getDemographicTable<T>(sf, sqlite_db);
-    auto Diagnosis = getDiagnosisTable<T>(sf, sqlite_db);
-    auto Medication = getMedicationTable<T>(sf, sqlite_db);
+    // Print out the table sizes
+    single_cout("Demographic: " << Demographic.size() << " rows x "
+                                << Demographic.getSchema().size() << " cols => "
+                                << Demographic.size() * Demographic.getSchema().size() *
+                                       sizeof(int) / 1e6
+                                << " MB");
 
-#ifdef PRINT_TABLES
-    print_table(Demographic.open_with_schema(), pid);
-    print_table(Diagnosis.open_with_schema(), pid);
-    print_table(Medication.open_with_schema(), pid);
-#endif
+    single_cout("Diagnosis:   " << Diagnosis.size() << " rows x " << Diagnosis.getSchema().size()
+                                << " cols => "
+                                << Diagnosis.size() * Diagnosis.getSchema().size() * sizeof(int) /
+                                       1e6
+                                << " MB");
 
+    single_cout("Medication:  " << Medication.size() << " row x " << Medication.getSchema().size()
+                                << " cols => "
+                                << Medication.size() * Medication.getSchema().size() * sizeof(int) /
+                                       1e6
+                                << " MB");
+
+    // If we're running a tiny problem instance, print the tables for debugging
+    if (Demographic.size() < 16) {
+        // NOTE: open() here is NOT secure. This is to get a sense of what the tables might look
+        // like. In a real execution, we would never open a table until the computation is complete.
+        print_table(Demographic.open_with_schema(), runTime->getPartyID());
+        print_table(Diagnosis.open_with_schema(), runTime->getPartyID());
+        print_table(Medication.open_with_schema(), runTime->getPartyID());
+    }
+
+    // The stopwatch namespace provides timing utilities.
     stopwatch::timepoint("Start");
-    stopwatch::profile_init();
 
     // [SQL] di.diag = "hd"
     Diagnosis.filter(Diagnosis["[diag]"] == DIAG);
@@ -310,33 +155,47 @@ int main(int argc, char** argv) {
     auto MedDiagnosis = Diagnosis.inner_join(Medication, {"[code]"});
     MedDiagnosis.project({"[pid]"});
 
-    stopwatch::timepoint("Med-Diagnosis join");
+    stopwatch::timepoint("Med-Diag join");
 
     // [SQL] de.pid = m.pid
-    auto DemographicJoin = MedDiagnosis.inner_join(Demographic, {"[pid]"}, {});
+    auto DemographicJoin = MedDiagnosis.inner_join(Demographic, {"[pid]"});
 
-    stopwatch::timepoint("Demographic join");
+    stopwatch::timepoint("Demog. join");
 
     // [SQL] SELECT DISTINCT pid
     DemographicJoin.distinct({"[pid]"});
 
     stopwatch::timepoint("Distinct pids");
 
-#ifdef QUERY_PROFILE
-    DemographicJoin.finalize();
-#endif
+    // Oblivious execution does not guarantee that the opened table won't reveal anything about the
+    // query inputs. Thus, the finalize command shuffles a table using ORQ's oblivious shuffling
+    // facilities, and also obliviously masks out any invalid rows to prevent leakage.
+
+    // However, we will skip shuffling here (paramater false) so that correctness tests will be
+    // deterministic.
+    DemographicJoin.finalize(false);
 
     stopwatch::done();
-    stopwatch::profile_done();  // print profiling data
 
+    // When run under the single-party debug protocol, output the number of operations performed
     runTime->print_statistics();
+
+    // Show the network utilization of this execution
     runTime->print_communicator_statistics();
 
-#ifndef QUERY_PROFILE
+    // Open the final table,
     auto resultOpened = DemographicJoin.open_with_schema();
+    // and extract the patient ID column. We'll check this against the SQL result
     auto pid_col = DemographicJoin.get_column(resultOpened, "[pid]");
 
-    if (pid == 0) {
+    // In reality, we probably wouldn't want to open to a computing party. Instead, a separate
+    // entity (such as a data analyst) would receive secret shares from each of the computing
+    // parties and reconstruct the shares locally. ORQ easily supports such a setup via its secret
+    // share-export functionalities.
+
+    // Only Party 0 runs the correctness check (it generated the random data, so is the only one who
+    // knows the correct answer).
+    if (runTime->getPartyID() == 0) {
         // Correctness check
         // Note: Extra "order by" to get a consistent order for the correctness check
         int ret;
@@ -364,7 +223,8 @@ int main(int argc, char** argv) {
         int i = 0;
         while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
             int sqlPid = sqlite3_column_int(stmt, 0);
-            // single_cout("PID: " << sqlPid << " | " << pid_col[i]);
+            // Uncomment the below to view the actual output!
+            // single_cout("SQL: " << sqlPid << " | MPC: " << pid_col[i]);
             ASSERT_SAME(sqlPid, pid_col[i]);
             i++;
         }
@@ -378,7 +238,191 @@ int main(int argc, char** argv) {
         single_cout("SQL result size: " << i << std::endl);
         ASSERT_SAME(i, pid_col.size());
     }
-#endif
+
     sqlite3_close(sqlite_db);
     return 0;
+}
+
+// Implementation of the data-generation functions. At a high level, generates a random vector in
+// the appropriate range, and secret shares it (we assume P0 is the data owner, for simplicity, but
+// any data owner configurations are supported). Then, P0 also inserts the (plaintext) data into its
+// local SQL database for later correctness checks.
+EncodedTable<int> getDemographicTable(const double scaleFactor, sqlite3* sqlite_db) {
+    auto S = demographicSize(scaleFactor);
+
+    Vector<int> pid(S);
+    runTime->populateLocalRandom(pid);
+    pid %= S;
+
+    std::vector<std::string> schema = {"[pid]"};
+    EncodedTable<int> table = secret_share<int>({pid}, schema);
+    table.tableName = "DEMOGRAPHIC";
+
+    // SQLite table setup
+    if (sqlite_db == nullptr) {
+        return table;
+    }
+
+    int ret;
+    sqlite3_exec(sqlite_db, "BEGIN TRANSACTION;", 0, 0, NULL);
+
+    // Create table
+    const char* sqlCreate = R"sql(
+        CREATE TABLE DEMOGRAPHIC (pid INTEGER);
+    )sql";
+    ret = sqlite3_exec(sqlite_db, sqlCreate, 0, 0, NULL);
+    if (ret != SQLITE_OK) {
+        single_cout("Create error (Demographic): " << sqlite3_errmsg(sqlite_db))
+    }
+
+    // Prepare insert statement
+    sqlite3_stmt* stmt = nullptr;
+    const char* sqlInsert = R"sql(
+        INSERT INTO DEMOGRAPHIC (pid) VALUES (?);
+    )sql";
+    sqlite3_prepare_v2(sqlite_db, sqlInsert, -1, &stmt, nullptr);
+
+    // Insert data
+    for (size_t i = 0; i < S; ++i) {
+        sqlite3_bind_int(stmt, 1, pid[i]);
+
+        ret = sqlite3_step(stmt);
+        if (ret != SQLITE_DONE) {
+            single_cout("Insert error (Demographic): " << sqlite3_errmsg(sqlite_db))
+        }
+        sqlite3_reset(stmt);
+    }
+    sqlite3_finalize(stmt);
+
+    ret = sqlite3_exec(sqlite_db, "COMMIT;", 0, 0, NULL);
+    if (ret != SQLITE_OK) {
+        single_cout("Commit error (Demographic): " << sqlite3_errmsg(sqlite_db))
+    }
+
+    return table;
+}
+
+EncodedTable<int> getDiagnosisTable(const double scaleFactor, sqlite3* sqlite_db) {
+    auto S = diagnosisSize(scaleFactor);
+
+    Vector<int> code(S);
+    runTime->populateLocalRandom(code);
+    code %= CODE_TYPES;
+
+    Vector<int> diag(S);
+    runTime->populateLocalRandom(diag);
+    diag %= DIAG_TYPES;
+
+    std::vector<std::string> schema = {"[code]", "[diag]"};
+    EncodedTable<int> table = secret_share<int>({code, diag}, schema);
+    table.tableName = "DIAGNOSIS";
+
+    // SQLite table setup
+    if (sqlite_db == nullptr) {
+        return table;
+    }
+
+    int ret;
+    sqlite3_exec(sqlite_db, "BEGIN TRANSACTION;", 0, 0, NULL);
+
+    // Create table
+    const char* sqlCreate = R"sql(
+            CREATE TABLE DIAGNOSIS (code INTEGER, diag INTEGER);
+        )sql";
+    ret = sqlite3_exec(sqlite_db, sqlCreate, 0, 0, NULL);
+    if (ret != SQLITE_OK) {
+        single_cout("Create error (Diagnosis): " << sqlite3_errmsg(sqlite_db))
+    }
+
+    // Prepare insert statement
+    sqlite3_stmt* stmt = nullptr;
+    const char* sqlInsert = R"sql(
+            INSERT INTO DIAGNOSIS (code, diag) VALUES (?, ?);
+        )sql";
+    sqlite3_prepare_v2(sqlite_db, sqlInsert, -1, &stmt, nullptr);
+
+    // Insert data
+    for (size_t i = 0; i < S; ++i) {
+        sqlite3_bind_int(stmt, 1, code[i]);
+        sqlite3_bind_int(stmt, 2, diag[i]);
+
+        ret = sqlite3_step(stmt);
+        if (ret != SQLITE_DONE) {
+            single_cout("Insert error (Diagnosis): " << sqlite3_errmsg(sqlite_db))
+        }
+        sqlite3_reset(stmt);
+    }
+    sqlite3_finalize(stmt);
+
+    ret = sqlite3_exec(sqlite_db, "COMMIT;", 0, 0, NULL);
+    if (ret != SQLITE_OK) {
+        single_cout("Commit error (Diagnosis): " << sqlite3_errmsg(sqlite_db))
+    }
+
+    return table;
+}
+
+EncodedTable<int> getMedicationTable(const double scaleFactor, sqlite3* sqlite_db) {
+    auto S = medicationSize(scaleFactor);
+
+    Vector<int> pid(S);
+    runTime->populateLocalRandom(pid);
+    pid %= S;
+
+    Vector<int> code(S);
+    runTime->populateLocalRandom(code);
+    code %= CODE_TYPES;
+
+    Vector<int> med(S);
+    runTime->populateLocalRandom(med);
+    med %= MED_TYPES;
+
+    std::vector<std::string> schema = {"[pid]", "[code]", "[med]"};
+    EncodedTable<int> table = secret_share<int>({pid, code, med}, schema);
+    table.tableName = "MEDICATION";
+
+    // SQLite table setup
+    if (sqlite_db == nullptr) {
+        return table;
+    }
+
+    int ret;
+    sqlite3_exec(sqlite_db, "BEGIN TRANSACTION;", 0, 0, NULL);
+
+    // Create table
+    const char* sqlCreate = R"sql(
+            CREATE TABLE MEDICATION (pid INTEGER, code INTEGER, med INTEGER);
+        )sql";
+    ret = sqlite3_exec(sqlite_db, sqlCreate, 0, 0, NULL);
+    if (ret != SQLITE_OK) {
+        single_cout("Create error (Medication): " << sqlite3_errmsg(sqlite_db))
+    }
+
+    // Prepare insert statement
+    sqlite3_stmt* stmt = nullptr;
+    const char* sqlInsert = R"sql(
+            INSERT INTO MEDICATION (pid, code, med) VALUES (?, ?, ?);
+        )sql";
+    sqlite3_prepare_v2(sqlite_db, sqlInsert, -1, &stmt, nullptr);
+
+    // Insert data
+    for (size_t i = 0; i < S; ++i) {
+        sqlite3_bind_int(stmt, 1, pid[i]);
+        sqlite3_bind_int(stmt, 2, code[i]);
+        sqlite3_bind_int(stmt, 3, med[i]);
+
+        ret = sqlite3_step(stmt);
+        if (ret != SQLITE_DONE) {
+            single_cout("Insert error (Medication): " << sqlite3_errmsg(sqlite_db))
+        }
+        sqlite3_reset(stmt);
+    }
+    sqlite3_finalize(stmt);
+
+    ret = sqlite3_exec(sqlite_db, "COMMIT;", 0, 0, NULL);
+    if (ret != SQLITE_OK) {
+        single_cout("Commit error (Medication): " << sqlite3_errmsg(sqlite_db))
+    }
+
+    return table;
 }
