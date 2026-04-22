@@ -166,19 +166,34 @@ int main(int argc, char** argv) {
 
     // Since insurance_percent is multiplied by 100, we have to divide.
     // We could also defer division for the final step to avoid rounding errors.
-    // This uses the secure division algorithm from TVA (USENIX Security 2023)
+    // This uses the secure division algorithm from our prior paper, TVA (USENIX Security 2023)
     T12["insurance_cost"] = T12["insurance_percent"] * T12["cost"] / 100;
 
     T12.project({"[disease]", "insurance_cost"});
 
-    // Sum cost per 'disease'
+    // Sum insurance_cost per disease
     // After the aggregation is applied, T12 contains one valid record per 'disease'
-    T12.aggregate({"[disease]"}, {{"insurance_cost", "insurance_cost", sum<A>}});
+    T12.aggregate(
+        // Group by key.
+        {"[disease]"},
+
+        // Aggregations.
+        {
+            {"insurance_cost", "insurance_cost", sum<A>},
+        });
 
     stopwatch::timepoint("PreAgg T3");
 
     // Join T12 (PK) with T3 on 'disease' and copy `insCost` per matched 'disease' into T3
-    auto T123 = T12.inner_join(T3, {"[disease]"}, {{"insurance_cost", "insurance_cost", copy<A>}});
+    auto T123 = T12.inner_join(
+        // Right-side table
+        T3,
+        // Group key
+        {"[disease]"},
+        // Aggregations
+        {
+            {"insurance_cost", "insurance_cost", copy<A>},
+        });
 
     stopwatch::timepoint("T2 >< T3");
 
@@ -192,8 +207,9 @@ int main(int argc, char** argv) {
     T123.finalize();
 
     stopwatch::timepoint("Final Agg");
-
     stopwatch::done();
+
+    print_table(T123.open_with_schema(), partyID);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -202,8 +218,6 @@ int main(int argc, char** argv) {
 
     // Show the network utilization of this execution
     runTime->print_communicator_statistics();
-
-    print_table(T123.open_with_schema(), partyID);
 
     return 0;
 }

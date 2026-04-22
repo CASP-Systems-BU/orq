@@ -168,11 +168,17 @@ int main(int argc, char** argv) {
 
     stopwatch::done();
 
+    // Make sure all parties get here before continuing
+    MPI_Barrier(MPI_COMM_WORLD);
+
     // When run under the single-party debug protocol, output the number of operations performed
     runTime->print_statistics();
 
     // Show the network utilization of this execution
     runTime->print_communicator_statistics();
+
+    // Make sure all parties get here before continuing
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // Open the final table,
     auto resultOpened = DemographicJoin.open_with_schema();
@@ -226,9 +232,11 @@ int main(int argc, char** argv) {
         sqlite3_finalize(stmt);
 
         single_cout("Calculated result size: " << pid_col.size());
-        single_cout("SQL result size: " << i << std::endl);
+        single_cout("SQL result size: " << i);
         ASSERT_SAME(i, pid_col.size());
     }
+
+    single_cout("OK!");
 
     sqlite3_close(sqlite_db);
     return 0;
