@@ -177,13 +177,14 @@ file(GLOB EXE_TESTS tests/*.cpp)
 file(GLOB TPCH_QUERIES bench/queries/tpch/q*.cpp)
 file(GLOB SECRETFLOW_QUERIES bench/queries/secretflow/*.cpp)
 file(GLOB OTHER_QUERIES bench/queries/other/*.cpp)
+file(GLOB S2MPC_QUERIES bench/queries/s2mpc/*.cpp)
 
 foreach (_target
             ${EXE_EXAMPLES} ${EXE_MICRO} ${EXE_TVA} ${EXE_TESTS} ${EXE_BENCH})
     configure_target(${_target})
 endforeach ()
 
-foreach (_target ${TPCH_QUERIES} ${SECRETFLOW_QUERIES} ${OTHER_QUERIES})
+foreach (_target ${TPCH_QUERIES} ${SECRETFLOW_QUERIES} ${OTHER_QUERIES} ${S2MPC_QUERIES})
     configure_target(${_target} LINK_SQL)
 endforeach()
 

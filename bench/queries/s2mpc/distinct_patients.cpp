@@ -46,16 +46,6 @@ using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 #define DIAG_TYPES 500
 #define MED_TYPES 50
 
-size_t demographicSize(const double scaleFactor) {
-    return std::round(scaleFactor * DEMOGRAPHIC_MULTIPLIER);
-}
-size_t diagnosisSize(const double scaleFactor) {
-    return std::round(scaleFactor * DIAGNOSIS_MULTIPLIER);
-}
-size_t medicationSize(const double scaleFactor) {
-    return std::round(scaleFactor * MEDICATION_MULTIPLIER);
-}
-
 // These functions will generate a table (of the appropriate size) with random data and load them
 // into SQLite.
 EncodedTable<int> getDemographicTable(const double, sqlite3*);
@@ -170,9 +160,10 @@ int main(int argc, char** argv) {
     // Oblivious execution does not guarantee that the opened table won't reveal anything about the
     // query inputs. Thus, the finalize command shuffles a table using ORQ's oblivious shuffling
     // facilities, and also obliviously masks out any invalid rows to prevent leakage.
-
-    // However, we will skip shuffling here (paramater false) so that correctness tests will be
-    // deterministic.
+    //
+    // However, we will skip shuffling here (paramater `false`) only so that correctness tests will
+    // be deterministic. Note that this technically is not secure, since it leaks the order of
+    // intermediate values in the query.
     DemographicJoin.finalize(false);
 
     stopwatch::done();
@@ -241,6 +232,16 @@ int main(int argc, char** argv) {
 
     sqlite3_close(sqlite_db);
     return 0;
+}
+
+size_t demographicSize(const double scaleFactor) {
+    return std::round(scaleFactor * DEMOGRAPHIC_MULTIPLIER);
+}
+size_t diagnosisSize(const double scaleFactor) {
+    return std::round(scaleFactor * DIAGNOSIS_MULTIPLIER);
+}
+size_t medicationSize(const double scaleFactor) {
+    return std::round(scaleFactor * MEDICATION_MULTIPLIER);
 }
 
 // Implementation of the data-generation functions. At a high level, generates a random vector in
