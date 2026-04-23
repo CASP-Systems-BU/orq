@@ -16,6 +16,10 @@
  *
  * The published version of this query uses randomly-generated data. For the tutorial, we will use
  * CSV files to input each data owner's contribution.
+ *
+ * Fill out each `#error TODO` to complete the query.
+ *
+ * See `sec_yan_solution.cpp` for a working implementation.
  */
 
 // To run correctness tests
@@ -23,8 +27,6 @@
 
 // Include the ORQ library
 #include "orq.h"
-
-#define TODO
 
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
@@ -92,7 +94,9 @@ int main(int argc, char** argv) {
     std::vector<std::string> t3_schema = {"[disease]", "[class]"};
 
     EncodedTable<int> T3("T3", t3_schema, t3_size);
-    T3.inputCSVTableData("../examples/data/data-owner-2/p2-t3.csv", 2);
+    T3.inputCSVTableData("../examples/data/data-owner-2/p2-t3.csv",
+#error TODO
+    );
 
     //////////////////////////////////////////////////////////////////
     // At this point, all parties hold secret shares of all tables. //
@@ -116,7 +120,9 @@ int main(int argc, char** argv) {
     // soon). Therefore, we use scaled-up percentages, and subtract from 100. (In the current
     // version, we can't write `100 - ...` because of a C++ quirk, but this will also be fixed
     // soon.)
-    T1["insurance_percent"] = -T1["coinsurance"] + 100;
+    T1["insurance_percent"] = 
+#error TODO
+    ;
 
     // We no longer need the coinsurance column.
     T1.deleteColumns({"coinsurance"});
@@ -133,13 +139,13 @@ int main(int argc, char** argv) {
     // record per person.
     T1.aggregate(
         // The group-by key.
-        {"[person]"},
+#error TODO
         // The aggregations.
         {
             // Syntax is {"input column", "output column", aggregationFunction<Type>}
             // Overwriting is supported, but we could also specify a separate aggregate column if we
             // wanted to keep the original data around.
-            {"insurance_percent", "insurance_percent", sum<A>},
+#error TODO
             // We could specify more aggregations here if needed.
         });
 
@@ -153,12 +159,13 @@ int main(int argc, char** argv) {
     auto T12 = T1.inner_join(
         T2,
         // The group-by key.
-        {"[person]"},
+#error TODO
         // The aggregations.
         {
             // copy<> just moves data from the left table to the output. By default, only data from
             // the right table is included, due to some technical quirks of the algorithm.
-            {"insurance_percent", "insurance_percent", copy<A>},
+            // Same syntax as aggregations
+#error TODO
         });
 
     stopwatch::timepoint("T1 >< T2");
@@ -168,7 +175,7 @@ int main(int argc, char** argv) {
     // Since insurance_percent is multiplied by 100, we have to divide.
     // We could also defer division for the final step to avoid rounding errors.
     // This uses the secure division algorithm from our prior paper, TVA (USENIX Security 2023)
-    T12["insurance_cost"] = T12["insurance_percent"] * T12["cost"] / 100;
+#error TODO
 
     T12.project({"[disease]", "insurance_cost"});
 
@@ -176,11 +183,11 @@ int main(int argc, char** argv) {
     // After the aggregation is applied, T12 contains one valid record per 'disease'
     T12.aggregate(
         // Group by key.
-        {"[disease]"},
-
+#error TODO
         // Aggregations.
         {
-            {"insurance_cost", "insurance_cost", sum<A>},
+            // Sum all insurance costs.
+#error TODO
         });
 
     stopwatch::timepoint("PreAgg T3");
@@ -190,10 +197,10 @@ int main(int argc, char** argv) {
         // Right-side table
         T3,
         // Group key
-        {"[disease]"},
+#error TODO
         // Aggregations
         {
-            {"insurance_cost", "insurance_cost", copy<A>},
+#error TODO
         });
 
     stopwatch::timepoint("T2 >< T3");
@@ -204,10 +211,10 @@ int main(int argc, char** argv) {
     // Sum 'insurance_cost' per 'class'
     T123.aggregate(
         // Final group by key
-        {"[class]"},
-        // Final aggregation
+#error TODO
+        // Final sum aggregation
         {
-            {"insurance_cost", "insurance_cost", sum<A>},
+#error TODO
         });
 
     // Shuffle the table & mask all invalid rows to prevent leakage.
@@ -218,6 +225,7 @@ int main(int argc, char** argv) {
 
     print_table(T123.open_with_schema(), partyID);
 
+    // Synchronization point.
     MPI_Barrier(MPI_COMM_WORLD);
 
     // When run under the single-party debug protocol, output the number of operations performed
