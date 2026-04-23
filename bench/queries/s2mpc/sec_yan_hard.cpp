@@ -110,6 +110,9 @@ int main(int argc, char** argv) {
     //      aggregate
     //      inner_join
     //
+    // See `encoded_table.h` and 
+    //      https://casp-systems-bu.github.io/orq/headers/containers.html
+    //
     // Note: The current public version of ORQ does not support decimals (we will push support
     // soon). Therefore, we use scaled-up percentages, and subtract from 100 to compute the
     // coinsurance term.
