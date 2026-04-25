@@ -132,10 +132,12 @@ int main(int argc, char** argv) {
     stopwatch::timepoint("Start");
 
     // [SQL] di.diag = "hd"
+    // This is a SECURE equality, via a `SharedVector == PublicValue` overload.
     Diagnosis.filter(Diagnosis["[diag]"] == DIAG);
     Diagnosis.project({"[code]"});
 
     // [SQL] m.med = "aspirin"
+    // Another secure equality.
     Medication.filter(Medication["[med]"] == MED);
     Medication.project({"[code]", "[pid]"});
 
@@ -153,6 +155,7 @@ int main(int argc, char** argv) {
     stopwatch::timepoint("Demog. join");
 
     // [SQL] SELECT DISTINCT pid
+    // Secure distinct; uses secure equality under the hood.
     DemographicJoin.distinct({"[pid]"});
 
     stopwatch::timepoint("Distinct pids");
@@ -183,6 +186,7 @@ int main(int argc, char** argv) {
     // Open the final table,
     auto resultOpened = DemographicJoin.open_with_schema();
     // and extract the patient ID column. We'll check this against the SQL result
+    // This is now a plaintext Vector with the standard semantics.
     auto pid_col = DemographicJoin.get_column(resultOpened, "[pid]");
 
     // In reality, we probably wouldn't want to open to a computing party. Instead, a separate
