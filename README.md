@@ -15,6 +15,9 @@ ORQ is a multi-party computation framework for relational analytics. For more in
 > [!NOTE]
 > _(March 2026)_ We have been notified of an [attack on the Fantastic Four protocol](https://eprint.iacr.org/2026/234) (to appear at Eurocrypt'26). An implementation of the fix following $\Pi_\mathrm{CheckEqs}$ (Fig. 6 of [BS26]) is currently under development. Separately, we also identified some issues with our malicious-secure opening protocol. We will push both fixes to this repository soon.
 
+> [!NOTE]
+> Here for S2MPC? See the [README](https://github.com/CASP-Systems-BU/orq/blob/s2mpc-2026/bench/queries/s2mpc/README.md).
+
 ## Table of Contents
 
 - [Dependencies](#dependencies)
