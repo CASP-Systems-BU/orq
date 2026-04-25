@@ -64,3 +64,17 @@ mpirun -n 3 distinct_patients 1 1 -1 0.00002
 You are welcome to use VSCode SSH or your favorite remote IDE if that's easier.
 
 Have fun!
+
+## Distributed Execution
+
+When it's time to test out the distributed execution, we'll need to take a few extra steps:
+
+1. Make sure your local SSH key is loaded into the agent: `ssh-add ~/.ssh/your-key.pub`
+2. Enable forwarding on the ssh connection: `ssh -A ...@...cloudlab.us`
+3. Only "party 0" executes `mpi`, but now uses the `-h` option.
+
+```bash
+mpirun -n 3 -h localhost,full-path-to.other.node.cloudlab.us,and-the-other.one.cloudlab.us sec_yan
+```
+
+If this fails, check if you can `ssh` into the other two machines (`mpi` uses `ssh` to configure connections). You can also try making a different node party 0.
