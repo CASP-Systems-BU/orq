@@ -22,8 +22,9 @@ Next, run the following commands (copy and paste is fine). This will set up ORQ'
 
 ```bash
 cd /s2mpc/orq
+sudo chmod a+rwx .
 mkdir build
-build
+cd build
 ../scripts/_setup_required.sh
 cmake .. -DPROTOCOL=3
 make test_primitives
