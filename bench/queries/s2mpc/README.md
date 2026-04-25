@@ -40,4 +40,27 @@ We'll walk through `distinct_patients.cpp` together. Then, you'll have the oppor
 
 Data for these queries resides in `/examples/data/data-owner-*/`. We imagine that each data owner holds a single table. You can change the CSVs and should observe changes in the query output.
 
+To execute a query, make sure you are in the `build` directory, and run
+
+```bash
+make distinct_patients
+mpirun -n 3 distinct_patients
+```
+
+Replace with the appropriate `sec_yan*` file to run the other query.
+
+ORQ executables take a few additional parameters, which we generally won't be discussing. However, you can adjust the size of the input for `distinct_patients` via the fourth positional argument. This will run the query at scale factor 0.1, an order of magnitude larger than the default:
+
+```bash
+mpirun -n 3 distinct_patients 1 1 -1 0.1
+```
+
+The query will also automatically print the input tables for very small sizes:
+
+```bash
+mpirun -n 3 distinct_patients 1 1 -1 0.00002
+```
+
 You are welcome to use VSCode SSH or your favorite remote IDE if that's easier.
+
+Have fun!
