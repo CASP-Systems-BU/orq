@@ -22,10 +22,6 @@ if (PERF)
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
 endif (PERF)
 
-if (NOT NO_X86_SSE)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mbmi -march=native")
-endif (NOT NO_X86_SSE)
-
 if (EXTRA)
     string(REPLACE "," " " EXTRA "${EXTRA}")
     string(STRIP EXTRA "${EXTRA}")
