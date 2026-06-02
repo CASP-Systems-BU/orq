@@ -10,8 +10,6 @@ using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 #define MAX_ROW_EXPONENT 20
 
 int main(int argc, char** argv) {
-     [executable - threads_num - p_factor -
-    // batch_size]
     orq_init(argc, argv);
     auto pID = runTime->getPartyID();
     int test_size = 1 << 20;

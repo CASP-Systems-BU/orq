@@ -16,8 +16,6 @@ using T = int32_t;
 #endif
 
 int main(int argc, char** argv) {
-     [executable - threads_num - p_factor -
-    // batch_size]
     orq_init(argc, argv);
     auto pID = runTime->getPartyID();
     int test_size = 1 << 20;

@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
     double elapsed;
     gettimeofday(&begin, 0);
 
-    BSharedVector<int> c_1 = orq::ripple_carry_adder(a, b);
+    BSharedVector<int> c_1 = orq::operators::ripple_carry_adder(a, b);
 
     // stop timer
     gettimeofday(&end, 0);
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
 
     gettimeofday(&begin, 0);
 
-    BSharedVector<int> c_2 = orq::parallel_prefix_adder(a, b);
+    BSharedVector<int> c_2 = orq::operators::parallel_prefix_adder(a, b);
 
     gettimeofday(&end, 0);
     seconds = end.tv_sec - begin.tv_sec;

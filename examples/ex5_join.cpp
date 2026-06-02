@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
         Joined.addColumn("Count");
 
         auto StudentCount = Joined.deepcopy();
-        StudentCount.sort({ENC_TABLE_VALID, "[StudentID]"});
+        StudentCount.sort(std::vector<std::string>{ENC_TABLE_VALID, "[StudentID]"});
         StudentCount.distinct({"[StudentID]"});
         // Count the students
         StudentCount.aggregate({ENC_TABLE_VALID}, {{"Count", "Count", count<A>}});
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
     {
         auto Joined = Attendees.left_outer_join(Classes, {"[StudentID]"});
 
-        Joined.sort({ENC_TABLE_VALID, "[StudentID]"});
+        Joined.sort(std::vector<std::string>{ENC_TABLE_VALID, "[StudentID]"});
         Joined.distinct({"[StudentID]"});
 
         auto opened = Joined.open_with_schema().first;
@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
         auto Joined = Attendees.right_outer_join(Classes, {"[StudentID]"});
 
         // distinct requires a sort first
-        Joined.sort({ENC_TABLE_VALID, "[StudentID]"});
+        Joined.sort(std::vector<std::string>{ENC_TABLE_VALID, "[StudentID]"});
         Joined.distinct({"[StudentID]"});
 
         auto opened = Joined.open_with_schema().first;
@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
     {
         auto Joined = Attendees.full_outer_join(Classes, {"[StudentID]"});
 
-        Joined.sort({ENC_TABLE_VALID, "[StudentID]"});
+        Joined.sort(std::vector<std::string>{ENC_TABLE_VALID, "[StudentID]"});
         Joined.distinct({"[StudentID]"});
 
         auto opened = Joined.open_with_schema().first;
@@ -208,7 +208,7 @@ int main(int argc, char **argv) {
     {
         auto Joined = Classes.anti_join(Attendees, {"[StudentID]"});
 
-        Joined.sort({ENC_TABLE_VALID, "[StudentID]"});
+        Joined.sort(std::vector<std::string>{ENC_TABLE_VALID, "[StudentID]"});
         Joined.distinct({"[StudentID]"});
 
         auto opened = Joined.open_with_schema().first;
@@ -230,10 +230,10 @@ int main(int argc, char **argv) {
     {
         auto Joined = Classes.semi_join(Attendees, {"[StudentID]"});
 
-        Joined.sort({ENC_TABLE_VALID, "[CourseID]"});
+        Joined.sort(std::vector<std::string>{ENC_TABLE_VALID, "[CourseID]"});
         Joined.distinct({"[CourseID]"});
 
-        Classes.sort({ENC_TABLE_VALID, "[CourseID]"});
+        Classes.sort(std::vector<std::string>{ENC_TABLE_VALID, "[CourseID]"});
         Classes.distinct({"[CourseID]"});
         auto c_count = Classes.open_with_schema().first[0].size();
 
