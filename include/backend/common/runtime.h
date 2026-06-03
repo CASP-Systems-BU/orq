@@ -971,6 +971,11 @@ class RunTime {
         return ok;
     }
 
+    [[nodiscard]] Communicator* get_communicator(const size_t thread_id = 0) const {
+        assert(thread_id < num_threads);
+        return workers[thread_id].getCommunicator();
+    }
+
     /**
      * Print the number of bytes sent by each communicator.
      */
@@ -990,7 +995,9 @@ class RunTime {
 
         size_t total_bytes_sent = 0;
         for (int i = 0; i < num_threads; ++i) {
-            size_t bytes_sent = communicators[i]->getBytesSent();
+            auto communicator = get_communicator(i);
+
+            size_t bytes_sent = communicator->getBytesSent();
             total_bytes_sent += bytes_sent;
 
             std::cout << _spacer << std::setw(lhs_width) << std::left
