@@ -8,7 +8,6 @@
 #pragma once
 
 #if defined(USE_LIBOTE) && defined(USE_SECURE_JOIN)
-#include "core/random/correlation/dpf.h"
 #include "core/random/correlation/oprf.h"
 #else
 #include "core/random/correlation/mock.h"

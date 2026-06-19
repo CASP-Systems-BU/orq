@@ -9,7 +9,7 @@
  * ../scripts/run_experiment.py ... ex3_relational
  * ```
  *
- * This example demonstrates ORQ's relational analytics runTime->
+ * This example demonstrates ORQ's relational analytics engine.
  *
  * We assume two secret shared tables (which themselves could be concatenations
  * of multiple data owners' input):

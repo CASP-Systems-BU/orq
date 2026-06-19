@@ -104,8 +104,6 @@ int main(int argc, char** argv) {
     // so we only have a 128-bit generator object to run assertCorrelated
     test_permutation_correlations<__int128_t>(1000);
     single_cout("Permutation Correlations... OK");
-
-    single_cout("SHPRG... OK");
 #endif
 
     runTime->malicious_check();
