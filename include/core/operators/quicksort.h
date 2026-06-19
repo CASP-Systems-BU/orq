@@ -214,8 +214,8 @@ static void quicksort_body(BSharedVector<T, EVector> &v) {
  */
 // the quicksort entry point which calls the body
 template <typename Share, typename EVector>
-static ElementwisePermutation<EVector> quicksort(BSharedVector<Share, EVector> &v,
-                                                 SortOrder order) {
+static ElementwisePermutation<EVector> quicksort(BSharedVector<Share, EVector> &v, SortOrder order,
+                                                 bool no_invert) {
     // 1 for shuffle, 1 for remove_padding (b2a)
     int num_permutations = 2;
     if (runTime->getNumParties() == 2) {
@@ -223,7 +223,7 @@ static ElementwisePermutation<EVector> quicksort(BSharedVector<Share, EVector> &
         num_permutations -= 1;
     }
     // 1 pair for invert (calls obliv_apply_elementwise_perm)
-    int num_pairs = 1;
+    int num_pairs = no_invert ? 0 : 1;
     orq::random::PermutationManager::get()->reserve(v.size(), num_permutations, num_pairs);
 
     auto reversed = order == SortOrder::DESC;
@@ -239,8 +239,15 @@ static ElementwisePermutation<EVector> quicksort(BSharedVector<Share, EVector> &
 
     // unpad the result to obtain the original sorted list and the secret-shared applied
     // permutation
-    ElementwisePermutation<EVector> permutation = remove_padding(v, padded, reversed);
-    permutation.invert();
+    // if we don't need to invert, we don't need to convert to arithmetic
+    bool convert_to_arithmetic = !no_invert;
+    ElementwisePermutation<EVector> permutation =
+        remove_padding(v, padded, reversed, convert_to_arithmetic);
+    if (convert_to_arithmetic) {
+        permutation.invert();
+    }
+
+    runTime->malicious_check();
 
     return permutation;
 }

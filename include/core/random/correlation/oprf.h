@@ -1,13 +1,17 @@
 #pragma once
 
+#include "backend/common/libote_io.h"
+#include "constants.h"
 #include "coproto/Socket/AsioSocket.h"
 #include "core/containers/encoding.h"
+#include "core/random/correlation/silent_ot.h"
+#include "correlation_generator.h"
 #include "libOTe/config.h"
 #include "secure-join/Prf/AltModPrf.h"
 #include "secure-join/Prf/AltModPrfProto.h"
 
 // shift up past OLE and past OT
-const int OPRF_BASE_PORT = 8877 + (MAX_POSSIBLE_THREADS * 32);
+const int OPRF_BASE_PORT = GILBOA_OLE_BASE_PORT + (MAX_POSSIBLE_THREADS * 32);
 
 namespace orq::random {
 
@@ -24,10 +28,10 @@ class OPRF {
     // our PRF and libOTe's PRG
     oc::PRNG prng;
 
-    oc::Socket sock_main_send;
-    oc::Socket sock_ole_send;
-    oc::Socket sock_main_recv;
-    oc::Socket sock_ole_recv;
+    std::shared_ptr<oc::Socket> sock_main_send;
+    std::shared_ptr<oc::Socket> sock_ole_send;
+    std::shared_ptr<oc::Socket> sock_main_recv;
+    std::shared_ptr<oc::Socket> sock_ole_recv;
     bool isServer;
 
     std::unique_ptr<secJoin::AltModWPrfSender> sender;
@@ -45,7 +49,7 @@ class OPRF {
      * @param rank The rank of this party (0 or 1).
      * @param thread The thread identifier for port allocation.
      */
-    OPRF(int rank, int thread) : prng(oc::sysRandomSeed()) {
+    OPRF(int rank, int thread, std::string host_prefix) : prng(oc::sysRandomSeed()) {
         isServer = (rank == 0);
 
         sender = std::make_unique<secJoin::AltModWPrfSender>();
@@ -53,28 +57,38 @@ class OPRF {
 
         // setup two sockets
         int port = OPRF_BASE_PORT + 4 * thread;
+
+        // Obtain shared io_context (initialised elsewhere during setup)
+        auto& ioc = orq::libote_io::libOTeContext::get_ioc();
+
         if (rank == 0) {
-            auto addr_main_send = std::string(LIBOTE_SERVER_HOSTNAME ":") + std::to_string(port);
-            auto addr_main_recv =
-                std::string(LIBOTE_SERVER_HOSTNAME ":") + std::to_string(port + 1);
-            auto addr_ole_send = std::string(LIBOTE_SERVER_HOSTNAME ":") + std::to_string(port + 2);
-            auto addr_ole_recv = std::string(LIBOTE_SERVER_HOSTNAME ":") + std::to_string(port + 3);
+            auto addr_main_send = std::string(host_prefix + ":") + std::to_string(port);
+            auto addr_main_recv = std::string(host_prefix + ":") + std::to_string(port + 1);
+            auto addr_ole_send = std::string(host_prefix + ":") + std::to_string(port + 2);
+            auto addr_ole_recv = std::string(host_prefix + ":") + std::to_string(port + 3);
 
-            sock_main_send = oc::cp::asioConnect(addr_main_send, isServer);
-            sock_main_recv = oc::cp::asioConnect(addr_main_recv, isServer);
-            sock_ole_send = oc::cp::asioConnect(addr_ole_send, isServer);
-            sock_ole_recv = oc::cp::asioConnect(addr_ole_recv, isServer);
+            sock_main_send =
+                std::make_shared<oc::Socket>(oc::cp::asioConnect(addr_main_send, isServer, ioc));
+            sock_main_recv =
+                std::make_shared<oc::Socket>(oc::cp::asioConnect(addr_main_recv, isServer, ioc));
+            sock_ole_send =
+                std::make_shared<oc::Socket>(oc::cp::asioConnect(addr_ole_send, isServer, ioc));
+            sock_ole_recv =
+                std::make_shared<oc::Socket>(oc::cp::asioConnect(addr_ole_recv, isServer, ioc));
         } else {
-            auto addr_main_send =
-                std::string(LIBOTE_SERVER_HOSTNAME ":") + std::to_string(port + 1);
-            auto addr_main_recv = std::string(LIBOTE_SERVER_HOSTNAME ":") + std::to_string(port);
-            auto addr_ole_send = std::string(LIBOTE_SERVER_HOSTNAME ":") + std::to_string(port + 3);
-            auto addr_ole_recv = std::string(LIBOTE_SERVER_HOSTNAME ":") + std::to_string(port + 2);
+            auto addr_main_send = std::string(host_prefix + ":") + std::to_string(port + 1);
+            auto addr_main_recv = std::string(host_prefix + ":") + std::to_string(port);
+            auto addr_ole_send = std::string(host_prefix + ":") + std::to_string(port + 3);
+            auto addr_ole_recv = std::string(host_prefix + ":") + std::to_string(port + 2);
 
-            sock_main_recv = oc::cp::asioConnect(addr_main_recv, isServer);
-            sock_main_send = oc::cp::asioConnect(addr_main_send, isServer);
-            sock_ole_recv = oc::cp::asioConnect(addr_ole_recv, isServer);
-            sock_ole_send = oc::cp::asioConnect(addr_ole_send, isServer);
+            sock_main_recv =
+                std::make_shared<oc::Socket>(oc::cp::asioConnect(addr_main_recv, isServer, ioc));
+            sock_main_send =
+                std::make_shared<oc::Socket>(oc::cp::asioConnect(addr_main_send, isServer, ioc));
+            sock_ole_recv =
+                std::make_shared<oc::Socket>(oc::cp::asioConnect(addr_ole_recv, isServer, ioc));
+            sock_ole_send =
+                std::make_shared<oc::Socket>(oc::cp::asioConnect(addr_ole_send, isServer, ioc));
         }
     }
 
@@ -96,17 +110,10 @@ class OPRF {
     ~OPRF() {
         // Flush and close all sockets
         try {
-            oc::cp::sync_wait(sock_main_send.flush());
-            oc::cp::sync_wait(sock_main_send.close());
-
-            oc::cp::sync_wait(sock_main_recv.flush());
-            oc::cp::sync_wait(sock_main_recv.close());
-
-            oc::cp::sync_wait(sock_ole_send.flush());
-            oc::cp::sync_wait(sock_ole_send.close());
-
-            oc::cp::sync_wait(sock_ole_recv.flush());
-            oc::cp::sync_wait(sock_ole_recv.close());
+            oc::cp::sync_wait(sock_main_send->flush());
+            oc::cp::sync_wait(sock_main_recv->flush());
+            oc::cp::sync_wait(sock_ole_send->flush());
+            oc::cp::sync_wait(sock_ole_recv->flush());
         } catch (const std::exception& e) {
             // Log error but don't throw from destructor
             std::cerr << "Error closing OPRF sockets: " << e.what() << std::endl;
@@ -136,7 +143,7 @@ class OPRF {
         std::vector<oc::block> y(n);
 
         // initialize the OLE generators
-        ole.init(sock_ole_send.fork(), prng, !isServer, 1, 1 << 18, 0);
+        ole.init(sock_ole_send->fork(), prng, !isServer, 1, 1 << 18, 0);
 
         // handle the thread pool, not quite sure what this does
         macoro::thread_pool pool;
@@ -144,8 +151,8 @@ class OPRF {
                                     // counting)
         pool.create_threads(1);
 
-        sock_main_send.setExecutor(pool);
-        sock_ole_send.setExecutor(pool);
+        sock_main_send->setExecutor(pool);
+        sock_ole_send->setExecutor(pool);
 
         // evaluate
         sender->init(n, ole, secJoin::AltModPrfKeyMode::SenderOnly,
@@ -154,10 +161,10 @@ class OPRF {
 
         auto r = coproto::sync_wait(coproto::when_all_ready(
             ole.start() | macoro::start_on(pool),
-            sender->evaluate({}, y, sock_main_send, prng) | macoro::start_on(pool)));
+            sender->evaluate({}, y, *sock_main_send, prng) | macoro::start_on(pool)));
 
-        oc::cp::sync_wait(sock_main_send.flush());  // flush the socket
-        oc::cp::sync_wait(sock_ole_send.flush());   // flush the socket
+        oc::cp::sync_wait(sock_main_send->flush());  // flush the socket
+        oc::cp::sync_wait(sock_ole_send->flush());   // flush the socket
 
         // clear the state of the sender
         sender->clear();
@@ -196,7 +203,7 @@ class OPRF {
                                  reinterpret_cast<oc::block*>(x_vec.data() + n));
 
         // initialize the OLE generators
-        ole.init(sock_ole_recv.fork(), prng, !isServer, 1, 1 << 18, 0);
+        ole.init(sock_ole_recv->fork(), prng, !isServer, 1, 1 << 18, 0);
 
         // handle the thread pool, not quite sure what this does
         macoro::thread_pool pool;
@@ -204,8 +211,8 @@ class OPRF {
                                     // counting)
         pool.create_threads(1);
 
-        sock_main_recv.setExecutor(pool);
-        sock_ole_recv.setExecutor(pool);
+        sock_main_recv->setExecutor(pool);
+        sock_ole_recv->setExecutor(pool);
 
         // evaluate
         receiver->init(n, ole, secJoin::AltModPrfKeyMode::SenderOnly,
@@ -214,10 +221,10 @@ class OPRF {
 
         auto r = coproto::sync_wait(coproto::when_all_ready(
             ole.start() | macoro::start_on(pool),
-            receiver->evaluate(x, y, sock_main_recv, prng) | macoro::start_on(pool)));
+            receiver->evaluate(x, y, *sock_main_recv, prng) | macoro::start_on(pool)));
 
-        oc::cp::sync_wait(sock_main_recv.flush());  // flush the socket
-        oc::cp::sync_wait(sock_ole_recv.flush());   // flush the socket
+        oc::cp::sync_wait(sock_main_recv->flush());  // flush the socket
+        oc::cp::sync_wait(sock_ole_recv->flush());   // flush the socket
 
         // clear the state of the receiver
         receiver->clear();
@@ -259,5 +266,4 @@ class OPRF {
         return ret;
     }
 };
-
 }  // namespace orq::random

@@ -8,7 +8,8 @@
 #include <condition_variable>
 #include <thread>
 
-#include "core/protocols/protocol.h"
+#include "core/math/util.h"
+#include "core/protocols/interface.h"
 #include "core/random/manager.h"
 #include "profiling/thread_profiling.h"
 #include "task.h"
@@ -18,12 +19,13 @@ namespace orq::service {
 
 class Worker {
    public:
-    Worker(int rank, std::shared_ptr<std::barrier<>> barrier)
+    Worker(int rank, std::shared_ptr<std::barrier<>> barrier, WorkerConfig w)
         : terminate_(false),
           b_(barrier),
           m_(std::make_unique<std::mutex>()),
           cv_(std::make_unique<std::condition_variable>()),
-          rank_(rank) {
+          rank_(rank),
+          wc(w) {
         thread_stopwatch::init_map(thread_.get_id());
     }
 
@@ -69,13 +71,30 @@ class Worker {
         cv_->notify_all();
     }
 
-    bool malicious_check(const bool should_abort) {
-        bool ok = proto_8->malicious_check(should_abort);
-        ok &= proto_16->malicious_check(should_abort);
-        ok &= proto_32->malicious_check(should_abort);
-        ok &= proto_64->malicious_check(should_abort);
-        ok &= proto_128->malicious_check(should_abort);
+    bool start_malicious_check() {
+        bool ok = proto_8->start_malicious_check();
+        ok &= proto_16->start_malicious_check();
+        ok &= proto_32->start_malicious_check();
+        ok &= proto_64->start_malicious_check();
+        ok &= proto_128->start_malicious_check();
         return ok;
+    }
+
+    bool finalize_malicious_check() {
+        bool ok = proto_8->finalize_malicious_check();
+        ok &= proto_16->finalize_malicious_check();
+        ok &= proto_32->finalize_malicious_check();
+        ok &= proto_64->finalize_malicious_check();
+        ok &= proto_128->finalize_malicious_check();
+        return ok;
+    }
+
+    void reset_malicious_state() {
+        proto_8->reset_malicious_state();
+        proto_16->reset_malicious_state();
+        proto_32->reset_malicious_state();
+        proto_64->reset_malicious_state();
+        proto_128->reset_malicious_state();
     }
 
     void print_statistics() {
@@ -86,35 +105,86 @@ class Worker {
         proto_128->print_statistics();
     }
 
+    void mark_statistics() {
+        proto_8->mark_statistics();
+        proto_16->mark_statistics();
+        proto_32->mark_statistics();
+        proto_64->mark_statistics();
+        proto_128->mark_statistics();
+    }
+
+    void clear_statistics() {
+        proto_8->clear_statistics();
+        proto_16->clear_statistics();
+        proto_32->clear_statistics();
+        proto_64->clear_statistics();
+        proto_128->clear_statistics();
+    }
+
     orq::random::RandomnessManager* getRandManager() const {
         assert(rand_ != nullptr);
         return this->rand_.get();
     }
+
     orq::Communicator* getCommunicator() const {
         assert(comm_ != nullptr);
         return this->comm_.get();
+    }
+
+    int getId() const { return wc.worker_id; }
+
+    /**
+     * @brief Return an instance of the protocol object specified by template argument
+     *
+     * @tparam T
+     * @return std::unique_ptr<ProtocolBase>&
+     */
+    template <typename T>
+    std::unique_ptr<ProtocolBase>& get_proto_instance() {
+        if constexpr (std::is_same_v<T, int8_t>) {
+            return proto_8;
+        } else if constexpr (std::is_same_v<T, int16_t>) {
+            return proto_16;
+        } else if constexpr (std::is_same_v<T, int32_t>) {
+            return proto_32;
+        } else if constexpr (std::is_same_v<T, int64_t>) {
+            return proto_64;
+        } else if constexpr (std::is_same_v<T, __int128_t>) {
+            return proto_128;
+        }
+    }
+
+    /**
+     * @brief Get a pointer to the function-pointer member for a worker's protocol object specified
+     * by the templated type.
+     *
+     * @tparam T
+     * @return auto
+     */
+    template <typename T>
+    static auto get_proto_member() {
+        if constexpr (std::is_same_v<T, int8_t>) {
+            return &Worker::proto_8;
+        } else if constexpr (std::is_same_v<T, int16_t>) {
+            return &Worker::proto_16;
+        } else if constexpr (std::is_same_v<T, int32_t>) {
+            return &Worker::proto_32;
+        } else if constexpr (std::is_same_v<T, int64_t>) {
+            return &Worker::proto_64;
+        } else if constexpr (std::is_same_v<T, __int128_t>) {
+            return &Worker::proto_128;
+        }
     }
 
     template <typename T, typename PF>
     void init_proto(PF& pf) {
         auto c = comm_.get();
         auto r = rand_.get();
-
         assert(c != nullptr && r != nullptr);
 
-        auto p = pf.template create<T>(c, r);
-
-        if constexpr (std::is_same_v<T, int8_t>) {
-            proto_8 = std::move(p);
-        } else if constexpr (std::is_same_v<T, int16_t>) {
-            proto_16 = std::move(p);
-        } else if constexpr (std::is_same_v<T, int32_t>) {
-            proto_32 = std::move(p);
-        } else if constexpr (std::is_same_v<T, int64_t>) {
-            proto_64 = std::move(p);
-        } else if constexpr (std::is_same_v<T, __int128_t>) {
-            proto_128 = std::move(p);
-        }
+        auto p = pf.template create<T>(wc, c, r);
+        // get_proto_instance returns a pointer reference, so this is legal
+        get_proto_instance<T>() = std::move(p);
     }
 
     /**
@@ -166,6 +236,10 @@ class Worker {
 
    private:
     void run() {
+#ifdef MPC_PROTOCOL_FANTASTIC_FOUR
+        math::setup_NTL_4pc_hash_check();
+#endif
+
         std::unique_ptr<Task> t;
 
         while (true) {
@@ -221,6 +295,8 @@ class Worker {
     std::shared_ptr<std::barrier<>> b_;
 
     std::thread thread_;
+
+    WorkerConfig wc;
 
     bool terminate_;
 };

@@ -11,7 +11,7 @@ void test_setup(int max_threads) {
     // create runtime objects with variable number of threads and make sure they successfully create
     // if this test hangs, there is a deadlock in setup
     for (int num_threads = 1; num_threads < max_threads; num_threads <<= 1) {
-        RunTime rt(batch_size, num_threads, true);
+        RunTime rt(batch_size, num_threads, {}, true);
         rt.setup_workers(0);
     }
 }

@@ -7,7 +7,7 @@
 #include "orq.h"
 
 // This test only runs on 2pc
-#ifdef MPC_PROTOCOL_BEAVER_TWO
+#if defined(MPC_PROTOCOL_BEAVER_TWO) && defined(USE_LIBOTE)
 
 #include "coproto/Socket/AsioSocket.h"
 #include "coproto/Socket/BufferingSocket.h"
@@ -36,7 +36,7 @@ using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 using Ctx = CoeffCtxInteger;
 
 // Don't conflict with ORQ's libOTe instance
-#define TESTING_ADDRESS "localhost:29876"
+#define TESTING_ADDRESS ":29876"
 
 inline auto eval(macoro::task<>& t0, macoro::task<>& t1) {
     auto r = macoro::sync_wait(macoro::when_all_ready(std::move(t0), std::move(t1)));
@@ -247,7 +247,7 @@ void test_silent_vole_loopback(u64 n) {
 
     bool isServer = (runTime->getPartyID() == 0);
 
-    auto sock = cp::asioConnect(TESTING_ADDRESS, isServer);
+    auto sock = cp::asioConnect(runTime->comm0()->host_prefix + TESTING_ADDRESS, isServer);
 
     VecF A(n), B(n), C(n);
     F delta = 0;
@@ -313,7 +313,7 @@ void test_silent_ot_loopback(u64 n) {
     }
 
     PRNG prng(sysRandomSeed());
-    auto sock = cp::asioConnect(TESTING_ADDRESS, isServer);
+    auto sock = cp::asioConnect(runTime->comm0()->host_prefix + TESTING_ADDRESS, isServer);
 
     // OT gives 128 bit outputs, so we actually need fewer than requested;
     // exact amount depends on size of the element requested.
@@ -408,7 +408,7 @@ void test_silent_ot_chosen(u64 n) {
     }
 
     PRNG prng(sysRandomSeed());
-    auto sock = cp::asioConnect(TESTING_ADDRESS, isServer);
+    auto sock = cp::asioConnect(runTime->comm0()->host_prefix + TESTING_ADDRESS, isServer);
 
     if (isServer) {
         // rOT Receiver
@@ -465,7 +465,7 @@ void test_softspoken(u64 n) {
     }
 
     PRNG prng(sysRandomSeed());
-    auto sock = cp::asioConnect(TESTING_ADDRESS, isRecv);
+    auto sock = cp::asioConnect(runTime->comm0()->host_prefix + TESTING_ADDRESS, isRecv);
 
     BitVector ch(n);
     AlignedUnVector<block> r_msg(n);

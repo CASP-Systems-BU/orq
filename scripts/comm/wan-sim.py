@@ -4,12 +4,12 @@ import argparse
 import subprocess
 import sys
 
-# ORQ simulated WAN uses 6Gbps and 20 ms RTT.
-BANDWIDTH_LIMIT = "6Gbit"
+# Simulated WAN (modeling AWS-GCP interconnect) uses 12Gbps and 13 ms RTT.
+BANDWIDTH_LIMIT = "12Gbit"
 
 # this is the PER LINK latency; actual RTT will be double.
 # e.g. 40ms => 80ms RTT.
-LATENCY = "10ms"
+LATENCY = "6.5ms"
 
 def get_interface_for_host(host):
     try:
@@ -48,11 +48,11 @@ def main():
             sys.exit(1)
 
     # need to reset either way
-    subprocess.run(f"sudo tc qdisc del dev {iface} root", shell=True)
+    subprocess.run(f"sudo -S tc qdisc del dev {iface} root", shell=True)
 
     if args.state == 'on':
         print(f"Enabling WAN on {iface}@ {BANDWIDTH_LIMIT}, {LATENCY}")
-        subprocess.run(f'sudo tc qdisc add dev {iface} root netem rate {BANDWIDTH_LIMIT} delay {LATENCY}',
+        subprocess.run(f'sudo -S tc qdisc add dev {iface} root netem rate {BANDWIDTH_LIMIT} delay {LATENCY}',
                         shell=True)
     else:
         print(f"Disabled WAN on {iface}...")

@@ -11,7 +11,7 @@
 #define TABLE_T EncodedTable<T, Col, A, B, E, DT>
 
 namespace orq::relational {
-    
+
 /**
  * @brief Arbitrary join between this table and `right`. assumes primary
  * key-foreign key relationship, but _does not enforce_.
@@ -163,7 +163,7 @@ TABLE_T TABLE_T::_join(TABLE_T &right, std::vector<std::string> keys, Aggregatio
     // Run actual joins over `valid || keys`
     concat.aggregate(keys, agg_spec,
                      {
-                         .reverse = true,
+                         .reverse = false,
                          .do_sort = false,
                          .table_id = ENC_TABLE_JOIN_ID  // for aggregation selection
                      });
@@ -397,5 +397,105 @@ TABLE_T TABLE_T::uu_join(TABLE_T &right, std::vector<std::string> keys, Aggregat
     }
 
     return concat;
+}
+
+/**
+ * @brief Perform a Cartesian product (quadratic) join between `this` and `right`. Used for
+ * benchmarking; for most applications, use inner_join. All columns are copied from both tables. A
+ * warning will be printed if duplicate columns exist. Columns from the left table take precedence.
+ *
+ * This function only supports a join on a single column. The VALID bit is automatically updated
+ * based on the results of the join. The output table will have exactly `L.size() * R.size()` rows.
+ * No constraints are placed on the join keys.
+ *
+ * In general, this method is functionally equivalent to
+ *
+ *     L.inner_join(right, { key }, ...)
+ *
+ * assuming the only aggregations are `copy<>` calls.
+ *
+ * **Warning.** The resulting intermediate table may be too large to fit inside a standard C++
+ * vector. If this happens, the system will throw an exception of type `std::length_error`.
+ *
+ * @param right
+ * @param key
+ * @return EncodedTable
+ */
+TEMPLATE_DEF
+TABLE_T TABLE_T::cartesian_join(TABLE_T &right, std::string key) {
+    std::vector<std::string> output_cols;
+    auto left_schema = this->getSchema();
+    auto right_schema = right.getSchema();
+
+    const std::string left_key = key;
+    const std::string right_key = "r." + key;
+
+    auto nL = this->size();
+    auto nR = right.size();
+
+    output_cols.push_back(left_key);
+    output_cols.push_back(right_key);
+
+    for (const auto &[k, _] : left_schema) {
+        if (k == key || k == ENC_TABLE_JOIN_ID) {
+            continue;
+        } else {
+            output_cols.push_back(k);
+        }
+    }
+
+    for (const auto &[k, _] : right_schema) {
+        if (k == key || k == ENC_TABLE_VALID) {
+            continue;
+        } else if (left_schema.count(k)) {
+            // `k` was on the left side as well
+            single_cout("WARNING: duplicate key " << k << " found in both tables.");
+            continue;
+        } else {
+            output_cols.push_back(k);
+        }
+    }
+
+    TABLE_T output("output", output_cols, nL * nR);
+
+    output.asBSharedVector(left_key) = this->asBSharedVector(key).repeated_subset_reference(nR);
+    output.asBSharedVector(right_key) = right.asBSharedVector(key).cyclic_subset_reference(nL);
+
+    auto left_valid = this->asBSharedVector(ENC_TABLE_VALID).repeated_subset_reference(nR);
+    auto right_valid = right.asBSharedVector(ENC_TABLE_VALID).cyclic_subset_reference(nL);
+    output.asBSharedVector(ENC_TABLE_VALID) = left_valid & right_valid;
+
+    // Note: in principle, we could evaluate a different predicate here.
+    output[ENC_TABLE_VALID] &= *(output[left_key] == output[right_key]);
+
+    // copy over the data
+    for (const auto &[k, _] : left_schema) {
+        if (k == ENC_TABLE_VALID || k == key) {
+            // these are already handled above
+            continue;
+        }
+
+        if (this->isBShared(k)) {
+            output.asBSharedVector(k) = this->asBSharedVector(k).repeated_subset_reference(nR);
+        } else {
+            output.asASharedVector(k) = this->asASharedVector(k).repeated_subset_reference(nR);
+        }
+    }
+
+    for (const auto &[k, _] : right_schema) {
+        if (k == ENC_TABLE_VALID || k == key) {
+            continue;
+        }
+
+        if (right.isBShared(k)) {
+            output.asBSharedVector(k) = right.asBSharedVector(k).cyclic_subset_reference(nL);
+        } else {
+            output.asASharedVector(k) = right.asASharedVector(k).cyclic_subset_reference(nL);
+        }
+    }
+
+    output.deleteColumns({right_key});
+
+    return output;
 }
 }  // namespace orq::relational

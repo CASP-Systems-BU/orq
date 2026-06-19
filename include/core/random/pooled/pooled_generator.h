@@ -14,16 +14,14 @@ namespace orq::random {
  *
  * Manages a queue of pre-generated correlations for efficient batch processing.
  *
- * Includes a compile-time check that the template parameter is a derived class
- *  of CorrelationGenerator.
- *
- * @tparam Generator The underlying correlation generator type
  * @tparam Ts The types of the correlation elements
  */
-template <typename Generator, typename... Ts>
-    requires std::derived_from<Generator, CorrelationGenerator>
-class PooledGenerator : public CorrelationGenerator {
-    std::shared_ptr<Generator> generator;
+template <typename... Ts>
+class PooledGenerator : public CorrelationGenerator<std::tuple<Vector<Ts>...>> {
+    using ret_t = std::tuple<Vector<Ts>...>;
+    std::shared_ptr<CorrelationGenerator<ret_t>> generator;
+
+    std::function<ret_t(size_t)> getNextFunc;
 
     // the main pool of generated randomness
     std::tuple<std::deque<Ts>...> queueTuple;
@@ -144,15 +142,18 @@ class PooledGenerator : public CorrelationGenerator {
      * Constructor for the pooled generator.
      * @param _generator The underlying generator to pool.
      */
-    PooledGenerator(std::shared_ptr<Generator> _generator)
-        : CorrelationGenerator(_generator->getRank()), generator(_generator) {}
+    PooledGenerator(std::shared_ptr<CorrelationGenerator<ret_t>> _generator)
+        : CorrelationGenerator<ret_t>(_generator->rank), generator(_generator) {
+        // Generic pooling: use the underlying generator's getNext regardless of type
+        getNextFunc = [gen = _generator](size_t n) { return gen->getNext(n); };
+    }
 
     /**
      * Generate and store correlations for later use.
      * @param count The number of correlations to generate and store.
      */
     void reserve(size_t count) {
-        auto batch = generator->getNext(count);
+        auto batch = getNextFunc(count);
         addToQueue(batch);
     }
 
@@ -169,8 +170,8 @@ class PooledGenerator : public CorrelationGenerator {
      * Check that the batch is correlated with the generator.
      * @param batch The batch to check.
      */
-    template <typename T>
-    void assertCorrelated(T& batch) {
+    void assertCorrelated(const ret_t& batch) {
+        // Delegate to underlying generator; base is a no-op, specific generators override.
         generator->assertCorrelated(batch);
     }
 
@@ -179,12 +180,12 @@ class PooledGenerator : public CorrelationGenerator {
      * @param count The number of elements to get.
      * @return A tuple of vectors containing the requested correlations.
      */
-    auto getNext(size_t count) {
+    ret_t getNext(const size_t count) {
         size_t currentSize = size();
 
-        // if not enought elements, generate more
+        // if not enough elements, generate more
         if (currentSize < count) {
-            return generator->getNext(count);
+            return getNextFunc(count);
         }
 
         // call a helper function to actually get the elements
@@ -203,16 +204,14 @@ class PooledGenerator : public CorrelationGenerator {
  * Pass in a shared pointer.
  * @return A shared pointer to the new PooledGenerator object.
  */
-template <typename Tuple, typename Generator, std::size_t... Is>
-auto _make_pooled_impl(std::shared_ptr<Generator> generator, std::index_sequence<Is...>) {
+template <typename Tuple, std::size_t... Is>
+auto _make_pooled_impl(std::shared_ptr<CorrelationGenerator<Tuple>> generator,
+                       std::index_sequence<Is...>) {
     // use variadic expansion of template args
     // calling with tuple type <Vector<T>, Vector<Q>, Vector<R>> will
-    // instantiate pooled generator with <Generator, T, Q, R>
-    //
-    // basically implementing "for each element in the tuple, get the
-    // value_type of the underlying vector", but at compile time
-    return std::make_shared<PooledGenerator<
-        Generator, typename std::tuple_element<Is, std::decay_t<Tuple>>::type::value_type...>>(
+    // instantiate pooled generator with <T, Q, R>
+    return std::make_shared<
+        PooledGenerator<typename std::tuple_element<Is, std::decay_t<Tuple>>::type::value_type...>>(
         generator);
 }
 
@@ -222,7 +221,9 @@ auto _make_pooled_impl(std::shared_ptr<Generator> generator, std::index_sequence
  * @return A shared pointer to the new PooledGenerator object.
  */
 template <typename Generator, typename... Args>
-    requires std::derived_from<Generator, CorrelationGenerator>
+    requires std::derived_from<
+        Generator,
+        CorrelationGenerator<decltype(std::declval<Generator&>().getNext(std::declval<size_t>()))>>
 auto make_pooled(Args&&... args) {
     // create a Generator
     auto generator = std::make_shared<Generator>(std::forward<Args>(args)...);
@@ -234,6 +235,20 @@ auto make_pooled(Args&&... args) {
     constexpr size_t tuple_size = std::tuple_size<std::decay_t<correlation_t>>::value;
 
     // template hack to create the pooled generator
+    return _make_pooled_impl<correlation_t>(generator, std::make_index_sequence<tuple_size>{});
+}
+
+/**
+ * Create a pooled generator from an existing generator instance.
+ * This overload avoids reconstructing the generator and works with shared ownership.
+ */
+template <typename Generator>
+    requires std::derived_from<
+        Generator,
+        CorrelationGenerator<decltype(std::declval<Generator&>().getNext(std::declval<size_t>()))>>
+auto make_pooled(std::shared_ptr<Generator> generator) {
+    using correlation_t = decltype(generator->getNext(std::declval<size_t>()));
+    constexpr size_t tuple_size = std::tuple_size<std::decay_t<correlation_t>>::value;
     return _make_pooled_impl<correlation_t>(generator, std::make_index_sequence<tuple_size>{});
 }
 

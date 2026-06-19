@@ -213,7 +213,7 @@ void test_normal_behavior() {
         }
     }
 
-    t2.addColumns(std::vector<std::string>{"COUNT", "SUM_AMT"}, t2.size());
+    t2.addColumns(std::vector<std::string>{"COUNT", "SUM_AMT"});
 
     single_cout("Aggregations...");
 
@@ -233,20 +233,20 @@ void test_normal_behavior() {
 
         // Aggregation tests
         auto count_col = tj.get_column(R, "COUNT");
-        ASSERT_CONTAINS(count_col, 1);
-        ASSERT_CONTAINS(count_col, 2);
-        ASSERT_CONTAINS(count_col, 10);
+        assert(count_col.contains(1));
+        assert(count_col.contains(2));
+        assert(count_col.contains(10));
 
         auto uid_col = tj.get_column(R, "[UID]");
-        ASSERT_CONTAINS(uid_col, -5);
-        REFUTE_CONTAINS(uid_col, 4);
+        assert(uid_col.contains(-5));
+        assert(!uid_col.contains(4));
 
         auto sum_col = tj.get_column(R, "SUM_AMT");
-        ASSERT_CONTAINS(sum_col, 8);
-        ASSERT_CONTAINS(sum_col, 100);
-        ASSERT_CONTAINS(sum_col, -20);
-        ASSERT_CONTAINS(sum_col, 151);
-        ASSERT_CONTAINS(sum_col, 16);
+        assert(sum_col.contains(8));
+        assert(sum_col.contains(100));
+        assert(sum_col.contains(-20));
+        assert(sum_col.contains(151));
+        assert(sum_col.contains(16));
     }
 }
 
@@ -444,8 +444,6 @@ int main(int argc, char** argv) {
     test_normal_behavior();
     test_multi_key();
     test_valid();
-
-    test_multi_key();
 
     test_outer();
 

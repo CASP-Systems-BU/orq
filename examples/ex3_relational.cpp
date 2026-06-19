@@ -6,7 +6,7 @@
  * README.
  *
  * ```
- * ../scripts/run_experiment.sh ... ex3_relational
+ * ../scripts/run_experiment.py ... ex3_relational
  * ```
  *
  * This example demonstrates ORQ's relational analytics engine.

@@ -6,9 +6,6 @@ using namespace orq::service;
 using namespace orq::random;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
-// command
-// mpirun -np 3 ./micro_randomness 1 1 8192 $ROWS
-
 int main(int argc, char** argv) {
     orq_init(argc, argv);
 #ifndef MPC_PROTOCOL_BEAVER_TWO
@@ -16,13 +13,10 @@ int main(int argc, char** argv) {
 #else
 
     auto pID = runTime->getPartyID();
-    int test_size = 1000000;
-    if (argc >= 5) {
-        test_size = atoi(argv[4]);
-    }
+    auto test_size = runTime->getArg<size_t>("test-size", "r", 1 << 20);
 
     // setup generators
-    using OLEBase = orq::random::OLEGenerator<int32_t, orq::Encoding::AShared>;
+    using OLEBase = orq::random::OLEGenerator<int32_t>;
     using ole_t = OLEBase::ole_t;
 
     auto comm = runTime->comm0();

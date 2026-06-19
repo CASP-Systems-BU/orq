@@ -7,7 +7,7 @@
 #include "orq.h"
 
 // This test only runs on 2pc
-#ifdef MPC_PROTOCOL_BEAVER_TWO
+#if defined(MPC_PROTOCOL_BEAVER_TWO) && defined(USE_LIBOTE) && defined(USE_SECURE_JOIN)
 
 #include "coproto/Socket/AsioSocket.h"
 #include "secure-join/Prf/AltModPrfProto.h"
@@ -22,7 +22,7 @@ void test_oprf_correctness(int test_size) {
 
     // create an OPRF object
     // TODO: this should be created at setup and accessible through the runtime
-    orq::random::OPRF oprf(rank, 0);
+    orq::random::OPRF oprf(rank, 0, runTime->comm0()->host_prefix);
 
     // generate a key to use for both plaintext and secret-shared evaluations
     OPRF::key_t key = oprf.keyGen();

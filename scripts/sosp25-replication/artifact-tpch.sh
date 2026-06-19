@@ -83,7 +83,7 @@ fi
 (
     echo "==== Test nocopy... ==="
     cd ../../build
-    ../scripts/run_experiment.sh -s $NETWORK -x node -p $PROTOCOL -c nocopy -T 1 -r 20 test_primitives
+    ../scripts/run_experiment.py -s $NETWORK -x node -p $PROTOCOL -c nocopy -T 1 -r 20 test_primitives
     echo "==== Test OK? Cancel if not. ===="
     sleep 1
 )

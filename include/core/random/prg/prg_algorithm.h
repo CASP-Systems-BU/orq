@@ -39,6 +39,7 @@ class PRGAlgorithm {
      * @param num The reference to fill with random bytes.
      */
     template <typename T>
+        requires std::is_arithmetic_v<T>
     void getNext(T& num) {
         fillBytes(std::span<uint8_t>(reinterpret_cast<uint8_t*>(&num), sizeof(T)));
     }
@@ -53,12 +54,17 @@ class PRGAlgorithm {
      * @param nums The vector to fill with random data.
      */
     template <typename T>
-    void getNext(Vector<T>& nums) {
+    void getNext(std::span<T> nums) {
         size_t preferred_size = getPreferredBufferSize();
         if (thread_buffer.size() < preferred_size) {
             thread_buffer.resize(preferred_size);
         }
         getNextBuffered(nums, std::span<uint8_t>(thread_buffer.data(), thread_buffer.size()));
+    }
+
+    template <typename T>
+    void getNext(Vector<T>& nums) {
+        getNext(nums.span());
     }
 
    protected:
@@ -84,7 +90,7 @@ class PRGAlgorithm {
      * memory can't be filled directly with the random data.
      */
     template <typename T>
-    void getNextBuffered(Vector<T>& nums, std::span<uint8_t> buffer) {
+    void getNextBuffered(std::span<T> nums, std::span<uint8_t> buffer) {
         size_t element_size = sizeof(T);
         assert(!buffer.empty());
         assert(buffer.size() >= element_size);
@@ -115,7 +121,7 @@ class DeterministicPRGAlgorithm : public PRGAlgorithm {
      * Sets the seed for generation of random numbers.
      * @param seed The seed bytes to use.
      */
-    virtual void setSeed(std::vector<unsigned char>& seed) = 0;
+    virtual void setSeed(std::span<unsigned char> seed) = 0;
 
     /**
      * Virtual destructor.
@@ -152,7 +158,7 @@ class AESPRGAlgorithm : public DeterministicPRGAlgorithm {
      *
      * @param _seed The seed shared between the parties.
      */
-    AESPRGAlgorithm(std::vector<unsigned char>& _seed) : nonce(0) { setSeed(_seed); }
+    AESPRGAlgorithm(std::span<unsigned char> _seed) : nonce(0) { setSeed(_seed); }
 
     /**
      * Fill destination with AES-generated random bytes.
@@ -175,7 +181,7 @@ class AESPRGAlgorithm : public DeterministicPRGAlgorithm {
      * Set the AES key from seed bytes.
      * @param _seed The seed bytes to use as AES key.
      */
-    void setSeed(std::vector<unsigned char>& _seed) override {
+    void setSeed(std::span<unsigned char> _seed) override {
         assert(_seed.size() <= crypto_aead_aes256gcm_KEYBYTES);
         std::copy(_seed.begin(), _seed.end(), seed);
     }
@@ -289,7 +295,7 @@ class XChaCha20PRGAlgorithm : public DeterministicPRGAlgorithm {
      *
      * @param _seed The seed shared between the parties.
      */
-    XChaCha20PRGAlgorithm(std::vector<unsigned char>& _seed) : nonce(0) { setSeed(_seed); }
+    XChaCha20PRGAlgorithm(std::span<unsigned char> _seed) : nonce(0) { setSeed(_seed); }
 
     /**
      * Fill destination with XChaCha20-generated random bytes.
@@ -313,7 +319,7 @@ class XChaCha20PRGAlgorithm : public DeterministicPRGAlgorithm {
      * Set the XChaCha20 key from seed bytes.
      * @param _seed The seed bytes to use as XChaCha20 key.
      */
-    void setSeed(std::vector<unsigned char>& _seed) override {
+    void setSeed(std::span<unsigned char> _seed) override {
         assert(_seed.size() <= crypto_stream_xchacha20_KEYBYTES);
         std::copy(_seed.begin(), _seed.end(), seed);
     }

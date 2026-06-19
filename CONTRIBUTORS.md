@@ -6,3 +6,4 @@
 - [@jliagouris](https://github.com/jliagouris)
 - [@mvaria](https://github.com/mvaria)
 - [@mfaisal97](https://github.com/mfaisal97)
+- [@adam-godel](https://github.com/adam-godel)

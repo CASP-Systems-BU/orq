@@ -192,8 +192,18 @@ class EncodedVector {
 
     virtual VectorSizeType size() const = 0;
 
+    /**
+     * Gets the fixed-point precision. Virtual to let subclasses override.
+     */
+    virtual void setPrecision(const int fixed_point_precision) = 0;
+
+    /**
+     * Gets the fixed-point precision. Virtual to let subclasses override.
+     */
+    virtual size_t getPrecision() const = 0;
+
     // TODO: how to generalize this "int"?
-    // virtual inline orq::Vector<int>& operator()(const int& index) = 0;
+    // virtual inline orq::Vector<int>& operator()(int index) = 0;
 
     // Friend class
     friend class EncodedColumn;

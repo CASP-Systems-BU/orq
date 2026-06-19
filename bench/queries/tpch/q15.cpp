@@ -67,21 +67,18 @@ using T = int64_t;
 
 using sec = duration<float, seconds::period>;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // TPCH Q15 query parameters
     const int DATE = 80;
     const int DATE_INTERVAL = 20;  // Arbitrary date interval to account for date format
 
     // Setup SQLite DB for output validation
-    sqlite3 *sqlite_db = nullptr;
+    sqlite3* sqlite_db = nullptr;
 #ifndef QUERY_PROFILE
     if (pid == 0) {
         int err = sqlite3_open(NULL, &sqlite_db);  // NULL -> Create in-memory database
@@ -151,10 +148,10 @@ int main(int argc, char **argv) {
     // 'MaxTotalRevenue' value is now in the last row of 'MaxRevenue'. Extract it and replicate it
     // in all rows 1- Extract 'MaxTotalRevenue' value
     B extracted(1);
-    extracted = ((B *)LineItem["[TotalRevenue]"].contents.get())
+    extracted = ((B*)LineItem["[TotalRevenue]"].contents.get())
                     ->simple_subset_reference(LineItem.size() - 1, 1, LineItem.size() - 1);
     // 2- Replicate it in all rows of 'MaxRevenue'
-    *((B *)LineItem["[MaxTotalRevenue]"].contents.get()) =
+    *((B*)LineItem["[MaxTotalRevenue]"].contents.get()) =
         extracted.repeated_subset_reference(LineItem.size());
 
     // Apply filter total_revenue = ( SELECT max(total_revenue) FROM revenue[STREAM_ID] )
@@ -202,7 +199,7 @@ int main(int argc, char **argv) {
     if (pid == 0) {
         // Run Q15 through SQL to verify result
         int ret;
-        const char *query = R"sql(
+        const char* query = R"sql(
 
             with revenue (supplier_no, total_revenue) as (
                 select
@@ -236,7 +233,7 @@ int main(int argc, char **argv) {
             order by
                 s.SuppKey;
         )sql";
-        sqlite3_stmt *stmt;
+        sqlite3_stmt* stmt;
         ret = sqlite3_prepare_v2(sqlite_db, query, -1, &stmt, NULL);
         // Fill in query placeholders
         sqlite3_bind_int(stmt, 1, DATE);

@@ -26,16 +26,13 @@ using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
 using T = int64_t;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
-    sqlite3 *sqlite_db = nullptr;
+    sqlite3* sqlite_db = nullptr;
 #ifndef QUERY_PROFILE
     if (pid == 0) {
         if (sqlite3_open(NULL, &sqlite_db) != 0) {
@@ -83,14 +80,14 @@ int main(int argc, char **argv) {
     print_table(result, pid);
 
     if (pid == 0) {
-        const char *query = R"sql(
+        const char* query = R"sql(
             SELECT ID
             FROM Password
             GROUP BY ID, PWD
             HAVING COUNT(*)>1
         )sql";
 
-        sqlite3_stmt *stmt;
+        sqlite3_stmt* stmt;
         auto err = sqlite3_prepare_v2(sqlite_db, query, -1, &stmt, NULL);
 
         if (err) {

@@ -111,8 +111,7 @@ class PermutationManager {
         }
 
         auto generator =
-            runTime->rand0()
-                ->getCorrelation<__int128_t, orq::random::Correlation::ShardedPermutation>();
+            runTime->rand0()->template getCorrelation<__int128_t, ShardedPermutationGenerator>();
 
         // if the queue is not empty and the sizes don't match, empty it
         if (((!queue.empty()) || (!pair_queue.empty())) && (stored_size != size_permutation)) {
@@ -160,7 +159,7 @@ class PermutationManager {
             }
         }
 
-        runTime->generate_permutations<__int128_t>(ret);
+        runTime->template generate_permutations<__int128_t>(ret);
 
         // if 2PC, add to pair queue
         if (runTime->getNumParties() == 2) {
@@ -204,7 +203,7 @@ class PermutationManager {
 
             auto generator =
                 runTime->rand0()
-                    ->getCorrelation<__int128_t, orq::random::Correlation::ShardedPermutation>();
+                    ->template getCorrelation<__int128_t, ShardedPermutationGenerator>();
 
             next = generator->getNext(size_permutation);
         } else {
@@ -263,8 +262,7 @@ class PermutationManager {
 
                 auto generator =
                     runTime->rand0()
-                        ->getCorrelation<__int128_t,
-                                         orq::random::Correlation::ShardedPermutation>();
+                        ->template getCorrelation<__int128_t, ShardedPermutationGenerator>();
 
                 perm = generator->getNext(size_permutation);
             } else {

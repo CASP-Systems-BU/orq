@@ -51,14 +51,11 @@
 
 using T = int64_t;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // arbitrary
     const int SHIPMODE1 = 3;
@@ -68,7 +65,7 @@ int main(int argc, char **argv) {
     ////////////////////////////////////////////////////////////////
     // Database Initialization
 
-    sqlite3 *sqlite_db = nullptr;
+    sqlite3* sqlite_db = nullptr;
 #ifndef QUERY_PROFILE
     if (pid == 0) {
         int err = sqlite3_open(NULL, &sqlite_db);
@@ -108,7 +105,7 @@ int main(int argc, char **argv) {
 
     stopwatch::timepoint("Filter");
 
-    O.addColumns({"[HighLine]"}, O.size());
+    O.addColumns({"[HighLine]"});
 
     O["[HighLine]"] = (O["[OrderPriority]"] == 1) | (O["[OrderPriority]"] == 2);
 
@@ -123,7 +120,7 @@ int main(int argc, char **argv) {
 
     stopwatch::timepoint("Join");
 
-    T.addColumns({"LineCount"}, T.size());
+    T.addColumns({"LineCount"});
 
     T.aggregate({"[ShipMode]", "[HighLine]"}, {
                                                   {"LineCount", "LineCount", count<A>},
@@ -161,7 +158,7 @@ int main(int argc, char **argv) {
             check[{mode[i], line[i]}] = counts[i];
         }
 
-        const char *query = R"sql(
+        const char* query = R"sql(
         select
             L.shipmode,
             sum(case
@@ -192,7 +189,7 @@ int main(int argc, char **argv) {
             L.shipmode;
         )sql";
 
-        sqlite3_stmt *stmt;
+        sqlite3_stmt* stmt;
         auto ret = sqlite3_prepare_v2(sqlite_db, query, -1, &stmt, NULL);
 
         sqlite3_bind_int(stmt, 1, SHIPMODE1);

@@ -9,9 +9,9 @@ fi
 
 REPS=1
 
-# Example: bash ../results/run-experiment.sh 
+# Example: bash ../results/run-experiment.sh
 EXP_HOME_DIR=$(pwd)/../../../results/secrecy/orq
-EXP_PREFIX="../scripts/run_experiment.sh -x $NODE_PREFIX -e $REPS -p 3 -s lan -c nocopy -n 4 -T 16"
+EXP_PREFIX="../scripts/run_experiment.py -x $NODE_PREFIX -e $REPS -p 3 -s lan -c nocopy -n 4 -T 16"
 
 cd ../../../build
 

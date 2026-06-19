@@ -50,10 +50,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // TPCH Q14 query parameters
     const int DATE = 100;
@@ -121,7 +118,7 @@ int main(int argc, char** argv) {
     // [SQL] sum(case...end)
     // Note: p_type like 'PROMO%' implemented as [Type] == 1
     auto Case1 = Join.deepcopy();
-    Case1.addColumns(sum_extra_columns, Case1.size());
+    Case1.addColumns(sum_extra_columns);
     Case1.filter(Case1["[Type]"] == 1);
     Case1["ExtendedPrice"] = Case1["ExtendedPrice"] * (-Case1["Discount"] + 100) / 100;
     Case1.convert_b2a_bit(ENC_TABLE_VALID, "Sum");
@@ -135,7 +132,7 @@ int main(int argc, char** argv) {
     // Sum 2
     // [SQL] sum(l_extendedprice * (1 - l_discount))
     auto Case2 = Join.deepcopy();
-    Case2.addColumns(sum_extra_columns, Case2.size());
+    Case2.addColumns(sum_extra_columns);
     Case2["ExtendedPrice"] = Case2["ExtendedPrice"] * (-Case2["Discount"] + 100) / 100;
     Case2.convert_b2a_bit(ENC_TABLE_VALID, "Sum");
     Case2["Sum"] = Case2["Sum"] * Case2["ExtendedPrice"];

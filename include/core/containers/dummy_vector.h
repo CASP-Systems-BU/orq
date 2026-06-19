@@ -15,7 +15,7 @@
  *
  */
 #define define_binary_vector_op(_op_) \
-    inline Vector operator _op_(const Vector &y) const { return *this; }
+    inline Vector operator _op_(const Vector& y) const { return *this; }
 
 /**
  * @brief Defines a dummy unary operator
@@ -30,7 +30,7 @@
  */
 #define define_binary_vector_element_op(_op_)                   \
     template <typename OtherType>                               \
-    inline Vector operator _op_(const OtherType &other) const { \
+    inline Vector operator _op_(const OtherType& other) const { \
         return *this;                                           \
     }
 
@@ -40,7 +40,7 @@
  */
 #define define_binary_vector_assignment_op(_op_)          \
     template <typename OtherType>                         \
-    inline Vector operator _op_(const OtherType &other) { \
+    inline Vector operator _op_(const OtherType& other) { \
         return *this;                                     \
     }
 
@@ -48,7 +48,6 @@ namespace orq {
 
 // Forward declarations
 namespace service {
-    class RunTime;
     template <typename InputType, typename ReturnType, typename ObjectType>
     class Task_1;
     template <typename InputType, typename ReturnType, typename ObjectType>
@@ -63,8 +62,6 @@ namespace service {
     class Task_ARGS_VOID_2;
 }  // namespace service
 
-static inline int div_ceil(int x, int y) { return x / y + (x % y > 0); }
-
 /**
  * A mock vector implementation which stores no data and returns nothing (or garbage) for all
  * operations. Most functions do nothing at all, or just compute the appropriate length that their
@@ -75,8 +72,24 @@ static inline int div_ceil(int x, int y) { return x / y + (x % y > 0); }
  */
 template <typename T>
 class Vector {
-    using Unsigned_type = typename std::make_unsigned<T>::type;
-    const int MAX_BITS_NUMBER = std::numeric_limits<Unsigned_type>::digits;
+    template <typename U,
+              bool UseUnsigned = (std::integral<U> && !std::is_same_v<std::remove_cv_t<U>, bool>)>
+    struct UnsignedTypeSelector {
+        using type = U;
+    };
+
+    template <typename U>
+    struct UnsignedTypeSelector<U, true> {
+        using type = std::make_unsigned_t<U>;
+    };
+
+    /**
+     * @brief An alias for unsigned `T`.
+     *
+     */
+    using Unsigned_type = typename UnsignedTypeSelector<T>::type;
+
+    const size_t MAX_BITS_NUMBER = std::numeric_limits<Unsigned_type>::digits;
     VectorSizeType length = 0;
 
     /**
@@ -119,26 +132,26 @@ class Vector {
      * Move constructor
      * @param _other
      */
-    Vector(std::vector<T> &&_other) : length(_other.size()) {}
+    Vector(std::vector<T>&& _other) : length(_other.size()) {}
 
     /**
      * Copy constructor from vector
      * @param _other
      */
-    Vector(std::vector<T> &_other) : length(_other.size()) {}
+    Vector(std::vector<T>& _other) : length(_other.size()) {}
 
     /**
      * Creates a Vector of `size` values initialize to `init_val` (0 by default).
      * @param _size The size of the new Vector.
      * @param _init_val
      */
-    Vector(VectorSizeType _size, T _init_val = 0) : length(_size) {}
+    Vector(VectorSizeType _size, T _init_val = {}) : length(_size) {}
 
     /**
      * Constructs a new Vector from a list of `T` elements.
      * @param elements The list of elements of the new Vector.
      */
-    Vector(std::initializer_list<T> &&elements) : length(elements.size()) {}
+    Vector(std::initializer_list<T>&& elements) : length(elements.size()) {}
 
     /**
      * @brief Constructor that converts a vector of floating-point numbers to a vector of integers.
@@ -150,7 +163,7 @@ class Vector {
      */
     template <std::floating_point FP>
         requires std::integral<T>
-    Vector(const std::vector<FP> &_other, int fixed_point_precision = 16)
+    Vector(const std::vector<FP>& _other, int fixed_point_precision = 16)
         : Vector(static_cast<VectorSizeType>(_other.size())) {
         precision = fixed_point_precision;
         const long double scale = std::ldexp(1.0L, fixed_point_precision);  // 2^{precision}
@@ -166,33 +179,33 @@ class Vector {
     template <std::ranges::input_range IR>
     Vector(IR _other) : length(_other.size()) {}
 
-    Vector(const Vector &other) : length(other.length) {}
+    Vector(const Vector& other) : length(other.length) {}
 
-    Vector(Vector &other) : length(other.length) {}
+    Vector(Vector& other) : length(other.length) {}
 
-    inline Vector bit_arithmetic_right_shift(const int &shift_size) const { return *this; }
+    inline Vector bit_arithmetic_right_shift(int shift_size) const { return *this; }
 
-    inline Vector bit_logical_right_shift(const int &shift_size) const { return *this; }
+    inline Vector bit_logical_right_shift(int shift_size) const { return *this; }
 
-    inline Vector bit_left_shift(const int &shift_size) const { return *this; }
+    inline Vector bit_left_shift(int shift_size) const { return *this; }
 
     inline Vector bit_xor() const { return *this; }
 
     inline void prefix_sum() {}
 
-    inline void prefix_sum(const T &(*op)(const T &, const T &)) {}
+    inline void prefix_sum(const T& (*op)(const T&, const T&)) {}
 
     Vector chunkedSum(const VectorSizeType aggSize = 0) const { return *this; }
 
-    Vector simple_subset(const VectorSizeType &start, const VectorSizeType &step,
-                         const VectorSizeType &end) const {
+    Vector simple_subset(const VectorSizeType& start, const VectorSizeType& step,
+                         const VectorSizeType& end) const {
         VectorSizeType res_size = end - start + 1;
         return Vector(res_size);
     }
 
     void reset_batch() {}
 
-    void set_batch(const VectorSizeType &_start_ind, const VectorSizeType &_end_ind) {}
+    void set_batch(const VectorSizeType& _start_ind, const VectorSizeType& _end_ind) {}
 
     inline VectorSizeType total_size() const { return length; }
 
@@ -211,12 +224,9 @@ class Vector {
      */
     std::vector<T> as_std_vector() const { return std::vector<T>(length); }
 
-    /**
-     * @brief Return an empty C++ vector of the given length
-     *
-     * @return std::vector<T>
-     */
-    std::vector<T> _get_internal_data() const { return std::vector<T>(length); }
+    T* data() const { return new T[length]; }
+
+    size_t storage_size() const { return length; }
 
     /**
      * @brief Return an empty span.
@@ -225,9 +235,7 @@ class Vector {
      */
     std::span<T> span() { return {}; }
 
-    std::span<T> batch_span() { return {}; }
-
-    std::span<const T> batch_span() const { return {}; }
+    std::span<const T> span() const { return {}; }
 
     bool has_mapping() const { return false; }
 
@@ -289,6 +297,10 @@ class Vector {
         return Vector(size);
     }
 
+    Vector alternating_subset_reference(const VectorSizeType subset_size) const {
+        return alternating_subset_reference(subset_size, subset_size);
+    }
+
     Vector reversed_alternating_subset_reference(const VectorSizeType _subset_included_size,
                                                  VectorSizeType _subset_excluded_size) const {
         if (_subset_excluded_size == -1) {
@@ -317,29 +329,26 @@ class Vector {
 
     Vector directed_subset_reference(const int _subset_direction) const { return *this; }
 
-    Vector simple_bit_compress(const int &start, const int &step, const int &end,
-                               const int &repetition) const {
+    Vector simple_bit_compress(int start, int step, int end, int repetition) const {
         const int _step = step;
         const int _repetition = repetition;
 
         const int bits_per_element = std::abs(((end - start + 1) / step) * repetition);
         const VectorSizeType total_bits = bits_per_element * this->size();
-        const VectorSizeType total_new_elements = div_ceil(total_bits, MAX_BITS_NUMBER);
+        const VectorSizeType total_new_elements = math::div_ceil(total_bits, MAX_BITS_NUMBER);
 
         return Vector(total_new_elements);
     }
 
-    void pack_from(const Vector &source, const int &position) {}
+    void pack_from(const Vector& source, int position) {}
 
-    void simple_bit_decompress(const Vector &other, const int &start, const int &step,
-                               const int &end, const int &repetition) {}
+    void simple_bit_decompress(const Vector& other, int start, int step, int end, int repetition) {}
 
-    void unpack_from(const Vector &source, const T &position) {}
+    void unpack_from(const Vector& source, const T& position) {}
 
-    Vector alternating_bit_compress(const VectorSizeType &start, const VectorSizeType &step,
-                                    const VectorSizeType &included_size,
-                                    const VectorSizeType &excluded_size,
-                                    const int &direction) const {
+    Vector alternating_bit_compress(const VectorSizeType& start, const VectorSizeType& step,
+                                    const VectorSizeType& included_size,
+                                    const VectorSizeType& excluded_size, int direction) const {
         const VectorSizeType bits_per_chunk = included_size / step;
         const VectorSizeType bits_per_element =
             (MAX_BITS_NUMBER - start) / (included_size + excluded_size) * bits_per_chunk;
@@ -352,21 +361,20 @@ class Vector {
         const int direction_offset = (direction == -1) ? included_size - 1 : 0;
 
         const VectorSizeType total_bits = total_bits_per_element * this->size();
-        const VectorSizeType total_new_elements = div_ceil(total_bits, MAX_BITS_NUMBER);
+        const VectorSizeType total_new_elements = math::div_ceil(total_bits, MAX_BITS_NUMBER);
 
         return Vector(total_new_elements);
     }
 
-    inline Vector alternating_bit_compress(const VectorSizeType &start, const VectorSizeType &step,
-                                           const VectorSizeType &included_size,
-                                           const VectorSizeType &excluded_size) const {
+    inline Vector alternating_bit_compress(const VectorSizeType& start, const VectorSizeType& step,
+                                           const VectorSizeType& included_size,
+                                           const VectorSizeType& excluded_size) const {
         return alternating_bit_compress(start, step, included_size, excluded_size, 1);
     }
 
-    void alternating_bit_decompress(const Vector &other, const VectorSizeType &start,
-                                    const VectorSizeType &step, const VectorSizeType &included_size,
-                                    const VectorSizeType &excluded_size,
-                                    const int &direction) const {}
+    void alternating_bit_decompress(const Vector& other, const VectorSizeType& start,
+                                    const VectorSizeType& step, const VectorSizeType& included_size,
+                                    const VectorSizeType& excluded_size, int direction) const {}
 
     /**
      * @brief Dummy vectors have no mapping, so just return this vector.
@@ -408,34 +416,34 @@ class Vector {
 
     void reverse() {}
 
-    Vector &operator=(const Vector &&other) { return *this; }
+    Vector& operator=(const Vector&& other) { return *this; }
 
-    Vector &operator=(const Vector &other) { return *this; }
+    Vector& operator=(const Vector& other) { return *this; }
 
     template <typename OtherT>
-    Vector &operator=(const Vector<OtherT> &other) {
+    Vector& operator=(const Vector<OtherT>& other) {
         return *this;
     }
 
-    Vector simple_subset(const VectorSizeType &start, const VectorSizeType &size) const {
+    Vector simple_subset(const VectorSizeType& start, const VectorSizeType& size) const {
         return Vector(size);
     }
 
-    void mask(const T &n) {}
-
-    void set_bits(const T &n) {}
+    void mask(const T& n) {}
 
     void zero() {}
 
-    inline Vector bit_level_shift(const int &log_level_size) const { return *this; }
+    inline Vector bit_level_shift(int log_level_size) const { return *this; }
 
-    inline Vector reverse_bit_level_shift(const int &log_level_size) const { return *this; }
+    inline Vector reverse_bit_level_shift(int log_level_size) const { return *this; }
 
     inline VectorSizeType size() const { return length; }
 
     void resize(size_t n) { length = n; }
 
     void tail(size_t n) { length = n; }
+
+    void concatenate(const Vector& other) { resize(length + other.size()); }
 
     // **************************************** //
     //           Arithmetic operators           //
@@ -489,6 +497,8 @@ class Vector {
     define_binary_vector_assignment_op(+=);
     define_binary_vector_assignment_op(-=);
     define_binary_vector_assignment_op(*=);
+    define_binary_vector_assignment_op(/=);
+    define_binary_vector_assignment_op(%=);
     define_binary_vector_assignment_op(&=);
     define_binary_vector_assignment_op(|=);
     define_binary_vector_assignment_op(^=);
@@ -501,9 +511,15 @@ class Vector {
 
     std::pair<Vector, Vector> divrem(const T d) { return {*this, *this}; }
 
-    inline T &operator[](const VectorSizeType &index) { return element; }
+    inline T& operator[](const VectorSizeType& index) { return element; }
 
-    inline const T &operator[](const VectorSizeType &index) const { return element; }
+    inline const T& operator[](const VectorSizeType& index) const { return element; }
+
+    Vector singleton(size_t idx) { return Vector(1); }
+
+    Vector dot_product(const Vector& other, const VectorSizeType aggSize = 0) const {
+        return other;
+    }
 
     /**
      * @brief All dummy vectors are equal.
@@ -512,7 +528,7 @@ class Vector {
      * @param print_warn
      * @return true Always returns true.
      */
-    bool same_as(const Vector<T> &other, bool print_warn = true) const { return true; }
+    bool same_as(const Vector<T>& other, bool print_warn = true) const { return true; }
 
     /**
      * @brief All dummy vectors are prefixes of each other. TODO: check size at least?
@@ -520,12 +536,15 @@ class Vector {
      * @param prefix
      * @return true Always returns true.
      */
-    bool starts_with(const Vector<T> &prefix) { return true; }
+    bool starts_with(const Vector<T>& prefix) { return true; }
+
+    bool contains(const T element) { return true; }
+
+    const T back() const { return 0; }
 
     // Friend classes
-    template <typename Share, int ReplicationNumber>
+    template <typename Share, int ReplicationNumber, int Bitwidth>
     friend class EVector;
-    friend class service::RunTime;
 
     template <typename InputType, typename ReturnType, typename ObjectType>
     friend class orq::service::Task_1;
@@ -556,18 +575,18 @@ class Vector {
  * @return Vector<Share>
  */
 template <typename Share>
-static Vector<Share> compare_rows(const std::vector<Vector<Share> *> &x_vec,
-                                  const std::vector<Vector<Share> *> &y_vec,
-                                  const std::vector<bool> &inverse) {
+static Vector<Share> compare_rows(const std::vector<Vector<Share>*>& x_vec,
+                                  const std::vector<Vector<Share>*>& y_vec,
+                                  const std::vector<bool>& inverse) {
     return *x_vec[0];
 }
 
 template <typename Share>
-static void swap(std::vector<Vector<Share> *> &x_vec, std::vector<Vector<Share> *> &y_vec,
-                 const Vector<Share> &bits) {}
+static void swap(std::vector<Vector<Share>*>& x_vec, std::vector<Vector<Share>*>& y_vec,
+                 const Vector<Share>& bits) {}
 
 template <typename Share>
-static void swap(Vector<Share> &x_vec, Vector<Share> &y_vec, const Vector<Share> &bits) {}
+static void swap(Vector<Share>& x_vec, Vector<Share>& y_vec, const Vector<Share>& bits) {}
 
 };  // namespace orq
 

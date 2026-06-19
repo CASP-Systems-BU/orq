@@ -59,10 +59,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // TPCH Q6 query parameters
     const int DATE = 100;
@@ -140,7 +137,7 @@ int main(int argc, char** argv) {
 
     // Adding extra columns for count
     std::vector<std::string> count_extra_columns = {"OrderCount"};
-    OrderLineItemJoin.addColumns(count_extra_columns, OrderLineItemJoin.size());
+    OrderLineItemJoin.addColumns(count_extra_columns);
 
     // count(*) as order_count
     OrderLineItemJoin.aggregate({"[OrderPriority]"}, {{"OrderCount", "OrderCount", count<A>}});

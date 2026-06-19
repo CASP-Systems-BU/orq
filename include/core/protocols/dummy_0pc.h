@@ -16,7 +16,8 @@ template <typename Data, typename Share, typename Vector, typename EVector>
 class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
    public:
     // Configuration Parameters
-    int parties_num = 1;
+    // Technically, there is 1 party, but it does nothing
+    static constexpr int parties_num = 1;
 
     std::map<std::string, uint64_t> op_counter;
     std::map<std::string, std::optional<uint64_t>> mark_op_counter;
@@ -33,8 +34,8 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param _communicator Pointer to communicator (should be null).
      * @param _randomnessManager Pointer to randomness manager.
      */
-    Dummy_0PC(PartyID _partyID, Communicator *_communicator,
-              random::RandomnessManager *_randomnessManager)
+    Dummy_0PC(PartyID _partyID, WorkerConfig wc, Communicator* _communicator,
+              random::RandomnessManager* _randomnessManager)
         : Protocol<Data, Share, Vector, EVector>(_communicator, _randomnessManager, _partyID, 1,
                                                  1) {}
 
@@ -49,16 +50,16 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
 
         // calculate auto sizing
         uint64_t label_width = std::max_element(op_counter.begin(), op_counter.end(),
-                                                [](const std::pair<std::string, uint64_t> &a,
-                                                   const std::pair<std::string, uint64_t> &b) {
+                                                [](const std::pair<std::string, uint64_t>& a,
+                                                   const std::pair<std::string, uint64_t>& b) {
                                                     return a.first.size() < b.first.size();
                                                 })
                                    ->first.size();
         ;
 
         uint64_t max_count = std::max_element(op_counter.begin(), op_counter.end(),
-                                              [](const std::pair<std::string, uint64_t> &a,
-                                                 const std::pair<std::string, uint64_t> &b) {
+                                              [](const std::pair<std::string, uint64_t>& a,
+                                                 const std::pair<std::string, uint64_t>& b) {
                                                   return a.second < b.second;
                                               })
                                  ->second;
@@ -115,13 +116,23 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
     }
 
     /**
+     * @brief Clear all accumulated statistics for this protocol instance.
+     */
+    void clear_statistics() {
+        op_counter.clear();
+        mark_op_counter.clear();
+        round_counter.clear();
+        mark_round_counter.clear();
+    }
+
+    /**
      * @brief Dummy arithmetic addition (counts operations only).
      *
      * @param x First input vector.
      * @param y Second input vector.
      * @param z Output vector (unused).
      */
-    void add_a(const EVector &x, const EVector &y, EVector &z) { op_counter[__func__] += x.size(); }
+    void add_a(const EVector& x, const EVector& y, EVector& z) { op_counter[__func__] += x.size(); }
 
     /**
      * @brief Dummy arithmetic subtraction (counts operations only).
@@ -130,7 +141,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param y Second input vector.
      * @param z Output vector (unused).
      */
-    void sub_a(const EVector &x, const EVector &y, EVector &z) { op_counter[__func__] += x.size(); }
+    void sub_a(const EVector& x, const EVector& y, EVector& z) { op_counter[__func__] += x.size(); }
 
     /**
      * @brief Dummy arithmetic multiplication (counts operations and rounds).
@@ -139,7 +150,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param y Second input vector.
      * @param z Output vector (unused).
      */
-    void multiply_a(const EVector &x, const EVector &y, EVector &z) {
+    void multiply_a(const EVector& x, const EVector& y, EVector& z) {
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
     }
@@ -151,7 +162,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param c Constant divisor.
      * @return Dummy pair of vectors.
      */
-    std::pair<EVector, EVector> div_const_a(const EVector &x, const Data &c) {
+    std::pair<EVector, EVector> div_const_a(const EVector& x, const Data c) {
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
 
@@ -173,7 +184,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param z Output vector (unused).
      * @param aggSize Aggregation size.
      */
-    void dot_product_a(const EVector &x, const EVector &y, EVector &z, const int &aggSize) {
+    void dot_product_a(const EVector& x, const EVector& y, EVector& z, const size_t aggSize) {
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
     }
@@ -185,7 +196,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param y Second input vector.
      * @param z Output vector (unused).
      */
-    void xor_b(const EVector &x, const EVector &y, EVector &z) { op_counter[__func__] += x.size(); }
+    void xor_b(const EVector& x, const EVector& y, EVector& z) { op_counter[__func__] += x.size(); }
 
     /**
      * @brief Dummy bitwise AND (counts operations and rounds).
@@ -194,7 +205,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param y Second input vector.
      * @param z Output vector (unused).
      */
-    void and_b(const EVector &x, const EVector &y, EVector &z) {
+    void and_b(const EVector& x, const EVector& y, EVector& z) {
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
     }
@@ -205,7 +216,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @param y Output vector (unused).
      */
-    void not_b(const EVector &x, EVector &y) { op_counter[__func__] += x.size(); }
+    void not_b(const EVector& x, EVector& y) { op_counter[__func__] += x.size(); }
 
     /**
      * @brief Dummy boolean NOT (counts operations only).
@@ -213,7 +224,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @param y Output vector (unused).
      */
-    void not_b_1(const EVector &x, EVector &y) { op_counter[__func__] += x.size(); }
+    void not_b_1(const EVector& x, EVector& y) { op_counter[__func__] += x.size(); }
 
     /**
      * @brief Dummy less-than-zero comparison (counts operations only).
@@ -221,7 +232,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @param y Output vector (unused).
      */
-    void ltz(const EVector &x, EVector &y) { op_counter[__func__] += x.size(); }
+    void ltz(const EVector& x, EVector& y) { op_counter[__func__] += x.size(); }
 
     /**
      * @brief Dummy share redistribution (counts operations and rounds).
@@ -229,7 +240,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @return Dummy pair of vectors.
      */
-    std::pair<EVector, EVector> redistribute_shares_b(const EVector &x) {
+    std::pair<EVector, EVector> redistribute_shares_b(const EVector& x) {
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
         return {x, x};
@@ -241,7 +252,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @param y Output vector (unused).
      */
-    void b2a_bit(const EVector &x, EVector &y) {
+    void b2a_bit(const EVector& x, EVector& y) {
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
     }
@@ -252,7 +263,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shares.
      * @return First element of first share.
      */
-    Data reconstruct_from_a(const std::vector<Share> &shares) { return shares[0][0]; }
+    Data reconstruct_from_a(const std::vector<Share>& shares) { return shares[0][0]; }
 
     /**
      * @brief Dummy vectorized reconstruction from arithmetic shares.
@@ -260,7 +271,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vectors.
      * @return First share's first element.
      */
-    Vector reconstruct_from_a(const std::vector<EVector> &shares) { return shares[0](0); }
+    Vector reconstruct_from_a(const std::vector<EVector>& shares) { return shares[0](0); }
 
     /**
      * @brief Dummy reconstruction from boolean shares.
@@ -268,7 +279,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shares.
      * @return First element of first share.
      */
-    Data reconstruct_from_b(const std::vector<Share> &shares) { return shares[0][0]; }
+    Data reconstruct_from_b(const std::vector<Share>& shares) { return shares[0][0]; }
 
     /**
      * @brief Dummy vectorized reconstruction from boolean shares.
@@ -276,7 +287,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vectors.
      * @return First share's first element.
      */
-    Vector reconstruct_from_b(const std::vector<EVector> &shares) { return shares[0](0); }
+    Vector reconstruct_from_b(const std::vector<EVector>& shares) { return shares[0](0); }
 
     /**
      * @brief Dummy opening of arithmetic shares (counts operations and rounds).
@@ -284,7 +295,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vector.
      * @return First share's vector.
      */
-    Vector open_shares_a(const EVector &shares) {
+    Vector internal_open_a(const EVector& shares) {
         op_counter[__func__] += shares.size();
         round_counter[__func__] += 1;
         return shares(0);
@@ -296,7 +307,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vector.
      * @return First share's vector.
      */
-    Vector open_shares_b(const EVector &shares) {
+    Vector internal_open_b(const EVector& shares) {
         op_counter[__func__] += shares.size();
         round_counter[__func__] += 1;
         return shares(0);
@@ -308,7 +319,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input data value.
      * @return Vector containing the data.
      */
-    std::vector<Share> get_share_a(const Data &data) { return {{data}}; }
+    std::vector<Share> get_share_a(const Data& data) { return {{data}}; }
 
     /**
      * @brief Generate dummy arithmetic shares for vector.
@@ -316,7 +327,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input data vector.
      * @return Vector of shared vectors.
      */
-    std::vector<EVector> get_shares_a(const Vector &data) { return {std::vector<Vector>({data})}; }
+    std::vector<EVector> get_shares_a(const Vector& data) { return {std::vector<Vector>({data})}; }
 
     /**
      * @brief Generate dummy boolean share for single value.
@@ -324,7 +335,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input data value.
      * @return Vector containing the data.
      */
-    std::vector<Share> get_share_b(const Data &data) { return {{data}}; }
+    std::vector<Share> get_share_b(const Data& data) { return {{data}}; }
 
     /**
      * @brief Generate dummy boolean shares for vector.
@@ -332,7 +343,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input data vector.
      * @return Vector of shared vectors.
      */
-    std::vector<EVector> get_shares_b(const Vector &data) { return {std::vector<Vector>({data})}; }
+    std::vector<EVector> get_shares_b(const Vector& data) { return {std::vector<Vector>({data})}; }
 
     /**
      * @brief Dummy boolean secret sharing (counts operations and rounds).
@@ -341,7 +352,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data_party Party owning the data.
      * @return Dummy shared vector.
      */
-    EVector secret_share_b(const Vector &data, const PartyID &data_party = 0) {
+    EVector secret_share_b_internal(const Vector& data, const PartyID& data_party = 0) {
         op_counter[__func__] += data.size();
         round_counter[__func__] += 1;
         return get_shares_b(data)[0];
@@ -354,7 +365,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data_party Party owning the data.
      * @return Dummy shared vector.
      */
-    EVector secret_share_a(const Vector &data, const PartyID &data_party = 0) {
+    EVector secret_share_a_internal(const Vector& data, const PartyID& data_party = 0) {
         op_counter[__func__] += data.size();
         round_counter[__func__] += 1;
         return get_shares_a(data)[0];
@@ -366,7 +377,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input data vector.
      * @return Dummy shared vector.
      */
-    EVector public_share(const Vector &data) {
+    EVector public_share(const Vector& data, const std::set<PartyID>& who_knows) {
         // doesn't matter if a or b here.
         return get_shares_a(data)[0];
     }
@@ -378,7 +389,7 @@ class Dummy_0PC : public Protocol<Data, Share, Vector, EVector> {
      * @param group Party group.
      * @param binary Whether shares are binary.
      */
-    void reshare(EVector &v, const std::set<int> group, bool binary) {
+    void reshare(EVector& v, const std::set<int> group, bool binary) {
         op_counter[__func__] += v.size();
         round_counter[__func__] += 1;
     }

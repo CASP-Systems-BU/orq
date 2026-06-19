@@ -91,11 +91,7 @@ int main(int argc, char** argv) {
     }
 #endif
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
-
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
     ////////////////////////////////////////////////////////////////
     // Database Initialization
 
@@ -134,13 +130,13 @@ int main(int argc, char** argv) {
 
     // extract year from shipdate
     // since there are only two options, split down the middle of the date range
-    LineItem.addColumns({"[Year]"}, LineItem.size());
+    LineItem.addColumns({"[Year]"});
     LineItem["[Year]"] = LineItem["[ShipDate]"] >= DATE_MID;
     LineItem.deleteColumns({"[ShipDate]"});
 
     stopwatch::timepoint("filter");
 
-    LineItem.addColumns({"Volume"}, LineItem.size());
+    LineItem.addColumns({"Volume"});
     LineItem["Volume"] = LineItem["ExtendedPrice"] * (-LineItem["Discount"] + 100) / 100;
     LineItem.deleteColumns({"ExtendedPrice", "Discount"});
 

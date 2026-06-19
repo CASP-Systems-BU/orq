@@ -30,11 +30,7 @@ int main(int argc, char** argv) {
     // 8M elements
     const size_t test_size = 1 << 23;
 
-    std::string op = "AND";
-
-    if (argc >= 5) {
-        op = argv[4];
-    }
+    auto op = runTime->getArg<std::string>("op", NULL, "AND");
 
     BSharedVector<T> a(test_size), b(test_size);
 

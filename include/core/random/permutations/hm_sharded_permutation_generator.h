@@ -137,7 +137,7 @@ class HMShardedPermutationGenerator : public ShardedPermutationGenerator {
      * @return A set of permutations, one for each group.
      */
     std::shared_ptr<ShardedPermutation> getNext(size_t n) {
-        auto group_permutation_map = std::make_shared<HMShardedPermutation>();
+        auto group_permutation_map = std::make_shared<HMShardedPermutation>(n);
 
         // generate random permutations for each group
         for (auto group : groups) {

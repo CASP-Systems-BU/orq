@@ -1,5 +1,6 @@
 #pragma once
 
+#include "backend/common/setting.h"
 #include "backend/nocopy_communicator/startmpc/startmpc.h"
 #include "core/communication/communicator.h"
 #include "core/communication/communicator_factory.h"
@@ -125,16 +126,14 @@ namespace {
  */
 class NoCopyCommunicatorFactory : public CommunicatorFactory<NoCopyCommunicatorFactory> {
    public:
-    NoCopyCommunicatorFactory(int argc, char** argv, int numParties, int threadsNum)
-        : threadsNum_(threadsNum), numParties_(numParties) {
+    NoCopyCommunicatorFactory(CommFactoryArgs args)
+        : threadsNum_(args.numThreads), host_prefix(args.host_prefix), setting_(args.setting) {
+        this->latency = args.latency;
+        this->bandwidth = args.bandwidth;
         socketMaps_.resize(threadsNum_);
 
-        for (auto& m : socketMaps_) {
-            m.resize(numParties);
-        }
-
 #if defined(MPC_USE_NO_COPY_COMMUNICATOR)
-        startmpc_init(&partyId_, numParties_, threadsNum_, socketMaps_);
+        std::tie(partyId, numParties) = startmpc_init(threadsNum_, socketMaps_);
 #endif
     }
 
@@ -142,8 +141,9 @@ class NoCopyCommunicatorFactory : public CommunicatorFactory<NoCopyCommunicatorF
         static int instanceCount = 0;
 
         // Create a new communicator instance
-        auto communicator =
-            std::make_unique<NoCopyCommunicator>(partyId_, socketMaps_[instanceCount], numParties_);
+        auto communicator = std::make_unique<NoCopyCommunicator>(
+            partyId, socketMaps_[instanceCount], numParties, host_prefix, this->latency,
+            this->bandwidth, setting_);
 
         // Increment the instance count for the next communicator
         instanceCount++;
@@ -153,23 +153,29 @@ class NoCopyCommunicatorFactory : public CommunicatorFactory<NoCopyCommunicatorF
 
     void start() {
 #if defined(MPC_USE_NO_COPY_COMMUNICATOR)
-        setup_communication_threads(partyId_, threadsNum_, numParties_);
+        setup_communication_threads(partyId, threadsNum_, numParties);
 #endif
     }
 
-    int getPartyId() const { return partyId_; }
+    int getPartyId() const { return partyId; }
 
-    int getNumParties() const { return numParties_; }
+    int getNumParties() const { return numParties; }
+
+    orq::service::Setting getSetting() const { return setting_; }
 
     void blockingReady() {
         // No additional setup needed for NoCopyCommunicator
     }
 
    private:
-    int partyId_;
+    int partyId;
+    int numParties;
 
     const int threadsNum_;
-    const int numParties_;
+
+    const std::string host_prefix;
+
+    const orq::service::Setting setting_;
 
     /**
      * @brief Vector of socket maps for each ORQ thread. Each element of the
@@ -183,5 +189,4 @@ class NoCopyCommunicatorFactory : public CommunicatorFactory<NoCopyCommunicatorF
      */
     std::vector<std::vector<int>> socketMaps_;
 };
-
 }  // namespace orq

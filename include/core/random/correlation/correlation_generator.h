@@ -3,18 +3,6 @@
 #include "../prg/random_generator.h"
 
 namespace orq::random {
-enum class Correlation {
-    rOT,
-    OLE,
-    BeaverMulTriple,
-    BeaverAndTriple,
-    AuthMulTriple,
-    AuthRandom,
-    ZeroSharing,
-    Common,
-    ShardedPermutation
-};
-
 /**
  * @brief Base correlation generator class. This is non-functional and
  * just used for organizational purposes. All correlation generators
@@ -25,15 +13,10 @@ enum class Correlation {
  *
  * always succeeds.
  *
- * TODO: figure out some way to make the inheritance actually enforced.
- * Currently, can't make these virtual methods, so need to cast to the
- * specific instance.
- *
- * Seems like the way to go is std::any and type erasure...
+ * @tparam Corr the type of the correlation for a single party.
  */
+template <typename Corr>
 class CorrelationGenerator : public RandomGenerator {
-    const int rank;
-
    public:
     /**
      * Constructor for the base correlation generator.
@@ -41,26 +24,21 @@ class CorrelationGenerator : public RandomGenerator {
      */
     CorrelationGenerator(int _rank) : RandomGenerator(0), rank(_rank) {}
 
-    // These methods ignored; just for doc purposes
+    /**
+     * @brief Get a new, random correlation of length n.
+     *
+     * @param n
+     * @return Corr
+     */
+    virtual Corr getNext(const size_t n) = 0;
 
-    template <typename... Ts>
-    std::tuple<Ts...> getNext(size_t n) const;
-
-    template <typename... Ts>
-    void assertCorrelated(std::tuple<Ts...> C) {}
+    void assertCorrelated(const Corr&) const {}
 
     /**
-     * Get the rank of this party.
-     * @return The rank of this party.
+     * @brief The rank of this party in the MPC. Equivalent to party ID.
+     *
      */
-    int getRank() const { return rank; }
+    const int rank;
 };
 
-// Type conversion template for `getCorrelation<T, C>()`
-// Specialized versions defined within class files
-//
-// When adding a new correlation, add the appropriate enum-to-type
-// conversion as well.
-template <typename T, Correlation>
-struct CorrelationEnumType;
 }  // namespace orq::random

@@ -2,7 +2,37 @@
 
 #include <sodium.h>
 
+#include <type_traits>
+
+#include "backend/common/hash.h"
+#include "core/protocols/protocol.h"
+#include "op_structs.h"
+
 namespace orq {
+
+class Verifier_4PC;
+
+struct PartyAssignment {
+    int hasher;
+    int sender;
+    int receiver;
+
+    // Default elementwise comparison
+    auto operator<=>(const PartyAssignment&) const = default;
+
+    friend std::ostream& operator<<(std::ostream& os, const PartyAssignment& pa) {
+        os << "[" << pa.sender << " -> " << pa.receiver << "; " << pa.hasher << "]";
+        return os;
+    }
+};
+
+enum class JmpBehavior { Batched, Unbatched };
+
+namespace detail {
+    std::shared_ptr<Verifier_4PC> getVerifierInstance(PartyID partyID, WorkerConfig wc,
+                                                      Communicator* communicator,
+                                                      random::RandomnessManager* randomnessManager);
+}  // namespace detail
 
 /**
  * @brief Implementation of the "Fantastic Four" paper by Dalskov et al.
@@ -15,9 +45,17 @@ namespace orq {
  * @tparam Vector Data container type.
  * @tparam EVector Share container type.
  */
-template <typename Data, typename Share, typename Vector, typename EVector>
+template <typename Data, typename Share, typename Vector, typename EVector,
+          bool is_verifier = false>
 class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
-    std::map<std::pair<int, int>, std::unique_ptr<crypto_generichash_state>> hash_states;
+    std::map<PartyAssignment, std::unique_ptr<Hash>> hash_states;
+    bool malicious_check_ok = true;
+
+   protected:
+    WorkerConfig wc;
+
+    using EVector_t = EVector;
+    using Vector_t = Vector;
 
     /**
      * @brief Computes the JMP receiver.
@@ -40,6 +78,8 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         }
     }
 
+    std::shared_ptr<Verifier_4PC> verifier;
+
     /**
      * @brief Return the index of the missing party.
      *
@@ -52,6 +92,10 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @return Index of the missing party.
      */
     inline int excluded_party(int i, int j, int k) { return (0 + 1 + 2 + 3) - (i + j + k); }
+
+    int excluded_from_set(std::set<int> s) {
+        return (0 + 1 + 2 + 3) - std::accumulate(s.begin(), s.end(), 0);
+    }
 
     /**
      * @brief Convert absolute party ID to relative party ID.
@@ -96,29 +140,37 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
     }
 
     /**
-     * @brief Initialize hash state for malicious security.
-     *
-     * @param i First party (must be less than j).
-     * @param j Second party.
+     * @brief Initialize hash states for malicious security.
      */
-    void init_hash(int i, int j) {
-        assert(i < j);
+    void init_hashes() {
+        for (int i = 0; i < 4; i++) {
+            for (int j = i + 1; j < 4; j++) {
+                for (int r = 0; r < 4; r++) {
+                    if (i == r || j == r) {
+                        continue;
+                    }
 
-        crypto_generichash_init(hash_states[{i, j}].get(), NULL, 0, crypto_generichash_BYTES);
+                    auto pa = _jmp_assignments(i, j, r);
 
-        // Seed the hash with the party ID for domain separation
-        uint8_t seed = i << 4 | j;
-        crypto_generichash_update(hash_states[{i, j}].get(), reinterpret_cast<u_char *>(&seed),
-                                  sizeof(seed));
+                    hash_states[pa] = std::make_unique<Hash>();
+
+                    // Seed the hash with the party ID for domain separation
+                    u_char seed = (i << 6) | (j << 3) | r;
+
+                    hash_states[pa]->update(std::span<const u_char>(&seed, 1));
+                }
+            }
+        }
     }
 
     /**
-     * @brief Internal method to open shares using JMP protocol.
+     * @brief Internal method to open shares using JMP protocol. Malicious check run
+     * automatically by the protocol layer.
      *
      * @param sh Input shared vector.
      * @return Opened plaintext vector.
      */
-    Vector _open_shares(const EVector &sh) {
+    Vector _open_shares(const EVector& sh) {
         size_t N = sh.size();
         Vector sh3(N);
 
@@ -131,11 +183,11 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
 
             if (this->partyID == Pr) {
                 // Receive into extra vector
-                _jmp_recv(sh3, Pi, Pj, Pr);
+                _jmp_recv(sh3, Pi, Pj, Pr, JmpBehavior::Unbatched);
             } else if (this->partyID == Pi || this->partyID == Pj) {
                 // Send missing share
                 auto rel_sh = abs2sh(Pr);
-                _jmp_send(sh(rel_sh), Pi, Pj, Pr);
+                _jmp_send(sh(rel_sh), Pi, Pj, Pr, JmpBehavior::Unbatched);
             }
         }
         return sh3;
@@ -149,7 +201,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @return Vector of shared vectors for all parties.
      */
     template <typename orq::Encoding E>
-    std::vector<EVector> get_shares(const Vector &data) {
+    std::vector<EVector> get_shares(const Vector& data) {
         auto size = data.size();
         Vector s0(size), s1(size), s2(size);
         this->randomnessManager->localPRG->getNext(s0);
@@ -176,16 +228,16 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @return This party's shared vector.
      */
     template <orq::Encoding E>
-    EVector _secret_share(const Vector &data, const PartyID &data_party) {
+    EVector _secret_share(const Vector& data, const PartyID data_party) {
         auto size = data.size();
         if (this->partyID == data_party) {
             auto shares = get_shares<E>(data);
 
             // send to everyone else
             for (int rel = 1; rel < 4; rel++) {
-                this->communicator->sendShares(shares[rel](0), rel, size);
-                this->communicator->sendShares(shares[rel](1), rel, size);
-                this->communicator->sendShares(shares[rel](2), rel, size);
+                this->communicator->sendShares(shares[rel](0), rel);
+                this->communicator->sendShares(shares[rel](1), rel);
+                this->communicator->sendShares(shares[rel](2), rel);
             }
 
             return shares[0];
@@ -193,9 +245,9 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
             EVector s(size);
             int recv_from = data_party - this->partyID;
             // Receive second shared vector from the predecessor
-            this->communicator->receiveShares(s(0), recv_from, size);
-            this->communicator->receiveShares(s(1), recv_from, size);
-            this->communicator->receiveShares(s(2), recv_from, size);
+            this->communicator->receiveShares(s(0), recv_from);
+            this->communicator->receiveShares(s(1), recv_from);
+            this->communicator->receiveShares(s(2), recv_from);
             return s;
         }
     }
@@ -203,20 +255,20 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
     /**
      * @brief Compute JMP assignments for parties Pi and Pj.
      *
-     * @param Pi First party.
-     * @param Pj Second party.
+     * @param Pi First sending party.
+     * @param Pj Second sending party.
+     * @param Pr Receiver
      * @return Tuple containing hash party, send party, and hash ID.
      */
-    std::tuple<int, int, std::pair<int, int>> _jmp_assignments(int Pi, int Pj) {
+    PartyAssignment _jmp_assignments(int Pi, int Pj, int Pr) {
         int hash_party = who_hashes(Pi, Pj);
         int send_party = Pi == hash_party ? Pj : Pi;
 
-        auto hash_id = hash_party < send_party ? std::make_pair(hash_party, send_party)
-                                               : std::make_pair(send_party, hash_party);
-
-        assert(hash_states.contains(hash_id));
-
-        return {hash_party, send_party, hash_id};
+        return PartyAssignment{
+            .hasher = hash_party,
+            .sender = send_party,
+            .receiver = Pr,
+        };
     }
 
     /**
@@ -227,18 +279,30 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param Pj Second sender party.
      * @param Pr Receiver party (must be this party).
      */
-    void _jmp_recv(Vector &x, int Pi, int Pj, int Pr) {
+    virtual void _jmp_recv(Vector& x, const int Pi, const int Pj, const int Pr,
+                           const JmpBehavior behavior = JmpBehavior::Batched) {
         // ONLY receiver can call this.
         assert(this->partyID == Pr);
 
-        auto [_, send_party, hash_id] = _jmp_assignments(Pi, Pj);
-
-        auto span = x.batch_span();
-        auto byte_ptr = reinterpret_cast<u_char *>(span.data());
+        auto pa = _jmp_assignments(Pi, Pj, Pr);
 
         // Receive & update my hash.
-        this->communicator->receiveShares(x, abs2rel(send_party), x.size());
-        crypto_generichash_update(hash_states[hash_id].get(), byte_ptr, span.size_bytes());
+        this->communicator->receiveShares(x, abs2rel(pa.sender));
+
+        if (behavior == JmpBehavior::Batched) {
+            hash_states[pa]->update(x.span());
+        } else {
+            orq::Vector<uint8_t> h(crypto_generichash_BYTES);
+            this->communicator->receiveShares(h, abs2rel(pa.hasher));
+
+            if (!h.same_as(Hash::generateHash(x.span()), false)) {
+                malicious_check_ok = false;
+            }
+
+#ifndef MAL_TEST_MODE
+            assert(malicious_check_ok);
+#endif
+        }
     }
 
     /**
@@ -249,19 +313,37 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param Pj Second sender party.
      * @param Pr Receiver party.
      */
-    void _jmp_send(const Vector &x, int Pi, int Pj, int Pr) {
-        auto [hash_party, send_party, hash_id] = _jmp_assignments(Pi, Pj);
+    virtual void _jmp_send(const Vector& x, const int Pi, const int Pj, const int Pr,
+                           const JmpBehavior behavior = JmpBehavior::Batched) {
+        auto pa = _jmp_assignments(Pi, Pj, Pr);
 
-        auto span = x.batch_span();
-        auto byte_ptr = reinterpret_cast<const u_char *>(span.data());
-
-        if (this->partyID == send_party) {
-            this->communicator->sendShares(x, abs2rel(Pr), x.size());
-        } else if (this->partyID == hash_party) {
-            // update hash
-            crypto_generichash_update(hash_states[hash_id].get(), byte_ptr, span.size_bytes());
+        if (this->partyID == pa.sender) {
+            this->communicator->sendShares(x, abs2rel(Pr));
+        } else if (this->partyID == pa.hasher) {
+            if (behavior == JmpBehavior::Batched) {
+                hash_states[pa]->update(x.span());
+            } else {
+                this->communicator->sendShares(Hash::generateHash(x.span()), abs2rel(Pr));
+            }
         }
     }
+
+    /**
+     * @brief Malicious check for hash consistency.
+     *
+     * @return True if checks passed, false otherwise.
+     */
+    bool start_malicious_check_internal() override;
+
+    /**
+     * @brief Run the [BS26] CheckEqs verification protocol
+     *
+     * @return true
+     * @return false
+     */
+    bool finalize_malicious_check_internal() override;
+
+    void reset_malicious_state() override;
 
    public:
     /**
@@ -271,12 +353,12 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      *
      * @return Vector of party groups for malicious security.
      */
-    std::vector<std::set<int>> getGroups() const {
-        return {{0, 1, 2}, {1, 2, 3}, {2, 3, 0}, {3, 0, 1}};
+    std::vector<std::set<int>> getGroups() const override {
+        return ProtocolBase::generateGroups(4, 3, 1);
     }
 
     // Configuration Parameters
-    static int parties_num;
+    static constexpr int parties_num = 4;
 
     /**
      * @brief Constructor for Fantastic_4PC protocol (Dalskov implementation).
@@ -285,17 +367,15 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param _communicator Pointer to communicator.
      * @param _randomnessManager Pointer to randomness manager.
      */
-    Fantastic_4PC(PartyID _partyID, Communicator *_communicator,
-                  random::RandomnessManager *_randomnessManager)
-        : Protocol<Data, Share, Vector, EVector>(_communicator, _randomnessManager, _partyID, 4,
-                                                 3) {
-        for (int Pi = 0; Pi < 4; Pi++) {
-            for (int Pj = Pi + 1; Pj < 4; Pj++) {
-                hash_states[{Pi, Pj}] = std::make_unique<crypto_generichash_state>();
-
-                init_hash(Pi, Pj);
-            }
+    Fantastic_4PC(PartyID _partyID, WorkerConfig wc, Communicator* _communicator,
+                  random::RandomnessManager* _randomnessManager)
+        : Protocol<Data, Share, Vector, EVector>(_communicator, _randomnessManager, _partyID, 4, 3),
+          wc(wc) {
+        // Only the base protocol gets a verifier instance.
+        if constexpr (!is_verifier) {
+            verifier = detail::getVerifierInstance(_partyID, wc, _communicator, _randomnessManager);
         }
+        init_hashes();
     }
 
     /**
@@ -306,7 +386,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param also_from Co-owner of data.
      * @param to Party who will receive data from both.
      */
-    void jmp(Vector &x, int from, int also_from, int to) {
+    void jmp(Vector& x, int from, int also_from, int to) {
         if (this->partyID == to) {
             _jmp_recv(x, from, also_from, to);
         } else if (this->partyID == from || this->partyID == also_from) {
@@ -319,7 +399,8 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
     /**
      * @brief Shared-input function.
      *
-     * Two parties, who both know a plaintext value x, secret-share it with the other two parties.
+     * Two parties, who both know a plaintext value x, secret-share it with the other two
+     * parties.
      *
      * @tparam E Encoding type (A- or B-shared).
      * @param x Plaintext data.
@@ -330,7 +411,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @return Shared vector.
      */
     template <orq::Encoding E>
-    EVector inp(const Vector &x, int Pi, int Pj, std::optional<int> Pg = {},
+    EVector inp(const Vector& x, int Pi, int Pj, std::optional<int> Pg = {},
                 std::optional<int> Ph = {}) {
         size_t n = x.size();
         EVector r(n);
@@ -375,15 +456,27 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
     }
 
     /**
-     * @brief Multiply two arithmetic-shared vectors.
+     * @brief Generic binary operation on shared vectors using the 4PC protocol.
      *
+     * Template function to avoid code duplication for structurally identical operations
+     * (e.g., multiply_a and and_b) that differ only in their operators.
+     *
+     * The Ops struct should define:
+     *   - operator(): accumulation operation (e.g., + for arithmetic, ^ for boolean)
+     *   - op1: first binary operation (e.g., * for arithmetic, & for boolean)
+     *   - op2: second binary operation (e.g., + for arithmetic, ^ for boolean)
+     *   - do_truncate: boolean constant indicating if truncate() should be called
+     *
+     * @tparam EncodingType The encoding type (AShared or BShared).
+     * @tparam Ops Operator functor struct.
      * @param x First input vector.
      * @param y Second input vector.
      * @param z Output vector.
      */
-    void multiply_a(const EVector &x, const EVector &y, EVector &z) {
+    template <orq::Encoding EncodingType, typename Ops>
+    void generic_multiply(const EVector& x, const EVector& y, EVector& z, Ops ops = {}) {
         int Pi, Pj, Pg, Ph, hi, gi;
-        EVector r(x.size());
+        EVector r(z.size());
 
         // Iteration order:
         // (0, 1) (0, 2) (0, 3)
@@ -400,22 +493,38 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
                     // hack for now: these parties pass in nothing on this call
                     // just need a vector to pull the size out of
                     // TODO: make an alternative signature that just takes `n`
-                    r += inp<Encoding::AShared>(r(0), Pi, Pj, Pg, Ph);
+                    ops.accumulateOp(r, inp<EncodingType>(r(0), Pi, Pj, Pg, Ph));
                 } else {
                     // compute relative share indices
                     hi = abs2sh(Ph);
                     gi = abs2sh(Pg);
 
-                    r += inp<Encoding::AShared>(x(hi) * y(gi) + x(gi) * y(hi), Pi, Pj, Pg, Ph);
+                    // Compute r += x(hi)*y(gi) + x(gi)*y(hi)
+                    ops.accumulateOp(r, inp<EncodingType>(ops.addOp(ops.multiplyOp(x(hi), y(gi)),
+                                                                    ops.multiplyOp(x(gi), y(hi))),
+                                                          Pi, Pj, Pg, Ph));
                 }
             }
         }
 
-        // self terms.
-        z = r + x * y;
+        // self terms: z = r + x * y
+        z = ops.addOp(r, ops.multiplyOp(x, y));
 
         this->handle_precision(x, y, z);
-        this->truncate(z);
+        if constexpr (Ops::do_truncate) {
+            this->truncate(z);
+        }
+    }
+
+    /**
+     * @brief Multiply two arithmetic-shared vectors.
+     *
+     * @param x First input vector.
+     * @param y Second input vector.
+     * @param z Output vector.
+     */
+    void multiply_a(const EVector& x, const EVector& y, EVector& z) override {
+        this->template generic_multiply<Encoding::AShared, ArithmeticOps>(x, y, z);
     }
 
     /**
@@ -425,7 +534,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param c Constant divisor.
      * @return Pair of vectors (quotient and error correction).
      */
-    std::pair<EVector, EVector> div_const_a(const EVector &x, const Data &c) {
+    std::pair<EVector, EVector> div_const_a(const EVector& x, const Data c) override {
         auto size = x.size();
         EVector res(size), err(size);
 
@@ -476,30 +585,8 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param y Second input vector.
      * @param z Output vector.
      */
-    void and_b(const EVector &x, const EVector &y, EVector &z) {
-        int Pi, Pj, Pg, Ph, hi, gi;
-        EVector r(x.size());
-
-        for (Pi = 0; Pi < 4; Pi++) {
-            for (Pj = Pi + 1; Pj < 4; Pj++) {
-                Pg = next_party(Pi, Pj);
-                Ph = excluded_party(Pi, Pj, Pg);
-
-                if (this->partyID == Pg || this->partyID == Ph) {
-                    r ^= inp<Encoding::BShared>(r(0), Pi, Pj, Pg, Ph);
-                } else {
-                    hi = abs2sh(Ph);
-                    gi = abs2sh(Pg);
-
-                    r ^= inp<Encoding::BShared>(x(hi) & y(gi) ^ x(gi) & y(hi), Pi, Pj, Pg, Ph);
-                }
-            }
-        }
-
-        // self terms.
-        z = r ^ (x & y);
-
-        this->handle_precision(x, y, z);
+    void and_b(const EVector& x, const EVector& y, EVector& z) override {
+        this->template generic_multiply<Encoding::BShared, BooleanOps>(x, y, z);
     }
 
     /**
@@ -508,7 +595,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @param y Output vector.
      */
-    void not_b(const EVector &x, EVector &y) {
+    void not_b(const EVector& x, EVector& y) override {
         int p = this->partyID;
         y = {
             (p == 2 ? ~x(0) : x(0)),
@@ -523,7 +610,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @param y Output vector.
      */
-    void not_b_1(const EVector &x, EVector &y) {
+    void not_b_1(const EVector& x, EVector& y) override {
         int p = this->partyID;
         Vector x0 = x(0) & 1, x1 = x(1) & 1, x2 = x(2) & 1;
 
@@ -559,9 +646,8 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @param y Output vector.
      */
-    void b2a_bit(const EVector &x, EVector &y) {
-        EVector x_prime(x);
-        x_prime.mask(1);
+    void b2a_bit(const EVector& x, EVector& y) override {
+        EVector x_prime = x & 1;
 
         Vector s0(x.size()), s1(x.size());
 
@@ -594,7 +680,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @return Pair of vectors (redistributed shares).
      */
-    std::pair<EVector, EVector> redistribute_shares_b(const EVector &x) {
+    std::pair<EVector, EVector> redistribute_shares_b(const EVector& x) override {
         auto size = x.size();
         EVector res_1(size), res_2(size);
 
@@ -617,7 +703,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shares.
      * @return Reconstructed arithmetic shares.
      */
-    Data reconstruct_from_a(const std::vector<Share> &shares) {
+    Data reconstruct_from_a(const std::vector<Share>& shares) override {
         return shares[0][0] + shares[1][0] + shares[2][0] + shares[3][0];
     }
 
@@ -627,7 +713,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shares.
      * @return Reconstructed arithmetic shares.
      */
-    Vector reconstruct_from_a(const std::vector<EVector> &shares) {
+    Vector reconstruct_from_a(const std::vector<EVector>& shares) override {
         return shares[0](0) + shares[1](0) + shares[2](0) + shares[3](0);
     }
 
@@ -637,7 +723,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shares.
      * @return Reconstructed boolean shares.
      */
-    Data reconstruct_from_b(const std::vector<Share> &shares) {
+    Data reconstruct_from_b(const std::vector<Share>& shares) override {
         return shares[0][0] ^ shares[1][0] ^ shares[2][0] ^ shares[3][0];
     }
 
@@ -647,7 +733,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shares.
      * @return Reconstructed boolean shares.
      */
-    Vector reconstruct_from_b(const std::vector<EVector> &shares) {
+    Vector reconstruct_from_b(const std::vector<EVector>& shares) override {
         return shares[0](0) ^ shares[1](0) ^ shares[2](0) ^ shares[3](0);
     }
 
@@ -657,7 +743,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vector.
      * @return Opened plaintext vector.
      */
-    Vector open_shares_a(const EVector &shares) {
+    Vector internal_open_a(const EVector& shares) override {
         auto sh3 = _open_shares(shares);
         return shares(0) + shares(1) + shares(2) + sh3;
     }
@@ -668,70 +754,9 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vector.
      * @return Opened plaintext vector.
      */
-    Vector open_shares_b(const EVector &shares) {
+    Vector internal_open_b(const EVector& shares) override {
         auto sh3 = _open_shares(shares);
         return shares(0) ^ shares(1) ^ shares(2) ^ sh3;
-    }
-
-    /**
-     * @brief Malicious check for hash consistency.
-     *
-     * @param should_abort Whether to abort on failure.
-     * @return True if checks passed, false otherwise.
-     */
-    bool malicious_check(bool should_abort = true) {
-        auto N = crypto_generichash_blake2b_BYTES;
-        orq::Vector<int8_t> hash(N);
-        bool ok = true;
-        for (int i = 0; i < 4; i++) {
-            for (int j = i + 1; j < 4; j++) {
-                auto hasher = who_hashes(i, j);
-                auto recv = next_party(i, j);
-                if (this->partyID != hasher && this->partyID != recv) {
-                    continue;
-                }
-
-                // Bit hacky, but sodium needs a pointer, while communicator
-                // wants a orq::Vector
-                crypto_generichash_final(hash_states[{i, j}].get(), (uint8_t *)&hash[0], N);
-
-                //// Uncomment the below to look at each hash view ////
-                // std::cout << "P" << this->partyID << "'s view of H" << i << "," << j << ": ";
-                // std::cout << std::hex << std::setfill('0');
-                // for (int b = 0; b < N; b++) {
-                //     std::cout << std::setw(2) << (int) (hash[b] & 0xFF);
-                // }
-                // std::cout << "\n";
-                // std::cout << std::dec << std::setfill(' ');
-
-                // reinitialize hash (not allowed to keep hashing on top of
-                // finalized hash)
-                // maybe this should be optional?
-                init_hash(i, j);
-
-                // hasher sends to receiver, abort if disagree
-                if (this->partyID == hasher) {
-                    this->communicator->sendShares(hash, abs2rel(recv), N);
-                } else if (this->partyID == recv) {
-                    orq::Vector<int8_t> recv_hash(N);
-                    this->communicator->receiveShares(recv_hash, abs2rel(hasher), N);
-
-                    ok &= recv_hash.same_as(hash, false);
-
-                    if (!ok) {
-                        std::cerr << "P" << this->partyID << " recv bad hash from P" << hasher
-                                  << "!\n";
-
-                        if (should_abort) {
-                            std::cerr << "Aborting.\n";
-                            abort();
-                        }
-                    }
-                }
-            }
-        }
-
-        return ok;
     }
 
     /**
@@ -740,7 +765,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input data vector.
      * @return Vector of shares for all parties.
      */
-    std::vector<EVector> get_shares_a(const Vector &data) {
+    std::vector<EVector> get_shares_a(const Vector& data) override {
         return get_shares<Encoding::AShared>(data);
     }
 
@@ -750,7 +775,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input data vector.
      * @return Vector of shares for all parties.
      */
-    std::vector<EVector> get_shares_b(const Vector &data) {
+    std::vector<EVector> get_shares_b(const Vector& data) override {
         return get_shares<Encoding::BShared>(data);
     }
 
@@ -761,7 +786,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data_party Party ID of the data party.
      * @return Secret shared vector.
      */
-    EVector secret_share_b(const Vector &data, const PartyID &data_party = 0) {
+    EVector secret_share_b_internal(const Vector& data, const PartyID& data_party = 0) override {
         return _secret_share<Encoding::BShared>(data, data_party);
     }
 
@@ -772,29 +797,37 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data_party Party ID of the data party.
      * @return Secret shared vector.
      */
-    EVector secret_share_a(const Vector &data, const PartyID &data_party = 0) {
+    EVector secret_share_a_internal(const Vector& data, const PartyID& data_party = 0) override {
         return _secret_share<Encoding::AShared>(data, data_party);
     }
 
     /**
      * @brief Public sharing of a vector x.
      *
-     * P0 gets: (   0, 0, 0)
-     * P1 gets: (x,    0, 0)
-     * P2 gets: (x, 0,    0)
-     * P3 gets: (x, 0, 0   )
-     *
      * @param x Input data vector.
+     * @param who_knows set of parties who know the value
      * @return EVector
      */
-    EVector public_share(const Vector &x) {
+    EVector public_share(const Vector& x, const std::set<PartyID>& who_knows) override {
+        auto me = this->partyID;
         auto size = x.size();
+
         // zero initialized
         EVector r(size);
 
-        if (this->partyID > 0) {
-            // P1 share 2, P2 share 1, P3 share 0
-            r(3 - this->partyID) = x;
+        // I hold shares x_{me+1}, x_{me+2}, x_{me+3} mod 4
+
+        int k = 0;
+        if (!who_knows.empty()) {
+            // the share will be whichever party is not in the group
+            assert(who_knows.size() == 3);
+
+            // Use subtraction trick from excluded_party above
+            k = excluded_from_set(who_knows);
+        }
+
+        if (me != k) {
+            r(abs2sh(k)) = x;
         }
 
         return r;
@@ -807,11 +840,11 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param group The group performing the resharing.
      * @param binary A flag indicating an arithmetic or binary encoding of the vector.
      */
-    void reshare(EVector &v, const std::set<int> group, bool binary) {
+    virtual void reshare(EVector& v, const std::set<int> group, const bool binary) override {
         assert(group.size() == 3);
 
         // find receive party
-        int receiver = (0 + 1 + 2 + 3) - std::accumulate(group.begin(), group.end(), 0);
+        int receiver = excluded_from_set(group);
 
         // all parties in the group generate a zero sharing to rerandomize the vector
         if (receiver != this->partyID) {
@@ -862,14 +895,76 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
             }
 
             auto rel_sh = abs2sh(sh);
-
             jmp(v(rel_sh), Pi, Pj, receiver);
         }
     }
+
+    void dot_product_a(const EVector& x, const EVector& y, EVector& z,
+                       const size_t aggSize = 0) override {
+        auto ops = DotProductOps(aggSize);
+        this->template generic_multiply<Encoding::AShared, DotProductOps>(x, y, z, ops);
+    }
 };
 
-template <typename D, typename S, typename V, typename E>
-int Fantastic_4PC<D, S, V, E>::parties_num = 4;
+}  // namespace orq
+
+#include "core/protocols/verifier_4pc.h"
+
+namespace orq {
+
+template <typename Data, typename Share, typename Vector, typename EVector, bool is_verifier>
+bool Fantastic_4PC<Data, Share, Vector, EVector, is_verifier>::start_malicious_check_internal() {
+    if (wc.worker_id == 0) {
+        verifier->start_malicious_check();
+    }
+
+    bool ok = true;
+    for (int i = 0; i < 4; i++) {
+        for (int j = i + 1; j < 4; j++) {
+            for (int r = 0; r < 4; r++) {
+                // must be distinct
+                if (r == i || r == j) {
+                    continue;
+                }
+
+                // I'm not involved in this hash
+                if (excluded_party(i, j, r) == this->partyID) {
+                    continue;
+                }
+
+                auto pa = _jmp_assignments(i, j, r);
+                auto hash = hash_states[pa]->finalize();
+                verifier->template aggregate_hash<Data>(wc.worker_id, pa, hash);
+            }
+        }
+    }
+
+    return true;
+}
+
+template <typename Data, typename Share, typename Vector, typename EVector, bool is_verifier>
+bool Fantastic_4PC<Data, Share, Vector, EVector, is_verifier>::finalize_malicious_check_internal() {
+    // Only thread 0 calls into the verifier (which checks all threads' hashes)
+    // Other threads can just return true.
+    // TODO: atomic flags inside finalize() may have rendered this check unnecessary.
+    malicious_check_ok &= wc.worker_id == 0 ? verifier->finalize_malicious_check() : true;
+    init_hashes();
+    return malicious_check_ok;
+}
+
+template <typename Data, typename Share, typename Vector, typename EVector, bool is_verifier>
+void Fantastic_4PC<Data, Share, Vector, EVector, is_verifier>::reset_malicious_state() {
+    // Clear out the hashes,
+    init_hashes();
+
+    // Raise the flag,
+    malicious_check_ok = true;
+
+    // And reset the underlying verifier state.
+    if (wc.worker_id == 0) {
+        verifier->reset_malicious_state();
+    }
+}
 
 /**
  * @brief Factory type alias for Fantastic_4PC protocol (Dalskov implementation).

@@ -6,13 +6,12 @@
 #include "debug/orq_debug.h"
 #include "gilboa_ole.h"
 #include "ole_generator.h"
+#include "ot_generator.h"
 #include "profiling/stopwatch.h"
 #include "silent_ot.h"
 using namespace orq::benchmarking;
 
 #include <stdlib.h>
-
-#include <variant>
 
 const int MAX_TRIPLES_RESERVE_BATCH = 1 << 24;
 
@@ -28,16 +27,14 @@ using S = EVector<T, 1>;
  * @tparam E The encoding type (BShared or AShared)
  */
 template <typename T, orq::Encoding E>
-class BeaverTripleGenerator : public CorrelationGenerator {
+class BeaverTripleGenerator : public CorrelationGenerator<std::tuple<S<T>, S<T>, S<T>>> {
     using triple_t = std::tuple<S<T>, S<T>, S<T>>;
     using vec_t = Vector<T>;
 
     bool pooled;
 
-    OLEGenerator<T, E>* vg;
-    std::variant<std::shared_ptr<PooledGenerator<GilboaOLE<T>, T, T>>,
-                 std::shared_ptr<PooledGenerator<SilentOT<T>, T, T>>>
-        pg;
+    std::shared_ptr<OLEGenerator<T>> vg;
+    std::shared_ptr<PooledGenerator<T, T>> pg;
 
     std::optional<Communicator*> comm;
 
@@ -48,7 +45,7 @@ class BeaverTripleGenerator : public CorrelationGenerator {
      */
     auto generatorGetNext(size_t n) {
         if (pooled) {
-            return std::visit([n](auto& p) { return p->getNext(n); }, pg);
+            return pg->getNext(n);
         } else {
             return vg->getNext(n);
         }
@@ -59,19 +56,17 @@ class BeaverTripleGenerator : public CorrelationGenerator {
      * Constructor with OLE generator.
      * @param v The OLE generator to use.
      */
-    BeaverTripleGenerator(OLEGenerator<T, E>* v)
-        : vg(v), CorrelationGenerator(v->getRank()), comm(v->comm), pooled(false) {}
+    BeaverTripleGenerator(std::shared_ptr<OLEGenerator<T>> v)
+        : vg(v), CorrelationGenerator<triple_t>(v->rank), comm(v->comm), pooled(false) {}
 
     /**
-     * Constructor that takes a PooledGenerator of an OLEGenerator instead of an OLEGenerator
-     * itself.
+     * Constructor that takes a PooledGenerator.
      * @param p shared_ptr to a PooledGenerator object.
      * @param _comm Optional communicator object for correctness tests.
      */
-    template <typename OLEGenerator_t>
-    BeaverTripleGenerator(std::shared_ptr<PooledGenerator<OLEGenerator_t, T, T>> p,
+    BeaverTripleGenerator(std::shared_ptr<PooledGenerator<T, T>> p,
                           std::optional<Communicator*> _comm = std::nullopt)
-        : pg(p), CorrelationGenerator(p->getRank()), comm(_comm), pooled(true) {}
+        : pg(p), CorrelationGenerator<triple_t>(p->rank), comm(_comm), pooled(true) {}
 
     /**
      * A function to generate Beaver triples and store them for use later.
@@ -79,7 +74,7 @@ class BeaverTripleGenerator : public CorrelationGenerator {
      */
     void reserve(size_t n) {
         if (!pooled) {
-            if (getRank() == 0) {
+            if (this->rank == 0) {
                 std::cout
                     << "Attempted to pool triples on a triple generator without a pooled generator."
                     << std::endl;
@@ -89,12 +84,12 @@ class BeaverTripleGenerator : public CorrelationGenerator {
 
         size_t remaining = n;
         while (remaining > MAX_TRIPLES_RESERVE_BATCH) {
-            std::visit([n](auto& p) { p->reserve(2 * MAX_TRIPLES_RESERVE_BATCH); }, pg);
+            pg->reserve(2 * MAX_TRIPLES_RESERVE_BATCH);
             remaining -= MAX_TRIPLES_RESERVE_BATCH;
         }
 
         if (remaining > 0) {
-            std::visit([n, remaining](auto& p) { p->reserve(2 * remaining); }, pg);
+            pg->reserve(2 * remaining);
         }
     }
 
@@ -103,19 +98,20 @@ class BeaverTripleGenerator : public CorrelationGenerator {
      * @param n The number of triples to generate.
      * @return A tuple of three vectors representing the Beaver triple.
      */
-    triple_t getNext(size_t n) {
-        auto party0 = getRank() == 0;
+    triple_t getNext(const size_t n) {
+        auto party0 = this->rank == 0;
         // Get two OLEs.
         // These are tuples of Vector<T>, with the following layout
         //   A   +   B   =   C   *   D
-        // P0 #0   P1 #0   P0 #1   P1 #1
+        // P0 #1   P1 #1   P0 #0   P1 #0
         //
-        // or, P0: {A, C}
-        //     P1: {B, D}
+        // or, P0: {C, A}
+        //     P1: {D, B}
+        // (Multiplicative share comes first.)
         //
         // However, for efficiency purposes, just get a OLE of twice the
         // length, and then chop it up.
-        auto [vAB, vCD] = generatorGetNext(2 * n);
+        auto [vCD, vAB] = generatorGetNext(2 * n);
         // Chop up the A (P0) / B (P1)
         auto vAB_left = vAB.slice(0, n);
         auto vAB_right = vAB.slice(n, 2 * n);
@@ -154,7 +150,7 @@ class BeaverTripleGenerator : public CorrelationGenerator {
      *
      * @param bt
      */
-    void assertCorrelated(triple_t bt) {
+    void assertCorrelated(const triple_t& bt) {
         auto [my_a, my_b, my_c] = bt;
 
         auto n = my_a.size();
@@ -162,7 +158,7 @@ class BeaverTripleGenerator : public CorrelationGenerator {
         Vector<T> other_a(n), other_b(n), other_c(n);
 
         if (!comm.has_value()) {
-            if (getRank() == 0) {
+            if (this->rank == 0) {
                 std::cout << "Skipping BT check: communicator not defined\n";
             }
             return;
@@ -174,36 +170,37 @@ class BeaverTripleGenerator : public CorrelationGenerator {
         my_b.materialize_inplace();
         my_c.materialize_inplace();
 
-        communicator->exchangeShares(my_a(0), other_a, 1, n);
-        communicator->exchangeShares(my_b(0), other_b, 1, n);
-        communicator->exchangeShares(my_c(0), other_c, 1, n);
+        communicator->exchangeShares(my_a(0), other_a, 1);
+        communicator->exchangeShares(my_b(0), other_b, 1);
+        communicator->exchangeShares(my_c(0), other_c, 1);
 
         if constexpr (E == orq::Encoding::BShared) {
             auto a = my_a(0) ^ other_a;
             auto b = my_b(0) ^ other_b;
             auto c = my_c(0) ^ other_c;
 
+#ifndef USE_ZERO_TRIPLES
             assert(!a.same_as(b, false));
+#endif
             assert(c.same_as(a & b));
         } else {
             auto a = my_a(0) + other_a;
             auto b = my_b(0) + other_b;
             auto c = my_c(0) + other_c;
 
+#ifndef USE_ZERO_TRIPLES
             assert(!a.same_as(b, false));
+#endif
             assert(c.same_as(a * b));
         }
     }
 };
 
-// Template specialization
+// aliases
 template <typename T>
-struct CorrelationEnumType<T, Correlation::BeaverMulTriple> {
-    using type = BeaverTripleGenerator<T, Encoding::AShared>;
-};
+using BeaverMulGenerator = BeaverTripleGenerator<T, orq::Encoding::AShared>;
 
 template <typename T>
-struct CorrelationEnumType<T, Correlation::BeaverAndTriple> {
-    using type = BeaverTripleGenerator<T, Encoding::BShared>;
-};
+using BeaverAndGenerator = BeaverTripleGenerator<T, orq::Encoding::BShared>;
+
 }  // namespace orq::random

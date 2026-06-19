@@ -132,7 +132,5 @@ int main(int argc, char** argv) {
     test_float_vectors<double>(1000);
     single_cout("Floating point vector construction... OK");
 
-    // Tear down communication
-
     return 0;
 }

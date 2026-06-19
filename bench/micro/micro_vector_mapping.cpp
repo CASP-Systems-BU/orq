@@ -5,9 +5,6 @@ using namespace orq::debug;
 using namespace orq::service;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
-// command
-// mpirun -np 3 ./micro_vector_mapping 1 1 8192 $VECTOR_SIZES
-
 #define REPEAT(n, expr)           \
     for (int i = 0; i < n; i++) { \
         expr;                     \
@@ -23,10 +20,7 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    int test_size = 1 << 20;
-    if (argc >= 5) {
-        test_size = atoi(argv[4]);
-    }
+    auto test_size = runTime->getArg<size_t>("test-size", "r", 1 << 20);
 
     orq::Vector<int> v(test_size);
     runTime->populateLocalRandom(v);

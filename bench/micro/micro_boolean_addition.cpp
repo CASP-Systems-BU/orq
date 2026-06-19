@@ -8,10 +8,8 @@ using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pID = runTime->getPartyID();
-    int test_size = 128;
-    if (argc >= 5) {
-        test_size = atoi(argv[4]);
-    }
+
+    auto test_size = runTime->getArg<size_t>("test-size", "r", 1 << 20);
 
     BSharedVector<int> a(test_size), b(test_size);
 
@@ -21,7 +19,7 @@ int main(int argc, char** argv) {
     double elapsed;
     gettimeofday(&begin, 0);
 
-    BSharedVector<int> c_1 = orq::ripple_carry_adder(a, b);
+    BSharedVector<int> c_1 = orq::operators::ripple_carry_adder(a, b);
 
     // stop timer
     gettimeofday(&end, 0);
@@ -34,7 +32,7 @@ int main(int argc, char** argv) {
 
     gettimeofday(&begin, 0);
 
-    BSharedVector<int> c_2 = orq::parallel_prefix_adder(a, b);
+    BSharedVector<int> c_2 = orq::operators::parallel_prefix_adder(a, b);
 
     gettimeofday(&end, 0);
     seconds = end.tv_sec - begin.tv_sec;

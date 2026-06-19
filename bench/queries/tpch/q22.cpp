@@ -73,10 +73,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     ////////////////////////////////////////////////////////////////
     // Database Initialization
@@ -136,7 +133,7 @@ int main(int argc, char** argv) {
     Customer.filter(Customer["[AcctBal]"] > 0);
 
     // Generate the aggregation avg(c_acctbal)
-    Customer.addColumns({"TotalAcctBal", "CountAcctBal"}, Customer.size());
+    Customer.addColumns({"TotalAcctBal", "CountAcctBal"});
     Customer.aggregate({},
                        {{"AcctBal", "TotalAcctBal", sum<A>}, {"AcctBal", "CountAcctBal", count<A>}},
                        {.mark_valid = false});
@@ -161,7 +158,7 @@ int main(int argc, char** argv) {
         extracted_b.simple_subset_reference(0, 1, 0) / extracted_b.simple_subset_reference(1, 1, 1);
 
     // 3- Putting result back to table
-    Customer.addColumns({"[AvgAcctBal]"}, Customer.size());
+    Customer.addColumns({"[AvgAcctBal]"});
     *((B*)Customer["[AvgAcctBal]"].contents.get()) = avg_b.cyclic_subset_reference(Customer.size());
 
     // Filter c_acctbal > avg(c_acctbal)
@@ -173,7 +170,7 @@ int main(int argc, char** argv) {
     // // c_acctbal > TotalAcctBal / CountAcctBal
     // // c_acctbal * CountAcctBal > TotalAcctBal
     // // c_acctbal * CountAcctBal - TotalAcctBal > 0
-    // Customer.addColumns({"AcctBalDiff", "[AcctBalDiff]"}, Customer.size());
+    // Customer.addColumns({"AcctBalDiff", "[AcctBalDiff]"});
     // Customer["AcctBalDiff"] = Customer["AcctBal"] * Customer["CountAcctBal"] -
     // Customer["TotalAcctBal"]; Customer.convert_a2b("AcctBalDiff", "[AcctBalDiff]");
     // Customer.filter(Customer["[AcctBalDiff]"] > 0);
@@ -186,7 +183,7 @@ int main(int argc, char** argv) {
     auto CustomerAJ = Customer.anti_join(Order, {"[CustKey]"});
 
     // Evaluate the {count(*) as numcust, sum(c_acctbal) as totacctbal} aggregation
-    CustomerAJ.addColumns({"NumCust", "TotAcctBal"}, CustomerAJ.size());
+    CustomerAJ.addColumns({"NumCust", "TotAcctBal"});
     CustomerAJ.aggregate({"[CntryCode]"},
                          {{"AcctBal", "NumCust", count<A>}, {"AcctBal", "TotAcctBal", sum<A>}});
 

@@ -81,10 +81,7 @@ int main(int argc, char** argv) {
     }
 #endif
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     ////////////////////////////////////////////////////////////////
     // Database Initialization
@@ -121,7 +118,7 @@ int main(int argc, char** argv) {
     stopwatch::timepoint("filter");
 
     // compute revenue
-    LineItem.addColumns({"Revenue"}, LineItem.size());
+    LineItem.addColumns({"Revenue"});
     LineItem["Revenue"] = LineItem["ExtendedPrice"] * (-LineItem["Discount"] + 100) / 100;
     LineItem.deleteColumns({"ExtendedPrice", "Discount"});
 
@@ -153,7 +150,7 @@ int main(int argc, char** argv) {
     stopwatch::timepoint("aggregation");
 
     // convert revenue column to binary
-    result.addColumns({"[Revenue]"}, result.size());
+    result.addColumns({"[Revenue]"});
     result.convert_a2b("Revenue", "[Revenue]");
     result.deleteColumns({"Revenue"});
 

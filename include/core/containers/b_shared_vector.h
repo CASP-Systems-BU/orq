@@ -4,21 +4,10 @@
 #include <cmath>
 #include <limits>
 
-#include "core/operators/common.h"
+#include "core/operators/aggregation.h"
+// #include "core/operators/common.h"
 #include "debug/orq_debug.h"
 #include "shared_vector.h"
-
-/**
- * @brief Define the default adder circuit. If `USE_PARALLEL_PREFIX_ADDER`, `operator+` will be
- * implemented with `parallel_prefix_adder`. Otherwise, `ripple_carry_adder` is used. Specific
- * applications can still choose to use either function by explicitly naming it.
- *
- */
-#ifdef USE_PARALLEL_PREFIX_ADDER
-#define ADDER orq::operators::parallel_prefix_adder
-#else
-#define ADDER orq::operators::ripple_carry_adder
-#endif
 
 namespace orq {
 // Forward class declarations
@@ -28,20 +17,20 @@ class ElementwisePermutation;
 namespace operators {
     // Friend function
     template <typename T, typename V>
-    void compare(const BSharedVector<T, V> &x_vec, const BSharedVector<T, V> &y_vec,
-                 BSharedVector<T, V> &eq, BSharedVector<T, V> &gt);
+    void compare(const BSharedVector<T, V>& x_vec, const BSharedVector<T, V>& y_vec,
+                 BSharedVector<T, V>& eq, BSharedVector<T, V>& gt);
 
     template <typename T, typename V>
-    void swap(BSharedVector<T, V> &x_vec, BSharedVector<T, V> &y_vec, BSharedVector<T, V> &bits);
+    void swap(BSharedVector<T, V>& x_vec, BSharedVector<T, V>& y_vec, BSharedVector<T, V>& bits);
 
     template <typename T, typename E>
-    static std::unique_ptr<BSharedVector<T, E>> ripple_carry_adder(const BSharedVector<T, E> &,
-                                                                   const BSharedVector<T, E> &,
+    static std::unique_ptr<BSharedVector<T, E>> ripple_carry_adder(const BSharedVector<T, E>&,
+                                                                   const BSharedVector<T, E>&,
                                                                    bool = false);
 
     template <typename T, typename E>
-    static std::unique_ptr<BSharedVector<T, E>> parallel_prefix_adder(const BSharedVector<T, E> &,
-                                                                      const BSharedVector<T, E> &,
+    static std::unique_ptr<BSharedVector<T, E>> parallel_prefix_adder(const BSharedVector<T, E>&,
+                                                                      const BSharedVector<T, E>&,
                                                                       bool = false);
 }  // namespace operators
 
@@ -66,6 +55,47 @@ class BSharedVector : public SharedVector<Share, EVector> {
 
     using unique_B = std::unique_ptr<BSharedVector>;
 
+    double model_rca(double latency, double bandwidth, size_t n) const {
+        // each logical round is split into batches
+        auto rounds = (MAX_BITS_NUMBER - 1);
+        rounds *= service::runTime->numBatches(n);
+
+        return rounds * (latency + n / bandwidth);
+    }
+
+    double model_ppa(double latency, double bandwidth, size_t n) const {
+        auto elm_per_sec = bandwidth / MAX_BITS_NUMBER;
+        // 1 + 3 lg(n)
+        auto rounds = 1 + 3 * std::bit_width(MAX_BITS_NUMBER - 1);
+        rounds *= service::runTime->numBatches(n);
+
+        // No scaling here, because no bit packing
+        return rounds * (latency + n / elm_per_sec);
+    }
+
+    unique_B binary_adder(const BSharedVector<Share, EVector>& a,
+                          const BSharedVector<Share, EVector>& b, bool carry_in) const {
+#ifndef FORCE_PARALLEL_PREFIX_ADDER
+        const double latency_sec = 1e-3 * service::runTime->comm0()->getLatency();
+        const double bandwidth_bps = 1e9 * service::runTime->comm0()->getBandwidth();
+
+        size_t n = a.size();
+
+        auto t_rca = model_rca(latency_sec, bandwidth_bps, n);
+        auto t_ppa = model_ppa(latency_sec, bandwidth_bps, n);
+
+        // Output the model parameters
+        // single_cout(t_rca << " RCA vs. " << t_ppa << " PPA");
+
+        if (t_rca <= t_ppa) {
+            return operators::ripple_carry_adder(a, b, carry_in);
+        } else
+#endif
+        {
+            return operators::parallel_prefix_adder(a, b, carry_in);
+        }
+    }
+
    public:
     using SharedVector_t = SharedVector<Share, EVector>;
 
@@ -76,9 +106,9 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param source
      * @param position
      */
-    void pack_from(const BSharedVector &source, const int &position) {
-        orq::service::runTime->modify_parallel(this->vector, &EVector::pack_from, source.vector,
-                                               position);
+    void pack_from(const BSharedVector& source, const int position) {
+        service::runTime->modify_parallel(this->vector, &EVector::pack_from, source.vector,
+                                          position);
     }
 
     /**
@@ -88,9 +118,9 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param source
      * @param position
      */
-    void unpack_from(const BSharedVector &source, const int &position) {
-        orq::service::runTime->modify_parallel(this->vector, &EVector::unpack_from, source.vector,
-                                               position);
+    void unpack_from(const BSharedVector& source, const int position) {
+        service::runTime->modify_parallel(this->vector, &EVector::unpack_from, source.vector,
+                                          position);
     }
 
     /**
@@ -100,9 +130,9 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param in input
      * @param shift_size The number of bits to right-shift each element of `this` vector.
      */
-    void bit_arithmetic_right_shift(const BSharedVector &in, const int &shift_size) {
-        orq::service::runTime->execute_parallel(in.vector, this->vector,
-                                                &EVector::bit_arithmetic_right_shift, shift_size);
+    void bit_arithmetic_right_shift(const BSharedVector& in, const int shift_size) {
+        service::runTime->execute_parallel(in.vector, this->vector,
+                                           &EVector::bit_arithmetic_right_shift, shift_size);
     }
 
     /**
@@ -111,9 +141,9 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param in input
      * @param shift_size The number of bits to right-shift each element of `this` vector.
      */
-    void bit_logical_right_shift(const BSharedVector &in, const int &shift_size) {
-        orq::service::runTime->execute_parallel(in.vector, this->vector,
-                                                &EVector::bit_logical_right_shift, shift_size);
+    void bit_logical_right_shift(const BSharedVector& in, const int shift_size) {
+        service::runTime->execute_parallel(in.vector, this->vector,
+                                           &EVector::bit_logical_right_shift, shift_size);
     }
 
     /**
@@ -122,9 +152,9 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param in
      * @param shift_size
      */
-    void bit_left_shift(const BSharedVector &in, const int &shift_size) {
-        orq::service::runTime->execute_parallel(in.vector, this->vector, &EVector::bit_left_shift,
-                                                shift_size);
+    void bit_left_shift(const BSharedVector& in, const int shift_size) {
+        service::runTime->execute_parallel(in.vector, this->vector, &EVector::bit_left_shift,
+                                           shift_size);
     }
 
     /**
@@ -132,8 +162,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      *
      * @param in input shared vector
      */
-    void bit_xor(const BSharedVector &in) {
-        orq::service::runTime->execute_parallel(in.vector, this->vector, &EVector::bit_xor);
+    void bit_xor(const BSharedVector& in) {
+        service::runTime->execute_parallel(in.vector, this->vector, &EVector::bit_xor);
     }
 
     /**
@@ -142,8 +172,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      *
      * @param in
      */
-    void extend_lsb(const BSharedVector &in) {
-        orq::service::runTime->execute_parallel(in.vector, this->vector, &EVector::extend_lsb);
+    void extend_lsb(const BSharedVector& in) {
+        service::runTime->execute_parallel(in.vector, this->vector, &EVector::extend_lsb);
     }
 
     /**
@@ -161,7 +191,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * NOTE: This method requires \f$\lg \ell\f$ communication rounds, where \f$\ell\f$ is
      * the size of `Share` in bits.
      */
-    unique_B bit_same(const BSharedVector &y,
+    unique_B bit_same(const BSharedVector& y,
                       std::optional<BSharedVector> _temp = std::nullopt) const {
         // Initialize vector - initial compute
         auto sameBit = (*this) ^ y;
@@ -178,10 +208,44 @@ class BSharedVector : public SharedVector<Share, EVector> {
     }
 
     /**
+     * @brief Return a length-one ASharedVector counting the number of nonzero elements in this
+     * vector.
+     *
+     * @return std::unique_ptr<ASharedVector>
+     */
+    auto count_nonzero() const {
+        // TODO: avoid this alloc
+        auto zero = this->construct_like();
+        auto a = (*this != zero)->b2a_bit();
+        a->prefix_sum();
+        a->tail(1);
+        return a;
+    }
+
+    /**
+     * Returns the popcount (AKA Hamming weight) of `this` as a `std::unique_ptr` to a
+     * `ASharedVector`. Uses a round-optimal concatenation approach, unpacking `this` into
+     * the LSB of a new `BSharedVector` and then taking its `chunkedSum`.
+     *
+     * @return A pointer to a new ASharedVector with the popcount of `this`
+     */
+    auto popcount() const {
+        auto res = std::make_unique<ASharedVector<Share, EVector>>(this->size());
+        size_t size = this->size(), bits = this->MAX_BITS_NUMBER;
+
+        BSharedVector<Share, EVector> concat(size * bits);
+        concat.unpack_from(*this, 0);
+        auto conv = concat.b2a_bit();
+
+        *res = conv->chunkedSum(bits);
+        return res;
+    }
+
+    /**
      * Creates a BSharedVector of size `_size` and initializes it with zeros.
      * @param _size The size of the BSharedVector.
      */
-    explicit BSharedVector(const size_t &_size)
+    explicit BSharedVector(const size_t _size)
         : SharedVector<Share, EVector>(_size, Encoding::BShared) {}
 
     /**
@@ -190,34 +254,34 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param _size The size of the BSharedVector.
      * @param _input_file The file that contains the secret shares.
      */
-    explicit BSharedVector(const size_t &_size, const std::string &_input_file)
+    explicit BSharedVector(const size_t _size, const std::string& _input_file)
         : SharedVector<Share, EVector>(_size, _input_file, Encoding::BShared) {}
 
     /**
      * This is a shallow copy constructor from EVector.
      * @param _shares The EVector whose contents will be pointed by the BSharedVector.
      */
-    explicit BSharedVector(EVector &_shares)
+    explicit BSharedVector(EVector& _shares)
         : SharedVector<Share, EVector>(_shares, Encoding::BShared) {}
 
     /**
      * This is a move constructor from EVector.
      * @param _shares The EVector whose contents will be moved to the new BSharedVector.
      */
-    BSharedVector(EVector &&_shares) : SharedVector<Share, EVector>(_shares, Encoding::BShared) {}
+    BSharedVector(EVector&& _shares) : SharedVector<Share, EVector>(_shares, Encoding::BShared) {}
 
     /**
      * This is a move constructor from another BSharedVector.
      * @param other The BSharedVector whose contents will be moved to the new BSharedVector.
      */
-    BSharedVector(BSharedVector &&other)
+    BSharedVector(BSharedVector&& other)
         : SharedVector<Share, EVector>(other.vector, Encoding::BShared) {}
 
     /**
      * This is a copy constructor from another BSharedVector.
      * @param other The BSharedVector whose contents will be copied to the new BSharedVector.
      */
-    BSharedVector(const BSharedVector &other)
+    BSharedVector(const BSharedVector& other)
         : SharedVector<Share, EVector>(other.vector, Encoding::BShared) {}
 
     /**
@@ -225,10 +289,10 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param _shares The SharedVector object whose contents will be copied to the new
      * BSharedVector.
      */
-    explicit BSharedVector(SharedVector<Share, EVector> &_shares)
+    explicit BSharedVector(SharedVector<Share, EVector>& _shares)
         : EncodedVector(_shares.encoding) {
         assert(_shares.encoding == Encoding::BShared);
-        auto secretShares_ = reinterpret_cast<BSharedVector *>(&_shares);
+        auto secretShares_ = reinterpret_cast<BSharedVector*>(&_shares);
         this->vector = secretShares_->vector;
     }
 
@@ -237,8 +301,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param base The pointer to the SharedVector object whose contents will be moved to the new
      * BSharedVector.
      */
-    BSharedVector(std::unique_ptr<BSharedVector> &&base)
-        : BSharedVector((BSharedVector *)base.get()) {}
+    BSharedVector(std::unique_ptr<BSharedVector>&& base)
+        : BSharedVector((BSharedVector*)base.get()) {}
 
     /**
      * Shallow copy constructor that creates a BSharedVector from a unique pointer to a SharedVector
@@ -246,8 +310,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param base The SharedVector object whose contents will be pointed by the new
      * BSharedVector.
      */
-    BSharedVector(std::unique_ptr<BSharedVector> &base)
-        : BSharedVector((BSharedVector *)base.get()) {}
+    BSharedVector(std::unique_ptr<BSharedVector>& base)
+        : BSharedVector((BSharedVector*)base.get()) {}
 
     /**
      * Move constructor that creates a BSharedVector from a pointer to another BSharedVector object.
@@ -256,7 +320,19 @@ class BSharedVector : public SharedVector<Share, EVector> {
      *
      * NOTE: This constructor is implicitly called by the two constructors above.
      */
-    explicit BSharedVector(BSharedVector *_base) : BSharedVector(std::move(*_base)) {}
+    explicit BSharedVector(BSharedVector* _base) : BSharedVector(std::move(*_base)) {}
+
+    /**
+     * @brief Construct a new BSharedVector object like another BSharedVector but with a different
+     * size.
+     *
+     * @param size The size of the new BSharedVector.
+     * @return ASharedVector The newly constructed BSharedVector.
+     */
+    BSharedVector construct_like(std::optional<size_t> size = {}) const {
+        auto new_size = size.value_or(this->size());
+        return BSharedVector(this->vector.construct_like(new_size));
+    }
 
     /**
      * @brief Use `operator=` from the underlying `SharedVector`
@@ -264,8 +340,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      */
     using SharedVector<Share, EVector>::operator=;
 
-    BSharedVector &operator=(const BSharedVector &) = default;
-    BSharedVector &operator=(BSharedVector &&) = default;
+    BSharedVector& operator=(const BSharedVector&) = default;
+    BSharedVector& operator=(BSharedVector&&) = default;
 
     virtual ~BSharedVector() {}
 
@@ -283,49 +359,50 @@ class BSharedVector : public SharedVector<Share, EVector> {
         return res;
     }
 
-    /**
-     * @brief Full-width conversion from BSharedVector to ASharedVector. Naive algorithm; converts
-     * each bit individually using `b2a_bit`, and then sums the results. \f$O(\ell^2)\f$ total
-     * communication over \f$\ell\f$ rounds.
+    /** @brief Full-width conversion from BSharedVector to ASharedVector. Generates an online
+     * shared-bit correlation (random value shared in both domains), and then uses a boolean adder
+     * to mask.
      *
-     * TODO: we could do all calls to `b2a_bit` in a single round with \f$\ell\times\f$
-     * communication, and the multiplication should be public.
+     * The first loop is technically preprocessing, which would speed things up a lot.
      *
-     * @return auto
+     * @return ASharedVector
      */
-    auto b2a() const {
-        // vector to store the result, initialized to 0
-        auto res = std::make_unique<ASharedVector<Share, EVector>>(this->size());
+    std::unique_ptr<ASharedVector<Share, EVector>> b2a() const {
+        using ret_t = ASharedVector<Share, EVector>;
 
-        const int bitwidth = std::numeric_limits<std::make_unsigned_t<Share>>::digits;
-        // create an integer type to hold the value 1 with the same bitwidth as the shares
-        auto one = std::make_unsigned_t<Share>(1);
+        constexpr int R = EVector::replicationNumber;
 
-        // create a temporary vector to hold the current bit
-        auto current_bit = std::make_unique<BSharedVector<Share, EVector>>(this->size());
-
-        // iterate over each bit
-        for (int i = 0; i < bitwidth; i++) {
-            // shift the bit to the LSB position and store in current_bit
-            current_bit->bit_logical_right_shift(*this, i);
-
-            // mask to keep only the LSB
-            current_bit->mask(1);
-
-            // convert the bit to arithmetic
-            auto bit_arith = current_bit->b2a_bit();
-
-            // shift the arithmetic value to the correct magnitude
-            if (i > 0) {
-                *bit_arith *= (one << i);
-            }
-
-            // add to the result
-            *res += *bit_arith;
+        if constexpr (CONFIDENTIAL_1PC) {
+            // No point doing conversion!
+            return std::make_unique<ret_t>(this->asEVector());
         }
 
-        res->setPrecision(this->getPrecision());
-        return res;
+        auto a_re = std::make_unique<ret_t>(this->size());
+        auto b_re = this->construct_like();
+
+        auto me = service::runTime->getPartyID();
+
+        for (auto g : service::runTime->getGroups()) {
+            // Generate random vector (or maybe zero, if I'm not in the group)
+            Vector<Share> myRandom(this->size());
+            if (g.contains(me)) {
+                service::runTime->populateCommonRandom(myRandom, g);
+            }
+
+            *a_re += service::runTime->public_share<R>(myRandom, g);
+            b_re += service::runTime->public_share<R>(myRandom, g);
+        }
+
+        // Now a_re === b_re but in different sharing schemes.
+
+        // Add random value to mask (with binary adder), then open
+        auto z = (*this + b_re)->open();
+
+        // Subtract secret-shared mask from public z
+        a_re->inplace_invert();
+        *a_re += service::runTime->public_share<R>(z);
+        a_re->setPrecision(this->getPrecision());
+        return a_re;
     }
 
     /**
@@ -381,7 +458,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param s
      * @return unique_B
      */
-    unique_B operator<<(const int &s) const {
+    unique_B operator<<(const int s) const {
         auto out = std::make_unique<BSharedVector>(this->size());
         out->bit_left_shift(*this, s);
         return out;
@@ -393,7 +470,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param s
      * @return unique_B
      */
-    unique_B operator>>(const int &s) const {
+    unique_B operator>>(const int s) const {
         auto out = std::make_unique<BSharedVector>(this->size());
         out->bit_arithmetic_right_shift(*this, s);
         return out;
@@ -404,14 +481,14 @@ class BSharedVector : public SharedVector<Share, EVector> {
      *
      * @param s
      */
-    void operator<<=(const int &s) { this->bit_left_shift(*this, s); }
+    void operator<<=(const int s) { this->bit_left_shift(*this, s); }
 
     /**
      * @brief Arithmetic right shift assignment operator.
      *
      * @param s
      */
-    void operator>>=(const int &s) { this->bit_arithmetic_right_shift(*this, s); }
+    void operator>>=(const int s) { this->bit_arithmetic_right_shift(*this, s); }
 
     /**
      * @brief Inherit access patterns from SharedVector.
@@ -435,7 +512,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return A unique pointer to a new shared vector that contains boolean shares of
      * the elementwise ORs.
      */
-    std::unique_ptr<BSharedVector> operator|(const BSharedVector &other) const {
+    std::unique_ptr<BSharedVector> operator|(const BSharedVector& other) const {
         // Logical OR is defined based on logical AND
         return ~(~(*this) & ~(other));
     }
@@ -447,7 +524,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param other
      * @return BSharedVector
      */
-    BSharedVector operator|=(const BSharedVector &other) {
+    BSharedVector operator|=(const BSharedVector& other) {
         // Break apart the operation so we can prevent copying.
         this->inplace_invert();
         *this &= ~other;
@@ -459,23 +536,21 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * Masks each element in `this` vector by doing a bitwise logical AND with `n`.
      * @param n The mask.
      */
-    void mask(const Share &n) {
-        orq::service::runTime->modify_parallel(this->vector, &EVector::mask, n);
-    }
+    void mask(const Share n) { service::runTime->modify_parallel(this->vector, &EVector::mask, n); }
 
     /**
      * Sets the bits of each element in `this` vector by doing a bitwise logical OR with `n`
      * @param n The element that encodes the bits to set.
      */
-    void set_bits(const Share &n) {
-        orq::service::runTime->modify_parallel(this->vector, &EVector::set_bits, n);
+    void set_bits(const Share n) {
+        service::runTime->modify_parallel(this->vector, &EVector::set_bits, n);
     }
 
     /**
      * @brief Invert the bits of this BSharedVector. Operates inplace.
      *
      */
-    void inplace_invert() { orq::service::runTime->not_b(this->vector, this->vector); }
+    void inplace_invert() { service::runTime->not_b(this->vector, this->vector); }
 
     // **************************************** //
     //           Comparison operators           //
@@ -490,8 +565,12 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return A unique pointer to a new shared vector that contains boolean shares of
      * the elementwise equality comparisons.
      */
-    std::unique_ptr<BSharedVector> operator==(const BSharedVector &other) const {
+    std::unique_ptr<BSharedVector> operator==(const BSharedVector& other) const {
         assert(this->size() == other.size());
+
+        if constexpr (CONFIDENTIAL_1PC) {
+            return std::make_unique<BSharedVector>(this->asEVector() == other.asEVector());
+        }
 
         // Identify same-bits prefix
         auto same_bits = this->bit_same(other);
@@ -511,7 +590,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return A unique pointer to a new shared vector that contains boolean shares of
      * the elementwise inequality comparisons.
      */
-    std::unique_ptr<BSharedVector> operator!=(const BSharedVector &other) const {
+    std::unique_ptr<BSharedVector> operator!=(const BSharedVector& other) const {
         return !((*this) == other);
     }
 
@@ -525,7 +604,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param eq_bits output containing the equality result
      * @param gt_bits output containing the greater-than result.
      */
-    void _compare(const BSharedVector &other, BSharedVector &eq_bits, BSharedVector &gt_bits) const;
+    void _compare(const BSharedVector& other, BSharedVector& eq_bits, BSharedVector& gt_bits) const;
 
     /**
      * Elementwise secure greater-than comparison.
@@ -535,7 +614,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return A unique pointer to a new shared vector that contains boolean shares of
      * the elementwise greater-than comparisons.
      */
-    std::unique_ptr<BSharedVector> operator>(const BSharedVector &other) const {
+    std::unique_ptr<BSharedVector> operator>(const BSharedVector& other) const {
         // ignore here
         BSharedVector _eq(this->size());
         auto gt = std::make_unique<BSharedVector>(this->size());
@@ -552,7 +631,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return A unique pointer to a new shared vector that contains boolean shares of
      * the elementwise less-than comparisons.
      */
-    std::unique_ptr<BSharedVector> operator<(const BSharedVector &other) const {
+    std::unique_ptr<BSharedVector> operator<(const BSharedVector& other) const {
         return other > (*this);
     }
 
@@ -563,7 +642,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return A unique pointer to a new shared vector that contains boolean shares of
      * the elementwise greater-or-equal comparisons.
      */
-    std::unique_ptr<BSharedVector> operator>=(const BSharedVector &other) const {
+    std::unique_ptr<BSharedVector> operator>=(const BSharedVector& other) const {
         return !((*this) < other);
     }
 
@@ -575,7 +654,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return A unique pointer to a new shared vector that contains boolean shares of
      * the elementwise less-or-equal comparisons.
      */
-    std::unique_ptr<BSharedVector> operator<=(const BSharedVector &other) const {
+    std::unique_ptr<BSharedVector> operator<=(const BSharedVector& other) const {
         return !((*this) > other);
     }
 
@@ -585,8 +664,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return A unique pointer to a new shared vector that contains boolean shares of
      * the elementwise additions.
      */
-    std::unique_ptr<BSharedVector> operator+(const BSharedVector &other) const {
-        return ADDER(*this, other, false);
+    std::unique_ptr<BSharedVector> operator+(const BSharedVector& other) const {
+        return binary_adder(*this, other, false);
     }
 
     /**
@@ -595,8 +674,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param other
      * @return BSharedVector&
      */
-    BSharedVector &operator+=(const BSharedVector &other) {
-        *this = *ADDER(*this, other, false);
+    BSharedVector& operator+=(const BSharedVector& other) {
+        *this = *binary_adder(*this, other, false);
         return *this;
     }
 
@@ -606,8 +685,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param other
      * @return BSharedVector&
      */
-    BSharedVector &operator+=(const std::unique_ptr<BSharedVector> other) {
-        *this = *ADDER(*this, *other, false);
+    BSharedVector& operator+=(const std::unique_ptr<BSharedVector> other) {
+        *this = *binary_adder(*this, *other, false);
         return *this;
     }
 
@@ -618,8 +697,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param other
      * @return std::unique_ptr<BSharedVector>
      */
-    std::unique_ptr<BSharedVector> operator-(const BSharedVector &other) const {
-        return ADDER(*this, *(~other), true);
+    std::unique_ptr<BSharedVector> operator-(const BSharedVector& other) const {
+        return binary_adder(*this, *(~other), true);
     }
 
     /**
@@ -628,8 +707,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param other
      * @return BSharedVector&
      */
-    BSharedVector &operator-=(const BSharedVector &other) {
-        *this = *ADDER(*this, *(~other), true);
+    BSharedVector& operator-=(const BSharedVector& other) {
+        *this = *binary_adder(*this, *(~other), true);
         return *this;
     }
 
@@ -639,8 +718,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param other
      * @return BSharedVector&
      */
-    BSharedVector &operator-=(const std::unique_ptr<BSharedVector> other) {
-        *this = *ADDER(*this, *(~(*other)), true);
+    BSharedVector& operator-=(const std::unique_ptr<BSharedVector> other) {
+        *this = *binary_adder(*this, *(~(*other)), true);
         return *this;
     }
 
@@ -654,7 +733,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
         return zero - *this;
     }
 
-    std::unique_ptr<BSharedVector> operator/(const BSharedVector &other) const;
+    std::unique_ptr<BSharedVector> operator/(const BSharedVector& other) const;
 
     // friend class
     template <typename T, typename V>

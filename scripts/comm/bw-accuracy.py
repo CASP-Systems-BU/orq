@@ -50,7 +50,7 @@ def run_mpc(n):
     time.sleep(1)
     exec(f"make -j {Q}")
     d = tmp / "comm" / f"{n}.txt"
-    exec(f"stdbuf --output=L mpirun -n {n} ./{Q} 1 1 -1 {size} | tee {d}")
+    exec(f"stdbuf --output=L mpirun -n {n} ./{Q} -r {size} | tee {d}")
     bw = sum(
         map(
             lambda f: int(f.split()[-1]), get_shell(f'grep "P. Total" {d}').splitlines()

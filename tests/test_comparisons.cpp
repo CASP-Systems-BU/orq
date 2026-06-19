@@ -9,7 +9,7 @@ int main(int argc, char** argv) {
     // The party's unique id
     auto pID = runTime->getPartyID();
 
-    const int MAX_BITS_NUMBER = std::numeric_limits<int>::digits;
+    const size_t MAX_BITS_NUMBER = std::numeric_limits<int>::digits;
 
     // Input plaintext data for testing secure comparisons
     orq::Vector<int> data_a = {111, -4, -17, 2345, 999, 0, -28922, 1231241, 0, -23437};

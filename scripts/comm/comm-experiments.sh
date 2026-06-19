@@ -69,17 +69,17 @@ $(tc qdisc)
 EOF
 
 # MPI - Baseline
-./run_experiment.sh -p 3 -s $ENVIRO -c mpi -m "$CMAKE" -r $INPUT_SIZES -t $THREADS -x node $EXP_NAME 2>&1 | tee "$folder/raw_data/${ENVIRO}-mpi.txt"
+./run_experiment.py -p 3 -s $ENVIRO -c mpi -m "$CMAKE" -r $INPUT_SIZES -t $THREADS -x node $EXP_NAME 2>&1 | tee "$folder/raw_data/${ENVIRO}-mpi.txt"
 
 # SocketComm
-# ./run_experiment.sh -p 3 -s $ENVIRO -c socket -m "$CMAKE" -r $INPUT_SIZES  -t $THREADS -x node $EXP_NAME 2>&1 | tee "$folder/raw_data/${ENVIRO}-socket.txt"
+# ./run_experiment.py -p 3 -s $ENVIRO -c socket -m "$CMAKE" -r $INPUT_SIZES  -t $THREADS -x node $EXP_NAME 2>&1 | tee "$folder/raw_data/${ENVIRO}-socket.txt"
 
 # NoCopyComm (N comm threads)
-./run_experiment.sh -p 3 -s $ENVIRO -c nocopy -m "$CMAKE" -r $INPUT_SIZES -t $THREADS -x node $EXP_NAME 2>&1 | tee "$folder/raw_data/${ENVIRO}-nocopy.txt"
+./run_experiment.py -p 3 -s $ENVIRO -c nocopy -m "$CMAKE" -r $INPUT_SIZES -t $THREADS -x node $EXP_NAME 2>&1 | tee "$folder/raw_data/${ENVIRO}-nocopy.txt"
 
 if [[ $EXP_NAME == "micro_comm_threads" ]]; then
     for i in 1 2 4; do  # Number of comm threads
-        ./run_experiment.sh -p 3 -s $ENVIRO -c nocopy -n $i -m "$CMAKE" -r $INPUT_SIZES -t $THREADS -x node $EXP_NAME 2>&1 | tee "$folder/raw_data/${ENVIRO}-nocopy-$i.txt"
+        ./run_experiment.py -p 3 -s $ENVIRO -c nocopy -n $i -m "$CMAKE" -r $INPUT_SIZES -t $THREADS -x node $EXP_NAME 2>&1 | tee "$folder/raw_data/${ENVIRO}-nocopy-$i.txt"
     done
 fi
 

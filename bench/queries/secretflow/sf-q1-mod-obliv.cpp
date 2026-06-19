@@ -55,10 +55,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     sqlite3* sqlite_db = nullptr;
     int err = sqlite3_open(NULL, &sqlite_db);
@@ -107,7 +104,7 @@ int main(int argc, char** argv) {
         "CountDisc",   "[AvgQuantity]", "[AvgPrice]",   "[AvgDisc]",
     };
 
-    L.addColumns(intermediate_columns, L.size());
+    L.addColumns(intermediate_columns);
 
     // Discount is a percentage... cheat with integer math + public division
     // Need to write (100 - Discount) like this because column/element ops only

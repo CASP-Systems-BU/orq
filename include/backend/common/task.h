@@ -106,17 +106,19 @@ class Task_1_ref : public Task {
     Ret res;
 
     // the function to execute on a range of the input
-    std::function<void(In &, Ret &)> func;
+    std::function<void(In&, Ret&)> func;
 
    public:
-    Task_1_ref(const In &_x, Ret &_res, const size_t _start, const size_t _end,
-               const ssize_t _batch_size, std::function<void(In &, Ret &)> _func)
+    Task_1_ref(const In& _x, Ret& _res, const size_t _start, const size_t _end,
+               const ssize_t _batch_size, std::function<void(In&, Ret&)> _func)
         : Task(_start, _end, _batch_size), x(_x), res(_res), func(_func) {}
 
     void sub_execute(size_t start, size_t end) override {
         x.set_batch(start, end);
         res.set_batch(start, end);
         func(x, res);
+        x.reset_batch();
+        res.reset_batch();
     }
 };
 
@@ -134,11 +136,11 @@ class Task_2_ref : public Task {
     Ret res;
 
     // the function to execute on a range of the input
-    std::function<void(In &, In &, Ret &)> func;
+    std::function<void(In&, In&, Ret&)> func;
 
    public:
-    Task_2_ref(const In &_x, const In &_y, Ret &_res, const size_t _start, const size_t _end,
-               const ssize_t _batch_size, std::function<void(In &, In &, Ret &)> _func)
+    Task_2_ref(const In& _x, const In& _y, Ret& _res, const size_t _start, const size_t _end,
+               const ssize_t _batch_size, std::function<void(In&, In&, Ret&)> _func)
         : Task(_start, _end, _batch_size), x(_x), y(_y), res(_res), func(_func) {}
 
     void sub_execute(size_t start, size_t end) override {
@@ -146,6 +148,9 @@ class Task_2_ref : public Task {
         y.set_batch(start, end);
         res.set_batch(start, end);
         func(x, y, res);
+        x.reset_batch();
+        y.reset_batch();
+        res.reset_batch();
     }
 };
 
@@ -163,12 +168,12 @@ class Task_2_Agg_ref : public Task {
     const size_t agg_size;
 
     // the function to execute on a range of the input
-    std::function<void(In &, In &, Ret &)> func;
+    std::function<void(In&, In&, Ret&)> func;
 
    public:
-    Task_2_Agg_ref(const In &_x, const In &_y, Ret &_res, const size_t _start, const size_t _end,
-                   const ssize_t _batch_size, const size_t &_agg_size,
-                   std::function<void(In &, In &, Ret &)> _func)
+    Task_2_Agg_ref(const In& _x, const In& _y, Ret& _res, const size_t _start, const size_t _end,
+                   const ssize_t _batch_size, const size_t _agg_size,
+                   std::function<void(In&, In&, Ret&)> _func)
         : Task(_start, _end, _batch_size),
           x(_x),
           y(_y),
@@ -181,6 +186,9 @@ class Task_2_Agg_ref : public Task {
         y.set_batch(start, end);
         res.set_batch(start / agg_size, end / agg_size);
         func(x, y, res);
+        x.reset_batch();
+        y.reset_batch();
+        res.reset_batch();
     }
 };
 
@@ -210,16 +218,17 @@ class Task_1_void : public Task {
     In x;
 
     // the function to execute on a range of the input
-    std::function<void(In &)> func;
+    std::function<void(In&)> func;
 
    public:
-    Task_1_void(const In &_x, const size_t _start, const size_t _end, const ssize_t _batch_size,
-                std::function<void(In &)> _func)
+    Task_1_void(const In& _x, const size_t _start, const size_t _end, const ssize_t _batch_size,
+                std::function<void(In&)> _func)
         : Task(_start, _end, _batch_size), x(_x), func(_func) {}
 
     void sub_execute(size_t start, size_t end) override {
         x.set_batch(start, end);
         func(x);
+        x.reset_batch();
     }
 };
 
@@ -234,15 +243,39 @@ class Task_1_void_nobatch : public Task {
     In x;
 
     // the function to execute on a range of the input
-    std::function<void(In &)> func;
+    std::function<void(In&)> func;
 
    public:
     // Give superclass constructor fake batch size so it only runs a single
     // iteration.
-    Task_1_void_nobatch(const In &_x, std::function<void(In &)> _func)
+    Task_1_void_nobatch(const In& _x, std::function<void(In&)> _func)
         : Task(0, 1, 1), x(_x), func(_func) {}
 
     void sub_execute(size_t start, size_t end) override { func(x); }
+};
+
+/**
+ * A Task which takes two inputs and returns nothing, and also has no batching.
+ * Currently used for OPRF evaluation.
+ *
+ * @tparam In1 The type of the first input.
+ * @tparam In2 The type of the second input.
+ */
+template <typename In1, typename In2>
+class Task_2_void_nobatch : public Task {
+    In1 x;
+    In2 y;
+
+    // the function to execute on a range of the input
+    std::function<void(In1&, In2&)> func;
+
+   public:
+    // Give superclass constructor fake batch size so it only runs a single
+    // iteration.
+    Task_2_void_nobatch(const In1& _x, const In2& _y, std::function<void(In1&, In2&)> _func)
+        : Task(0, 1, 1), x(_x), y(_y), func(_func) {}
+
+    void sub_execute(size_t start, size_t end) override { func(x, y); }
 };
 
 /**
@@ -257,11 +290,11 @@ class Task_1_pair : public Task {
     std::pair<Ret, Ret> r;
 
     // the function to execute on a range of the input
-    std::function<void(In &, Ret &, Ret &)> func;
+    std::function<void(In&, Ret&, Ret&)> func;
 
    public:
-    Task_1_pair(const In &_x, std::pair<Ret, Ret> &_r, const size_t _start, const size_t _end,
-                const ssize_t _batch_size, std::function<void(In &, Ret &, Ret &)> _func)
+    Task_1_pair(const In& _x, std::pair<Ret, Ret>& _r, const size_t _start, const size_t _end,
+                const ssize_t _batch_size, std::function<void(In&, Ret&, Ret&)> _func)
         : Task(_start, _end, _batch_size), x(_x), r(_r), func(_func) {}
 
     /**
@@ -272,6 +305,9 @@ class Task_1_pair : public Task {
         r.first.set_batch(start, end);
         r.second.set_batch(start, end);
         func(x, r.first, r.second);
+        x.reset_batch();
+        r.first.reset_batch();
+        r.second.reset_batch();
     }
 };
 /**
@@ -286,11 +322,11 @@ class Task_2_void : public Task {
     In x, y;
 
     // the function to execute on a range of the input
-    std::function<bool(In &, In &)> func;
+    std::function<bool(In&, In&)> func;
 
    public:
-    Task_2_void(const In &_x, const In &_y, const size_t _start, const size_t _end,
-                const ssize_t _batch_size, std::function<bool(In &, In &)> _func)
+    Task_2_void(const In& _x, const In& _y, const size_t _start, const size_t _end,
+                const ssize_t _batch_size, std::function<bool(In&, In&)> _func)
         : Task(_start, _end, _batch_size), x(_x), y(_y), func(_func) {}
 
     /**
@@ -300,6 +336,8 @@ class Task_2_void : public Task {
         x.set_batch(start, end);
         y.set_batch(start, end);
         func(x, y);
+        x.reset_batch();
+        y.reset_batch();
     }
 };
 

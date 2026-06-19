@@ -19,10 +19,10 @@ fi
 if [[ $(uname -m) == x86_64 ]]; then
     SSE_OPTION="-DENABLE_SSE=ON"
 else
-    SSE_OPTION="-DENABLE_SSE=OFF"
+    SSE_OPTION="-DENABLE_SSE=OFF -DENABLE_AVX=OFF -DSECUREJOIN_ENABLE_SSE=OFF"
 fi
 
-python3 build.py -D SODIUM_MONTGOMERY=false --install=../secure-join-install \
+python3 build.py -DSODIUM_MONTGOMERY=false --install=../secure-join-install \
     $SSE_OPTION
 
 echo "==== SecureJoin installed"

@@ -70,10 +70,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // TPCH Q18 query parameters
     // Randomly selected within [312..315] as per spec. This doesn't work for the currently enforced
@@ -131,7 +128,7 @@ int main(int argc, char** argv) {
     stopwatch::profile_init();
 
     // [SQL] group by l_orderkey + sum(l_quantity)
-    LineItem.addColumns({"SumQuantity", "[SumQuantity]"}, LineItem.size());
+    LineItem.addColumns({"SumQuantity", "[SumQuantity]"});
     LineItem.aggregate({"[OrderKey]"}, {{"Quantity", "SumQuantity", sum<A>}});
 
     stopwatch::timepoint("SubQuery Agg");
@@ -158,7 +155,7 @@ int main(int argc, char** argv) {
     stopwatch::timepoint("CustKey Join");
 
     // [SQL] group by ... + sum(l_quantity)
-    FinalJoin.addColumns({"FinalSum"}, FinalJoin.size());
+    FinalJoin.addColumns({"FinalSum"});
     FinalJoin.aggregate({"[CustKey]", "[OrderKey]"}, {{"SumQuantity", "FinalSum", sum<A>}});
 
     stopwatch::timepoint("Group by");

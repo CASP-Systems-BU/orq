@@ -3,13 +3,19 @@
 # These default values can be overriden on the CLI
 PROTOCOL=3
 THREADS_NUM=1
+PARTIES_NUM=$PROTOCOL
 
 if [[ -n "$1" ]]; then
   PROTOCOL="$1"
+  PARTIES_NUM=$PROTOCOL
 fi
 
 if [[ -n "$2" ]]; then
   THREADS_NUM="$2"
+fi
+
+if [[ -n "$3" ]]; then
+  PARTIES_NUM="$3"
 fi
 
 echo "[[ Running ${PROTOCOL}PC tests with $THREADS_NUM threads. ]]"
@@ -21,11 +27,8 @@ mkdir -p build
 cd build
 make clean
 
-# COMMS=("MPI" "NOCOPY")
-# EXECS=(mpirun startmpc)
-
-COMMS=(MPI)
-EXECS=(mpirun)
+COMMS=("MPI" "NOCOPY")
+EXECS=(mpirun startmpc)
 
 for i in "${!COMMS[@]}"; do
     echo "== Starting ${COMMS[$i]} tests"
@@ -34,7 +37,7 @@ for i in "${!COMMS[@]}"; do
     for test in test_*
     do
         echo "== Running test:" $test
-        ${EXECS[$i]} -n $PROTOCOL ./$test $THREADS_NUM || exit 1;
+        ${EXECS[$i]} -n $PARTIES_NUM ./$test -t $THREADS_NUM || exit 1;
         echo "--------------------------------------"
     done
     echo "== All ${COMMS[$i]} tests passed!"

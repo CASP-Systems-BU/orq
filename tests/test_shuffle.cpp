@@ -34,8 +34,7 @@ void test_shuffle_gen_perm(int test_size) {
                 if (rank == otherRank) continue;
                 int relative_rank = otherRank - rank;
                 Vector<int> remote(test_size);
-                runTime->comm0()->exchangeShares(permutation, remote, relative_rank, relative_rank,
-                                                 test_size);
+                runTime->comm0()->exchangeShares(permutation, remote, relative_rank, relative_rank);
 
                 // check correctness
                 for (int j = 0; j < test_size; j++) {
@@ -46,8 +45,7 @@ void test_shuffle_gen_perm(int test_size) {
             // just exchange with lowest rank, check equality
             int relative_rank = lowestRank - rank;
             Vector<int> remote(test_size);
-            runTime->comm0()->exchangeShares(permutation, remote, relative_rank, relative_rank,
-                                             test_size);
+            runTime->comm0()->exchangeShares(permutation, remote, relative_rank, relative_rank);
 
             // check correctness
             for (int j = 0; j < test_size; j++) {
@@ -373,12 +371,12 @@ void test_shuffle_correctness(int test_size) {
     //      and if everybody does, then all parties must be in agreement
     orq::Vector<T> shared_perm_prev_a(test_size);
     orq::Vector<T> shared_perm_next_a(test_size);
-    runTime->comm0()->exchangeShares(opened_a, shared_perm_next_a, -1, +1, test_size);
-    runTime->comm0()->exchangeShares(opened_a, shared_perm_prev_a, +1, -1, test_size);
+    runTime->comm0()->exchangeShares(opened_a, shared_perm_next_a, -1, +1);
+    runTime->comm0()->exchangeShares(opened_a, shared_perm_prev_a, +1, -1);
     orq::Vector<T> shared_perm_prev_b(test_size);
     orq::Vector<T> shared_perm_next_b(test_size);
-    runTime->comm0()->exchangeShares(opened_b, shared_perm_next_b, -1, +1, test_size);
-    runTime->comm0()->exchangeShares(opened_b, shared_perm_prev_b, +1, -1, test_size);
+    runTime->comm0()->exchangeShares(opened_b, shared_perm_next_b, -1, +1);
+    runTime->comm0()->exchangeShares(opened_b, shared_perm_prev_b, +1, -1);
 
     for (int i = 0; i < test_size; i++) {
         assert(opened_a[i] == shared_perm_prev_a[i]);
@@ -494,7 +492,7 @@ int main(int argc, char** argv) {
 
     int DEFAULT_TEST_SIZE = 100;
 
-#ifndef MPC_PROTOCOL_BEAVER_TWO
+#if !defined(MPC_PROTOCOL_BEAVER_TWO)
     DEFAULT_TEST_SIZE = 10000;
 
     test_resharing(DEFAULT_TEST_SIZE);
@@ -534,8 +532,6 @@ int main(int argc, char** argv) {
     test_table_shuffle(DEFAULT_TEST_SIZE, 4);
     test_table_shuffle(1024, 15);
     single_cout("Table Shuffle...OK");
-
-    // Tear down communication
 
     return 0;
 }

@@ -1,26 +1,28 @@
 #include "orq.h"
 
 // Include other files if not already included
-#include "core/random/correlation/ole_generator.h"
+#include "core/math/primes.h"
 
-// ../scripts/run_experiment.sh -p 3 -s same -c mpi -r 1 -T 1 test_correlated
+// ../scripts/run_experiment.py -p 3 -s same -c mpi -r 1 -T 1 test_correlated
 
 using namespace orq;
 using namespace orq::service;
 using namespace orq::random;
+using namespace orq::math::primes;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
 const size_t test_size = 1 << 12;
 
-template <typename T, orq::random::Correlation C>
+template <typename T, template <typename> class C>
 void checkCorrelation(std::string label) {
     auto L = std::numeric_limits<std::make_unsigned_t<T>>::digits;
     single_cout_nonl("Checking length " << test_size << " " << L << "-bit " << label << "... ");
 
-    auto gen = runTime->rand0()->getCorrelation<T, C>();
+    auto gen = runTime->rand0()->template getCorrelation<T, C<T>>();
     auto corr = gen->getNext(test_size);
 
     gen->assertCorrelated(corr);
+
     single_cout("OK");
 }
 
@@ -30,8 +32,8 @@ void test_permutation_correlations(int test_size) {
     // get the generator and interpret it as a dishonest-majority generator
     // otherwise it won't have the assertCorrelated function
     auto base_generator =
-        runTime->rand0()->getCorrelation<T, orq::random::Correlation::ShardedPermutation>();
-    auto generator = dynamic_cast<DMShardedPermutationGenerator<T>*>(base_generator);
+        runTime->rand0()->template getCorrelation<T, ShardedPermutationGenerator>();
+    auto generator = dynamic_pointer_cast<DMShardedPermutationGenerator<T>>(base_generator);
 
     // check for nullptr
     if (generator == nullptr) {
@@ -71,58 +73,6 @@ void test_permutation_correlations(int test_size) {
 #endif
 }
 
-template <typename T>
-void TestDummyAuthTriplesGenerator(const size_t& testSize) {
-    // Party Information
-    auto pID = orq::service::runTime->getPartyID();
-    auto pNum = orq::service::runTime->getNumParties();
-    auto othersCount = pNum - 1;
-
-    // Helpers
-    auto communicator = orq::service::runTime->comm0();
-    auto randManager = orq::service::runTime->rand0();
-    auto zeroSharingGenerator = randManager->zeroSharingGenerator;
-    auto localPRG = randManager->localPRG;
-
-    // Generating the key
-    T partyKey;
-    localPRG->getNext(partyKey);
-
-    // Creating the dummy generator
-    auto dummyGenerator = orq::random::DummyAuthTripleGenerator<T>(
-        pNum, partyKey, pID, localPRG, zeroSharingGenerator, communicator);
-
-    // Getting some dummy triples
-    auto triple = dummyGenerator.getNext(testSize);
-    dummyGenerator.assertCorrelated(triple);
-}
-
-template <typename T>
-void TestDummyAuthRandomGenerator(const size_t& testSize) {
-    // Party Information
-    auto pID = orq::service::runTime->getPartyID();
-    auto pNum = orq::service::runTime->getNumParties();
-    auto othersCount = pNum - 1;
-
-    // Helpers
-    auto communicator = orq::service::runTime->comm0();
-    auto randManager = orq::service::runTime->rand0();
-    auto zeroSharingGenerator = randManager->zeroSharingGenerator;
-    auto localPRG = randManager->localPRG;
-
-    // Generating the key
-    T partyKey;
-    localPRG->getNext(partyKey);
-
-    // Creating the dummy generator
-    auto dummyGenerator = orq::random::DummyAuthRandomGenerator<T>(
-        pNum, partyKey, pID, localPRG, zeroSharingGenerator, communicator);
-
-    // Getting some dummy random numbers
-    auto a = dummyGenerator.getNext(testSize);
-    dummyGenerator.assertCorrelated(a);
-}
-
 int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
@@ -130,67 +80,31 @@ int main(int argc, char** argv) {
 #ifndef MPC_PROTOCOL_BEAVER_TWO
     single_cout("Skipping test_correlated for non-2PC");
 #else
-    checkCorrelation<int8_t, Correlation::OLE>("OLE");
-    checkCorrelation<int32_t, Correlation::OLE>("OLE");
-    checkCorrelation<int64_t, Correlation::OLE>("OLE");
+    checkCorrelation<int8_t, OLEGenerator>("OLE");
+    checkCorrelation<int32_t, OLEGenerator>("OLE");
+    checkCorrelation<int64_t, OLEGenerator>("OLE");
+    checkCorrelation<__int128_t, OLEGenerator>("OLE");
 
-    checkCorrelation<int8_t, Correlation::rOT>("rOT");
-    checkCorrelation<int32_t, Correlation::rOT>("rOT");
-    checkCorrelation<int64_t, Correlation::rOT>("rOT");
+    checkCorrelation<int8_t, OTGenerator>("rOT");
+    checkCorrelation<int32_t, OTGenerator>("rOT");
+    checkCorrelation<int64_t, OTGenerator>("rOT");
+    checkCorrelation<__int128_t, OTGenerator>("rOT");
 
-    checkCorrelation<int8_t, Correlation::BeaverMulTriple>("Beaver Triples");
-    checkCorrelation<int32_t, Correlation::BeaverMulTriple>("Beaver Triples");
-    checkCorrelation<int64_t, Correlation::BeaverMulTriple>("Beaver Triples");
+    checkCorrelation<int8_t, BeaverAndGenerator>("Beaver AND Triples");
+    checkCorrelation<int32_t, BeaverAndGenerator>("Beaver AND Triples");
+    checkCorrelation<int64_t, BeaverAndGenerator>("Beaver AND Triples");
+    checkCorrelation<__int128_t, BeaverAndGenerator>("Beaver AND Triples");
 
-    checkCorrelation<int8_t, Correlation::BeaverAndTriple>("Beaver AND Triples");
-    checkCorrelation<int32_t, Correlation::BeaverAndTriple>("Beaver AND Triples");
-    checkCorrelation<int64_t, Correlation::BeaverAndTriple>("Beaver AND Triples");
+    checkCorrelation<int8_t, BeaverMulGenerator>("Beaver Triples");
+    checkCorrelation<int32_t, BeaverMulGenerator>("Beaver Triples");
+    checkCorrelation<int64_t, BeaverMulGenerator>("Beaver Triples");
+    checkCorrelation<__int128_t, BeaverMulGenerator>("Beaver Triples");
 
     // we only generate 128-bit permutation correlations and cut them down
     // so we only have a 128-bit generator object to run assertCorrelated
     test_permutation_correlations<__int128_t>(1000);
     single_cout("Permutation Correlations... OK");
 #endif
-
-    ///////////////////////////////////////////
-    // Testing the DummyAuthTriplesGenerator //
-    ///////////////////////////////////////////
-    single_cout("Testing DummyAuthTriplesGenerator...");
-    TestDummyAuthTriplesGenerator<int8_t>(test_size);
-    single_cout("int8_t dummy authenticated triples generation: OK");
-
-    TestDummyAuthTriplesGenerator<int16_t>(test_size);
-    single_cout("int16_t dummy authenticated triples generation: OK");
-
-    TestDummyAuthTriplesGenerator<int32_t>(test_size);
-    single_cout("int32_t dummy authenticated triples generation: OK");
-
-    TestDummyAuthTriplesGenerator<int64_t>(test_size);
-    single_cout("int64_t dummy authenticated triples generation: OK");
-
-    TestDummyAuthTriplesGenerator<__int128_t>(test_size);
-    single_cout("__int128_t dummy authenticated triples generation: OK");
-
-    single_cout("");
-
-    ///////////////////////////////////////////
-    // Testing the DummyAuthRandomGenerator ///
-    ///////////////////////////////////////////
-    single_cout("Testing DummyAuthRandomGenerator...");
-    TestDummyAuthRandomGenerator<int8_t>(test_size);
-    single_cout("int8_t dummy authenticated random generation: OK");
-
-    TestDummyAuthRandomGenerator<int16_t>(test_size);
-    single_cout("int16_t dummy authenticated random generation: OK");
-
-    TestDummyAuthRandomGenerator<int32_t>(test_size);
-    single_cout("int32_t dummy authenticated random generation: OK");
-
-    TestDummyAuthRandomGenerator<int64_t>(test_size);
-    single_cout("int64_t dummy authenticated random generation: OK");
-
-    TestDummyAuthRandomGenerator<__int128_t>(test_size);
-    single_cout("__int128_t dummy authenticated random generation: OK");
 
     runTime->malicious_check();
 }

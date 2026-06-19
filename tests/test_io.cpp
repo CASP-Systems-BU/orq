@@ -112,4 +112,6 @@ int main(int argc, char **argv) {
         assert(employeeAge_32.same_as(ages_sorted_opened));
         single_cout("Vector: writing secret shares ...OK");
     }
+
+    return 0;
 }

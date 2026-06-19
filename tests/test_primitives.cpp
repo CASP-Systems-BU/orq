@@ -4,7 +4,7 @@ using namespace orq::debug;
 using namespace orq::service;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
-const int test_size = 1 << 16;
+const int test_size = 1 << 14;
 const int DIV_TEST_SIZE = 1 << 6;
 
 template <typename T>
@@ -36,9 +36,7 @@ void test_b2a(int test_size) {
     auto a_opened = a.open();
     auto b_opened = b.open();
 
-    for (int i = 0; i < test_size; i++) {
-        assert(a_opened[i] == b_opened[i]);
-    }
+    assert(a_opened.same_as(b_opened));
 }
 
 // Define a test for secret-vs-plaintext binary operators
@@ -72,6 +70,9 @@ void test_b2a(int test_size) {
     }
 
 DEFINE_TEST_BINARY_OP(*, ASharedVector, multiplication);
+DEFINE_TEST_BINARY_OP(>, ASharedVector, arithmetic_greater_than);
+DEFINE_TEST_BINARY_OP(>=, ASharedVector, arithmetic_greater_than_equal);
+DEFINE_TEST_BINARY_OP(==, ASharedVector, arithmetic_equal);
 DEFINE_TEST_BINARY_OP(+, BSharedVector, binary_add);
 DEFINE_TEST_BINARY_OP(-, BSharedVector, binary_subtract);
 DEFINE_TEST_BINARY_OP(&, BSharedVector, and);
@@ -174,6 +175,30 @@ void test_equals(int test_size) {
 int main(int argc, char** argv) {
     orq_init(argc, argv);
 
+#if defined(USE_LIBOTE) && !defined(GITHUB_ACTIONS)
+    // Approximate values for default 16k test, just so it doesn't take forever.
+    // Scaling may not be perfect for other test sizes.
+    // Don't do this on the CI -- we run out of memory
+    stopwatch::timepoint("Start Preprocessing...");
+    runTime->reserve_mul_triples<int8_t>(test_size * 10);
+    runTime->reserve_and_triples<int8_t>(test_size * 32);
+    stopwatch::timepoint("Reserve i8");
+    runTime->reserve_mul_triples<int16_t>(test_size * 8);
+    runTime->reserve_and_triples<int16_t>(test_size);
+    stopwatch::timepoint("Reserve i16");
+    runTime->reserve_mul_triples<int32_t>(test_size * 10);
+    runTime->reserve_and_triples<int32_t>(test_size * 44);
+    stopwatch::timepoint("Reserve i32");
+    runTime->reserve_mul_triples<int64_t>(test_size * 10);
+    runTime->reserve_and_triples<int64_t>(test_size * 50);
+    stopwatch::timepoint("Reserve i64");
+    runTime->reserve_mul_triples<__int128_t>(test_size * 10);
+    runTime->reserve_and_triples<__int128_t>(test_size * 57);
+    stopwatch::timepoint("Reserve i128");
+
+    std::cout << "Done preprocessing.\n";
+#endif
+
     // The party's unique id
     auto pID = runTime->getPartyID();
 
@@ -189,12 +214,15 @@ int main(int argc, char** argv) {
 
     {
         ASharedVector<int> a_v1 = secret_share_a(data_a, 0);
-        BSharedVector<int> b_v1 = secret_share_b(data_a, 0);
 
         assert(a_v1.open().same_as(data_a));
-        assert(b_v1.open().same_as(data_a));
+        single_cout("Arithmetic Secret sharing... OK");
+    }
 
-        single_cout("Secret sharing... OK");
+    {
+        BSharedVector<int> b_v1 = secret_share_b(data_a, 0);
+        assert(b_v1.open().same_as(data_a));
+        single_cout("Boolean Secret sharing... OK");
     }
 
     // **************************************** //
@@ -262,13 +290,14 @@ int main(int argc, char** argv) {
         single_cout("Multiply Assignment *= OK");
     }
 
-    // TODO: check overflowing when dividing INT_MAX in fantastic four
-    // orq::Vector<int> div_data = {111, 1231241, 999, 109, 0, -4, -17, 2345,   -28922, -23437};
-    // orq::Vector<int> div_data = {0, -4, -5, -123556, 999, 70, -243242, INT_MAX, 0, 78};
-    orq::Vector<int64_t> div_data = {0, 4, 5, 123556, 999, 70, 243242, INT_MAX - 1, INT_MAX, 0, 78};
-    ASharedVector<int64_t> shared_div_data = secret_share_a(div_data, 0);
-
     {
+        // TODO: check overflowing when dividing INT_MAX in fantastic four
+        // orq::Vector<int> div_data = {111, 1231241, 999, 109, 0, -4, -17, 2345,   -28922, -23437};
+        // orq::Vector<int> div_data = {0, -4, -5, -123556, 999, 70, -243242, INT_MAX, 0, 78};
+        orq::Vector<int64_t> div_data = {0,      4,           5,       123556, 999, 70,
+                                         243242, INT_MAX - 1, INT_MAX, 0,      78};
+        ASharedVector<int64_t> shared_div_data = secret_share_a(div_data, 0);
+
         // Apply elementwise secure public constant division
         ASharedVector<int64_t> c_div = shared_div_data / 8;
 
@@ -279,7 +308,7 @@ int main(int argc, char** argv) {
             // get the other share from party 2
             orq::Vector<int64_t> my_share = c_div.asEVector()(0);
             orq::Vector<int64_t> other_share(div_data.size());
-            runTime->comm0()->receiveShares(other_share, +2, div_data.size());
+            runTime->comm0()->receiveShares(other_share, +2);
             for (int i = 0; i < div_data.size(); i++) {
                 int sign_x = (div_data[i] >= 0);
                 int sign_x1 = (my_share[i] >= 0);
@@ -293,7 +322,7 @@ int main(int argc, char** argv) {
             runTime->comm0()->sendShare(count_truncation_errors, +2);
         } else if (pID == 2) {
             // send first share to party 0
-            runTime->comm0()->sendShares(c_div.asEVector()(0), +1, div_data.size());
+            runTime->comm0()->sendShares(c_div.asEVector()(0), +1);
             // receive number of truncation errors
             runTime->comm0()->receiveShare(count_truncation_errors, +1);
         } else if (pID == 1) {
@@ -515,11 +544,40 @@ int main(int argc, char** argv) {
     test_b2a<__int128_t>(100);
     single_cout("B2A Conversion...OK");
 
+#ifdef MPC_PROTOCOL_FANTASTIC_FOUR
+    {
+        // Test Fantastic_4PC<GF2E> multiply_a
+        // Temporary test for now until we have full runtime integration or similar.
+        auto gf2e_proto = orq::Fantastic_4PC<NTL::GF2E, std::vector<NTL::GF2E>, Vector<NTL::GF2E>,
+                                             EVector<NTL::GF2E>>(
+            runTime->getPartyID(), {.num_workers = 1, .worker_id = 0}, runTime->comm0(),
+            runTime->rand0());
+        orq::Vector<NTL::GF2E> x(test_size), y(test_size);
+
+        if (pID == 0) {
+            for (int i = 0; i < test_size; i++) {
+                x[i] = NTL::random_GF2E();
+                y[i] = NTL::random_GF2E();
+            }
+        }
+
+        auto sx = gf2e_proto.secret_share_a_internal(x, 0);
+        auto sy = gf2e_proto.secret_share_a_internal(y, 0);
+        EVector<NTL::GF2E> sz(sx.size());
+
+        gf2e_proto.multiply_a(sx, sy, sz);
+        auto z_open = gf2e_proto.internal_open_a(sz);
+        auto z_expected = x * y;
+
+        if (pID == 0) {
+            assert(z_open.same_as(z_expected));
+            single_cout("4PC GF2E multiply_a...OK");
+        }
+    }
+#endif
+
     runTime->malicious_check();
-
     runTime->print_statistics();
-
-    // Tear down communication
 
     return 0;
 }

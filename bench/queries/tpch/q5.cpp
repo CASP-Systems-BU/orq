@@ -60,10 +60,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // TPCH Q5 query parameters
     const int DATE = 100;
@@ -145,7 +142,7 @@ int main(int argc, char** argv) {
 
     stopwatch::timepoint("Filters");
 
-    Lineitem.addColumns({"Revenue"}, Lineitem.size());
+    Lineitem.addColumns({"Revenue"});
     Lineitem["Revenue"] = Lineitem["ExtendedPrice"] * (-Lineitem["Discount"] + 100) / 100;
     Lineitem.deleteColumns({"ExtendedPrice", "Discount"});
 
@@ -200,7 +197,7 @@ int main(int argc, char** argv) {
 
     stopwatch::timepoint("Group");
 
-    FinalItems.addColumns({"[Revenue]"}, FinalItems.size());
+    FinalItems.addColumns({"[Revenue]"});
     FinalItems.convert_a2b("Revenue", "[Revenue]");
     FinalItems.deleteColumns({"Revenue"});
 

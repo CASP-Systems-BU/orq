@@ -21,7 +21,7 @@ using BSharedPerm = BSharedVector<int, orq::EVector<int, E::replicationNumber>>;
  * @return Permutation representing the sort order.
  */
 template <typename S, typename E>
-static ElementwisePermutation<E> radix_sort_ccs(BSharedVector<S, E> &v, const int bits,
+static ElementwisePermutation<E> radix_sort_ccs(BSharedVector<S, E>& v, const int bits,
                                                 const bool full_width = true) {
     const size_t n = v.size();
 
@@ -112,9 +112,11 @@ static ElementwisePermutation<E> radix_sort_ccs(BSharedVector<S, E> &v, const in
  * @param v Vector to sort.
  * @param bits Number of bits to sort on.
  * @param full_width Whether sorting on full bitwidth (affects sign bit handling).
+ * @param no_invert Whether to not invert the permutation.
  */
 template <typename S, typename E>
-static void radix_sort_body(BSharedVector<S, E> &v, const int bits, const bool full_width = true) {
+static void radix_sort_body(BSharedVector<S, E>& v, const int bits, const bool full_width = true,
+                            bool no_invert = false) {
     const size_t n = v.size();
 
     // need 1 permutation for padding
@@ -125,6 +127,9 @@ static void radix_sort_body(BSharedVector<S, E> &v, const int bits, const bool f
     }
     // 1 pair per call to oblivious_apply_elementwise_perm + 1 pair for invert
     int num_pairs = bits + 1;
+    if (no_invert) {
+        num_pairs -= 1;
+    }
     orq::random::PermutationManager::get()->reserve(n, num_permutations, num_pairs);
 
     // Reserve temporaries for gen_bit_perm
@@ -200,11 +205,12 @@ static void radix_sort_body(BSharedVector<S, E> &v, const int bits, const bool f
  * @param v Vector to sort.
  * @param order Sort order (ascending or descending).
  * @param bits Number of bits to sort on.
+ * @param no_invert Whether to not invert the permutation.
  * @return Permutation representing the applied sort order.
  */
 template <typename S, typename E>
-static ElementwisePermutation<E> radix_sort(BSharedVector<S, E> &v, SortOrder order,
-                                            const size_t bits) {
+static ElementwisePermutation<E> radix_sort(BSharedVector<S, E>& v, SortOrder order,
+                                            const size_t bits, bool no_invert) {
     auto reversed = order == SortOrder::DESC;
 
     // Are we sorting on the full width?
@@ -214,7 +220,7 @@ static ElementwisePermutation<E> radix_sort(BSharedVector<S, E> &v, SortOrder or
     // pad the input
     PaddedBSharedVector<E> padded = pad_input(v, reversed);
 
-    radix_sort_body(padded, bits, full_width);
+    radix_sort_body(padded, bits, full_width, no_invert);
 
     if (reversed) {
         padded.reverse();
@@ -222,8 +228,15 @@ static ElementwisePermutation<E> radix_sort(BSharedVector<S, E> &v, SortOrder or
 
     // unpad the result to obtain the original sorted list and the
     // secret-shared applied permutation
-    ElementwisePermutation<E> permutation = remove_padding(v, padded, reversed);
-    permutation.invert();
+    // if we don't need to invert, we don't need to convert to arithmetic
+    bool convert_to_arithmetic = !no_invert;
+    ElementwisePermutation<E> permutation =
+        remove_padding(v, padded, reversed, convert_to_arithmetic);
+    if (convert_to_arithmetic) {
+        permutation.invert();
+    }
+
+    runTime->malicious_check();
 
     return permutation;
 }

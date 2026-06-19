@@ -21,9 +21,11 @@ class SharedColumn : public EncodedColumn {
     friend class EncodedTable;
 
    protected:
-    void resize(size_t n) { static_cast<SVector*>(contents.get())->resize(n); }
+    void resize(size_t n) override { static_cast<SVector*>(contents.get())->resize(n); }
 
-    void tail(size_t n) { static_cast<SVector*>(contents.get())->tail(n); }
+    void tail(size_t n) override { static_cast<SVector*>(contents.get())->tail(n); }
+
+    void concatenate(SVector& other) { static_cast<SVector*>(contents.get())->concatenate(other); }
 
    public:
     static const int replicationNumber = EVector::replicationNumber;
@@ -33,7 +35,7 @@ class SharedColumn : public EncodedColumn {
      * @param _size The column's size in number of elements.
      * @param eType The column's encoding (e.g., A-Shared, B-Shared, etc.).
      */
-    explicit SharedColumn(const size_t& _size, const Encoding& eType) {
+    explicit SharedColumn(size_t _size, const Encoding& eType) {
         switch (eType) {
             case Encoding::AShared: {
                 contents = std::make_unique<ASharedVector<Share, EVector>>(_size);
@@ -74,7 +76,7 @@ class SharedColumn : public EncodedColumn {
      * Move assignment operator (shallow move) from an encoded column.
      * @param other The encoded column whose contents will be moved to the new column.
      */
-    SharedColumn& operator=(std::unique_ptr<EncodedColumn>&& other) {
+    SharedColumn& operator=(std::unique_ptr<EncodedColumn>&& other) override {
         auto& c = *other.get();
         this->encoding = c.encoding;
         this->contents.reset(c.contents.release());
@@ -85,7 +87,7 @@ class SharedColumn : public EncodedColumn {
      * @brief Zero out this column
      *
      */
-    void zero() {
+    void zero() override {
         auto v = (SVector*)contents.get();
         v->zero();
     }
@@ -99,16 +101,36 @@ class SharedColumn : public EncodedColumn {
     /**
      * @return The column's size in number of elements.
      */
-    virtual size_t size() const { return this->contents.get()->size(); }
+    virtual size_t size() const override { return this->contents.get()->size(); }
+
+    /**
+     * @return The column's fixed-point precision (from the underlying encoded vector).
+     */
+    virtual size_t getPrecision() const override { return contents ? contents->getPrecision() : 0; }
 
     /**
      * @brief Make a deep copy of this column. Deep-copies the underlying vector
      *
      * @return std::unique_ptr<EncodedColumn>
      */
-    std::unique_ptr<EncodedColumn> deepcopy() {
-        auto v = static_cast<SVector*>(contents.get());
-        auto s = std::make_unique<SharedColumn>(v->deepcopy());
+    std::unique_ptr<EncodedColumn> deepcopy() override {
+        std::unique_ptr<SharedColumn> s;
+
+        if (encoding == Encoding::AShared) {
+            auto v = static_cast<ASharedVector<Share, EVector>*>(contents.get());
+            // Create truly independent copies using the new EVector method
+            // that ensures each replica has new storage with reset batch state
+            EVector copy = v->vector.deepcopy();
+            auto new_shared = std::make_unique<ASharedVector<Share, EVector>>(copy);
+            s = std::make_unique<SharedColumn>(std::move(new_shared));
+        } else {
+            auto v = static_cast<BSharedVector<Share, EVector>*>(contents.get());
+
+            EVector copy = v->vector.deepcopy();
+            auto new_shared = std::make_unique<BSharedVector<Share, EVector>>(copy);
+            s = std::make_unique<SharedColumn>(std::move(new_shared));
+        }
+
         s->encoding = encoding;
         return s;
     }
@@ -119,7 +141,7 @@ class SharedColumn : public EncodedColumn {
      *
      * @return std::unique_ptr<EncodedColumn>
      */
-    std::unique_ptr<EncodedColumn> ltz() {
+    std::unique_ptr<EncodedColumn> ltz() override {
         assert(encoding == Encoding::BShared);
         auto v = static_cast<const BSharedVector<Share, EVector>*>(contents.get());
         return std::make_unique<SharedColumn>(v->ltz());
@@ -151,7 +173,7 @@ class SharedColumn : public EncodedColumn {
      * @param other
      * @return std::unique_ptr<EncodedColumn> encoded as a BShared column
      */
-    std::unique_ptr<EncodedColumn> operator/(const EncodedColumn& other) const {
+    std::unique_ptr<EncodedColumn> operator/(const EncodedColumn& other) const override {
         std::unique_ptr<SharedColumn> s;
 
         // Temporary unique pointers to hold ownership of converted values

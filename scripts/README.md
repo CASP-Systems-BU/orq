@@ -15,6 +15,6 @@ Top-level scripts:
     - `_setup_libote.sh` – fetches and builds libOTe
     - `_setup_securejoin.sh` – fetches and builds secureJoin
 - `_update_hostfile.sh` – Updates the hostfile for multi-node runs.
-- `run_experiment.sh` – Generic wrapper that compiles and executes a program.
+- `run_experiment.py` – Generic wrapper that compiles and executes a program.
 - `query-experiments.sh` – Helper for query benchmarks.
 - `compare-to.py` – Compares two branches' performance.

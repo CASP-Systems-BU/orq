@@ -32,10 +32,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pID = runTime->getPartyID();
 
-    int test_size = 1 << 16;
-    if (argc >= 5) {
-        test_size = atoi(argv[4]);
-    }
+    auto test_size = runTime->getArg<size_t>("test-size", "r", 1 << 20);
 
     std::string comm_suffix;
     if (COMMUNICATOR_NUM == MPI_COMMUNICATOR)

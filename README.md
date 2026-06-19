@@ -13,13 +13,16 @@ ORQ is a multi-party computation framework for relational analytics. For more in
 > [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17027577.svg)](https://doi.org/10.5281/zenodo.17027577)
 
 > [!NOTE]
-> _(March 2026)_ We have been notified of an [attack on the Fantastic Four protocol](https://eprint.iacr.org/2026/234) (to appear at Eurocrypt'26). An implementation of the fix following $\Pi_\mathrm{CheckEqs}$ (Fig. 6 of [BS26]) is currently under development. Separately, we also identified some issues with our malicious-secure opening protocol. We will push both fixes to this repository soon.
+> _(June 2026)_ We were notified of an [attack on the Fantastic Four protocol](https://encrypto.de/papers/BS26.pdf) (Eurocrypt'26). An implementation of the fix following $\Pi_\mathrm{CheckEqs}$ (Fig. 6 of [BS26]) has now been pushed to this repository. Separately, we also identified some issues with our malicious-secure opening protocol, which has also been fixed.
+> 
+> For more details about our fixed implementation, see [our preprint](https://eprint.iacr.org/2026/1152).
 
 > [!NOTE]
 > Here for S2MPC? See the [README](https://github.com/CASP-Systems-BU/orq/blob/s2mpc-2026/bench/queries/s2mpc/README.md).
 
 ## Table of Contents
 
+- [Summary of Changes](#summary-of-changes)
 - [Dependencies](#dependencies)
 - [Building ORQ](#building-orq)
   - [Single-Node](#single-node)
@@ -44,6 +47,25 @@ This repository is organized as follows:
 - `tests/`: the test suite
 
 This README walks through each of the steps to deploy an ORQ cluster and run ORQ programs. You can also get started with [writing ORQ programs](#writing-new-orq-programs) and check out the [examples](https://github.com/CASP-Systems-BU/orq/tree/main/examples).
+
+## Summary of Changes
+
+The second version of the ORQ codebase includes the following updates:
+
+- Add better command-line parsing using the [cryptoTools](https://github.com/ladnir/cryptoTools) library
+- Add new methods for generating OLEs and Beaver Triples, including the subquadratic OLE of Doerner et al. ([CCS'25](https://dl.acm.org/doi/abs/10.1145/3719027.3765225)); new correlation-generator architecture
+- Fix the attack of [BS26](https://encrypto.de/papers/BS26.pdf), add new classes (CommittedSeedsQueue, Hash) to support, and update the malicious-protocol API
+- Update the implementation of sorting, shuffling, `b2a`, and PRG-seed setup to provide full malicious security guarantees
+- Improve the reliability of the socket communicator
+- Automatically switch between RCA and PPA when given network parameters
+- Address some memory leaks & undefined behavior
+- Add the Brent-Kung prefix network for aggregation, and a new general prefix-network API
+- Add the Pairwise sorting network, and a new general sorting-network API
+- Rewrite our main execution script in python
+- Bug fixes, more tests, and general clean up of the codebase
+
+This version of our codebase corresponds to the ACM TOCS journal submission.
+
 
 ## Dependencies
 
@@ -135,7 +157,7 @@ Various options can be specified to `cmake`.
    - `-DPROTOCOL=1` a single-party plaintext test protocol
    - `-DPROTOCOL=2` [ABY](https://www.ndss-symposium.org/ndss2015/ndss-2015-programme/aby-framework-efficient-mixed-protocol-secure-two-party-computation/) two party dishonest majority protocol with Beaver Triples
    - `-DPROTOCOL=3` [Araki et al.](https://eprint.iacr.org/2016/768) three party replicated honest majority protocol (the default)
-   - `-DPROTOCOL=4` [Fantastic Four](https://eprint.iacr.org/2020/1330) honest-majority malicious 4PC protocol (**Note:** security fix in progress)
+   - `-DPROTOCOL=4` [Fantastic Four](https://eprint.iacr.org/2020/1330) honest-majority malicious 4PC protocol
 - `-DNO_X86_SSE=1` to disable x86 hardware optimizations (you will get warnings otherwise if built on ARM platforms, like newer Macs)
 - `-DPROFILE=1` enable profiling (compile with `-pg`)
 - `-DEXTRA=XXX` pass the additional argument `XXX` to `make`

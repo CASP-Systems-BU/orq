@@ -1,5 +1,6 @@
 #pragma once
 
+#include "backend/common/setting.h"
 #include "communicator.h"
 #include "communicator_factory.h"
 #include "debug/orq_debug.h"
@@ -13,7 +14,8 @@ class NullCommunicator : public Communicator {
      * @brief Null Communicator that does nothing for the Plaintext 1PC
      * test protocol.
      */
-    NullCommunicator() : Communicator(0), numParties(1) {}
+    NullCommunicator(std::string host_prefix = "localhost")
+        : Communicator(0, std::move(host_prefix)), numParties(1) {}
 
     ~NullCommunicator() {}
 
@@ -33,42 +35,22 @@ class NullCommunicator : public Communicator {
     void sendShare(int32_t share, PartyID _id) {}
     void sendShare(int64_t share, PartyID _id) {}
 
-    void sendShares(const Vector<int8_t> &_shares, PartyID _id, size_t _size) {
-        checkMapping(_shares);
-    }
-    void sendShares(const Vector<int16_t> &_shares, PartyID _id, size_t _size) {
-        checkMapping(_shares);
-    }
-    void sendShares(const Vector<int32_t> &_shares, PartyID _id, size_t _size) {
-        checkMapping(_shares);
-    }
-    void sendShares(const Vector<int64_t> &_shares, PartyID _id, size_t _size) {
-        checkMapping(_shares);
-    }
-    void sendShares(const Vector<__int128_t> &_shares, PartyID _id, size_t _size) {
-        checkMapping(_shares);
-    }
+    void sendShares(const Vector<int8_t> &_shares, PartyID _id) { checkMapping(_shares); }
+    void sendShares(const Vector<int16_t> &_shares, PartyID _id) { checkMapping(_shares); }
+    void sendShares(const Vector<int32_t> &_shares, PartyID _id) { checkMapping(_shares); }
+    void sendShares(const Vector<int64_t> &_shares, PartyID _id) { checkMapping(_shares); }
+    void sendShares(const Vector<__int128_t> &_shares, PartyID _id) { checkMapping(_shares); }
 
     void receiveShare(int8_t &_share, PartyID _id) {}
     void receiveShare(int16_t &_share, PartyID _id) {}
     void receiveShare(int32_t &_share, PartyID _id) {}
     void receiveShare(int64_t &_share, PartyID _id) {}
 
-    void receiveShares(Vector<int8_t> &_shares, PartyID _id, size_t _size) {
-        checkMapping(_shares);
-    }
-    void receiveShares(Vector<int16_t> &_shares, PartyID _id, size_t _size) {
-        checkMapping(_shares);
-    }
-    void receiveShares(Vector<int32_t> &_shares, PartyID _id, size_t _size) {
-        checkMapping(_shares);
-    }
-    void receiveShares(Vector<int64_t> &_shares, PartyID _id, size_t _size) {
-        checkMapping(_shares);
-    }
-    void receiveShares(Vector<__int128_t> &_shares, PartyID _id, size_t _size) {
-        checkMapping(_shares);
-    }
+    void receiveShares(Vector<int8_t> &_shares, PartyID _id) { checkMapping(_shares); }
+    void receiveShares(Vector<int16_t> &_shares, PartyID _id) { checkMapping(_shares); }
+    void receiveShares(Vector<int32_t> &_shares, PartyID _id) { checkMapping(_shares); }
+    void receiveShares(Vector<int64_t> &_shares, PartyID _id) { checkMapping(_shares); }
+    void receiveShares(Vector<__int128_t> &_shares, PartyID _id) { checkMapping(_shares); }
 
     /**
      * @brief Copy `sent_shares` into `received_shares`
@@ -80,70 +62,66 @@ class NullCommunicator : public Communicator {
      * @param _size
      */
     void exchangeShares(Vector<int8_t> sent_shares, Vector<int8_t> &received_shares, PartyID to_id,
-                        PartyID from_id, size_t _size) {
+                        PartyID from_id) {
         checkMapping(sent_shares);
         checkMapping(received_shares);
         received_shares = sent_shares;
     }
 
     void exchangeShares(Vector<int16_t> sent_shares, Vector<int16_t> &received_shares,
-                        PartyID to_id, PartyID from_id, size_t _size) {
+                        PartyID to_id, PartyID from_id) {
         checkMapping(sent_shares);
         checkMapping(received_shares);
         received_shares = sent_shares;
     }
 
     void exchangeShares(Vector<int32_t> sent_shares, Vector<int32_t> &received_shares,
-                        PartyID to_id, PartyID from_id, size_t _size) {
+                        PartyID to_id, PartyID from_id) {
         checkMapping(sent_shares);
         checkMapping(received_shares);
         received_shares = sent_shares;
     }
 
     void exchangeShares(Vector<int64_t> sent_shares, Vector<int64_t> &received_shares,
-                        PartyID to_id, PartyID from_id, size_t _size) {
+                        PartyID to_id, PartyID from_id) {
         checkMapping(sent_shares);
         checkMapping(received_shares);
         received_shares = sent_shares;
     }
 
     void exchangeShares(Vector<__int128_t> sent_shares, Vector<__int128_t> &received_shares,
-                        PartyID to_id, PartyID from_id, size_t _size) {
+                        PartyID to_id, PartyID from_id) {
         checkMapping(sent_shares);
         checkMapping(received_shares);
         received_shares = sent_shares;
     }
 
-    void exchangeShares(Vector<int8_t> sent_shares, Vector<int8_t> &received_shares, PartyID id,
-                        size_t _size) {
+    void exchangeShares(Vector<int8_t> sent_shares, Vector<int8_t> &received_shares, PartyID id) {
         checkMapping(sent_shares);
         checkMapping(received_shares);
         received_shares = sent_shares;
     }
 
-    void exchangeShares(Vector<int16_t> sent_shares, Vector<int16_t> &received_shares, PartyID id,
-                        size_t _size) {
+    void exchangeShares(Vector<int16_t> sent_shares, Vector<int16_t> &received_shares, PartyID id) {
         checkMapping(sent_shares);
         checkMapping(received_shares);
         received_shares = sent_shares;
     }
 
-    void exchangeShares(Vector<int32_t> sent_shares, Vector<int32_t> &received_shares, PartyID id,
-                        size_t _size) {
+    void exchangeShares(Vector<int32_t> sent_shares, Vector<int32_t> &received_shares, PartyID id) {
         checkMapping(sent_shares);
         checkMapping(received_shares);
         received_shares = sent_shares;
     }
 
-    void exchangeShares(Vector<int64_t> sent_shares, Vector<int64_t> &received_shares, PartyID id,
-                        size_t _size) {
+    void exchangeShares(Vector<int64_t> sent_shares, Vector<int64_t> &received_shares, PartyID id) {
         checkMapping(sent_shares);
         checkMapping(received_shares);
         received_shares = sent_shares;
     }
 
     void exchangeShares(Vector<__int128_t> sent_shares, Vector<__int128_t> &received_shares,
-                        PartyID id, size_t _size) {
+                        PartyID id) {
         checkMapping(sent_shares);
         checkMapping(received_shares);
         received_shares = sent_shares;
@@ -261,6 +239,8 @@ class NullCommunicatorFactory : public CommunicatorFactory<NullCommunicatorFacto
     int getPartyId() const { return 0; }
 
     int getNumParties() const { return 1; }
+
+    orq::service::Setting getSetting() const { return orq::service::Setting::SAME; }
 
     void blockingReady() {}
 };

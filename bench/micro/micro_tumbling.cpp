@@ -8,13 +8,10 @@ using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pID = runTime->getPartyID();
-    int test_size = 128;
-    if (argc >= 5) {
-        test_size = atoi(argv[4]);
-    }
+    auto test_size = runTime->getArg<size_t>("test-size", "r", 1 << 20);
 
     std::vector<std::string> schema = {"TIMESTAMP", "TUMBLING_WINDOW_PER_HOUR"};
-    std::vector<orq::Vector<int64_t>> data(schema.size(), test_size);
+    std::vector<orq::Vector<int64_t>> data(schema.size(), orq::Vector<int>(test_size));
     EncodedTable<int64_t> table = secret_share(data, schema);
 
     // start timer

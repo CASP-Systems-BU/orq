@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# Example: bash ../benchmarks/cost-model/secrecy-comparison/run-experiment.sh 
+# Example: bash ../benchmarks/cost-model/secrecy-comparison/run-experiment.sh
 EXP_HOME=../benchmarks/cost-model/secrecy-comparison
-EXP_PREFIX="../scripts/run_experiment.sh -x node -p 1 -s same -c nocopy -r 1 -T 1"
+EXP_PREFIX="../scripts/run_experiment.py -x node -p 1 -s same -c nocopy -r 1 -T 1"
 
 cd $(dirname $0)
 cd ../../../build

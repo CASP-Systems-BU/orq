@@ -7,7 +7,7 @@ using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 const int test_size = 1 << 16;
 
 template <typename T>
-void TestBasicCommunication(const int& testSize) {
+void TestBasicCommunication(const int testSize) {
     auto n = orq::service::runTime->getNumParties();
     auto othersCount = n - 1;
 
@@ -17,10 +17,10 @@ void TestBasicCommunication(const int& testSize) {
         runTime->populateLocalRandom(x);
 
         // Exchange Shares with party +1
-        runTime->comm0()->exchangeShares(x, y, +1, -1, testSize);
+        runTime->comm0()->exchangeShares(x, y, +1, -1);
 
         // Exchange Shares with party -1
-        runTime->comm0()->exchangeShares(y, z, -1, +1, testSize);
+        runTime->comm0()->exchangeShares(y, z, -1, +1);
 
         // I should get the vector that I have just sent
         if (runTime->getPartyID() == 0) {

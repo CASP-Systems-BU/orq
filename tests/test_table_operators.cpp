@@ -15,7 +15,6 @@ EncodedTable<T> create_test_table(int column_count) {
     }
 
     EncodedTable<T> table = secret_share<T>(columns, schema);
-
     return table;
 }
 
@@ -36,11 +35,11 @@ void test_add_columns() {
     EncodedTable<T> table = create_test_table<T>(1);
 
     // Add single column
-    table.addColumns({"Column2"}, table.size());
+    table.addColumns({"Column2"});
     assert_table_schema(table, 2);
 
     // Add multiple columns
-    table.addColumns({"Column3", "Column4", "Column5", "Column6"}, table.size());
+    table.addColumns({"Column3", "Column4", "Column5", "Column6"});
     assert_table_schema(table, 6);
 
     single_cout("OK");

@@ -180,10 +180,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // Setup SQL DB
     sqlite3* sqlite_db = nullptr;
@@ -219,12 +216,12 @@ int main(int argc, char** argv) {
     stopwatch::timepoint("Join");
 
     // [SQL] GROUP BY diag, COUNT(*)
-    FilteredDiagnosis.addColumns({"DiagCount"}, FilteredDiagnosis.size());
+    FilteredDiagnosis.addColumns({"DiagCount"});
     FilteredDiagnosis.aggregate({"[diag]"}, {{"DiagCount", "DiagCount", count<A>}});
 
     stopwatch::timepoint("Aggregation");
 
-    FilteredDiagnosis.addColumns({"[DiagCount]"}, FilteredDiagnosis.size());
+    FilteredDiagnosis.addColumns({"[DiagCount]"});
     FilteredDiagnosis.convert_a2b("DiagCount", "[DiagCount]");
 
     // [SQL] ORDER BY cnt DESC

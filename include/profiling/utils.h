@@ -19,7 +19,7 @@ using sec = std::chrono::duration<float, std::chrono::seconds::period>;
 
 namespace orq::benchmarking::utils {
 
-static void print_bin(const int& num1, const int& num2, bool add_line) {
+static void print_bin(int num1, int num2, bool add_line) {
     std::bitset<32> x(num1);
     std::bitset<32> y(num2);
     std::cout << x << "\t\t" << y << "\t\t";

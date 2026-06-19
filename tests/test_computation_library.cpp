@@ -3,7 +3,7 @@
 using namespace orq::debug;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     orq_init(argc, argv);
 
     // Testing Vector elements operations
@@ -73,6 +73,10 @@ int main(int argc, char **argv) {
         assert(empty.size() == 0);
     }
 
+#ifdef MPC_PROTOCOL_DUMMY_ZERO
+    return 0;
+#endif
+
     {
         std::vector<size_t> map = {1, 4, 6};
         auto v1 = vec_pattern_1.mapping_reference(map);
@@ -85,13 +89,15 @@ int main(int argc, char **argv) {
         auto repeated = vec_pattern_1.repeated_subset_reference(10);
         // apparent size should change
         assert(repeated.size() == 10 * vec_pattern_1.size());
+
         // but internal size does not
-        assert(repeated._get_internal_data().size() == vec_pattern_1.size());
+        assert(repeated.storage_size() == vec_pattern_1.size());
         assert(repeated.has_mapping());
+
         auto mat = repeated.materialize();
         // after materializing, size agrees, and no more mapping
         assert(mat.size() == repeated.size());
-        assert(mat._get_internal_data().size() == repeated.size());
+        assert(mat.storage_size() == repeated.size());
         assert(!mat.has_mapping());
 
         orq::Vector<int> v3(vec_pattern_1.size());
@@ -158,23 +164,29 @@ int main(int argc, char **argv) {
     orq::Vector<int> vec_bit_15 = vec_bit_11.alternating_bit_compress(0, 8, 8, 8, -1);
     assert(vec_bit_15.same_as(orq::Vector<int>({0x00000000})));
 
-    // if (orq::service::runTime->getPartyID() == 0) {
-    //     print_binary(vec_bit_01, 0);
-    //     print_binary(vec_bit_02, 0);
-    //     print_binary(vec_bit_03, 0);
-    //     print_binary(vec_bit_04, 0);
-    //     print_binary(vec_bit_05, 0);
-    //     print_binary(vec_bit_06, 0);
-    //     print_binary(vec_bit_07, 0);
-    //     print_binary(vec_bit_08, 0);
-    //     print_binary(vec_bit_09, 0);
-    //
-    //     print_binary(vec_bit_11, 0);
-    //     print_binary(vec_bit_12, 0);
-    //     print_binary(vec_bit_13, 0);
-    //     print_binary(vec_bit_14, 0);
-    //     print_binary(vec_bit_15, 0);
-    // }
+    // Testing vectors operations with vectors/elements.
+    {
+        orq::Vector<int> vec_a = {111, -4, -17, 2345, 999, 0, -28922, 1231241, 0, -23437};
+        orq::Vector<int> vec_b = {0, -4, -5, -123556, 999, 70, -243242, 0, 0, 78};
+
+        orq::Vector<int> add_expected = {111, -8,      -22,     -121211, 1998,
+                                         70,  -272164, 1231241, 0,       -23359};
+        orq::Vector<int> greater_expected = {1, 0, 0, 1, 0, 0, 1, 1, 0, 0};
+        orq::Vector<int> add_5_expected = {116, 1, -12, 2350, 1004, 5, -28917, 1231246, 5, -23432};
+        orq::Vector<int> greater_5_expected = {1, 0, 0, 1, 1, 0, 0, 1, 0, 0};
+
+        auto res_add = vec_a + vec_b;
+        assert(res_add.same_as(add_expected));
+
+        auto res_greater = vec_a > vec_b;
+        assert(res_greater.same_as(greater_expected));
+
+        auto res_add_5 = vec_a + 5;
+        assert(res_add_5.same_as(add_5_expected));
+
+        auto res_greater_5 = vec_a > 5;
+        assert(res_greater_5.same_as(greater_5_expected));
+    }
 
     single_cout("Vector-bit...ok");
 

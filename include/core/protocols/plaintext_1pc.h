@@ -20,7 +20,7 @@ template <typename Data, typename Share, typename Vector, typename EVector>
 class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
    public:
     // Configuration Parameters
-    int parties_num = 1;
+    static constexpr int parties_num = 1;
 
     std::map<std::string, uint64_t> op_counter;
     std::map<std::string, std::optional<uint64_t>> mark_op_counter;
@@ -37,7 +37,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      * @param _communicator Pointer to communicator (should be null).
      * @param _randomnessManager Pointer to randomness manager.
      */
-    Plaintext_1PC(PartyID _partyID, Communicator *_communicator,
+    Plaintext_1PC(PartyID _partyID, WorkerConfig wc, Communicator *_communicator,
                   random::RandomnessManager *_randomnessManager)
         :  // NOTE: should be null communicator
           Protocol<Data, Share, Vector, EVector>(_communicator, _randomnessManager, _partyID, 1,
@@ -120,6 +120,16 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
     }
 
     /**
+     * @brief Clear all accumulated statistics for this protocol instance.
+     */
+    void clear_statistics() {
+        op_counter.clear();
+        mark_op_counter.clear();
+        round_counter.clear();
+        mark_round_counter.clear();
+    }
+
+    /**
      * @brief Plaintext arithmetic addition.
      *
      * @param x First input vector.
@@ -187,7 +197,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      * @param c Constant divisor.
      * @return Pair of vectors (quotient and error correction).
      */
-    std::pair<EVector, EVector> div_const_a(const EVector &x, const Data &c) {
+    std::pair<EVector, EVector> div_const_a(const EVector &x, const Data c) {
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
         EVector err(x.size());
@@ -211,7 +221,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      * @param z Output vector.
      * @param aggSize Aggregation size.
      */
-    void dot_product_a(const EVector &x, const EVector &y, EVector &z, const int &aggSize) {
+    void dot_product_a(const EVector &x, const EVector &y, EVector &z, const size_t aggSize) {
         z = x.dot_product(y, aggSize);
         op_counter[__func__] += x.size();
         round_counter[__func__] += 1;
@@ -338,7 +348,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vector.
      * @return First share's vector.
      */
-    Vector open_shares_a(const EVector &shares) {
+    Vector internal_open_a(const EVector &shares) {
         assert(!shares.has_mapping());
         op_counter[__func__] += shares.size();
         round_counter[__func__] += 1;
@@ -351,7 +361,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vector.
      * @return First share's vector.
      */
-    Vector open_shares_b(const EVector &shares) {
+    Vector internal_open_b(const EVector &shares) {
         assert(!shares.has_mapping());
         op_counter[__func__] += shares.size();
         round_counter[__func__] += 1;
@@ -397,7 +407,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data_party Party owning the data.
      * @return Shared vector.
      */
-    EVector secret_share_b(const Vector &data, const PartyID &data_party = 0) {
+    EVector secret_share_b_internal(const Vector &data, const PartyID &data_party = 0) {
         op_counter[__func__] += data.size();
         round_counter[__func__] += 1;
         return get_shares_b(data)[0];
@@ -410,7 +420,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data_party Party owning the data.
      * @return Shared vector.
      */
-    EVector secret_share_a(const Vector &data, const PartyID &data_party = 0) {
+    EVector secret_share_a_internal(const Vector &data, const PartyID &data_party = 0) {
         op_counter[__func__] += data.size();
         round_counter[__func__] += 1;
         return get_shares_a(data)[0];
@@ -422,7 +432,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input data vector.
      * @return Shared vector.
      */
-    EVector public_share(const Vector &data) {
+    EVector public_share(const Vector &data, const std::set<PartyID> &who_knows) {
         // doesn't matter if a or b here.
         return get_shares_a(data)[0];
     }

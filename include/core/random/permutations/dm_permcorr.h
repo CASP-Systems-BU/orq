@@ -45,7 +45,7 @@ class DMPermutationCorrelationGenerator : public DMShardedPermutationGenerator<T
                                       std::optional<Communicator*> _comm = std::nullopt)
         : DMBase(_rank, _comm), rank(_rank), thread(thread) {
         local_prg = std::make_shared<CommonPRG>();
-        all_prg = common->get({0, 1});
+        all_prg = common->get();
     }
 
     /**
@@ -86,7 +86,7 @@ class DMPermutationCorrelationGenerator : public DMShardedPermutationGenerator<T
      * @param n The size of the permutation.
      * @return The DMShardedPermutation.
      */
-    std::shared_ptr<ShardedPermutation> getNext(size_t n) {
+    std::shared_ptr<ShardedPermutation> getNext(const size_t n) {
         auto dm_perm = std::make_shared<DMShardedPermutation<T>>(n);
         getNext(dm_perm);
         return dm_perm;
@@ -114,17 +114,17 @@ class DMPermutationCorrelationGenerator : public DMShardedPermutationGenerator<T
         auto& perm_tuple = *(dm_perm->getTuple());
 
         // create a new OPRF object
-        std::unique_ptr<OPRF> oprf = std::make_unique<OPRF>(rank, thread);
+        auto oprf = std::make_unique<OPRF>(rank, thread, (*(this->comm))->host_prefix);
 
         // the parties agree on these
         Vector<__int128_t> hashes_0 = queryRandomOracle(n);
         Vector<__int128_t> hashes_1 = queryRandomOracle(n);
 
-        if (DMBase::getRank() == 0) {
+        if (DMBase::rank == 0) {
             // perform the plaintext PRF evaluations
             OPRF::key_t key = oprf->keyGen();
             Vector<__int128_t> A_1 =
-                oprf->evaluate_plaintext<__int128_t>(hashes_0.as_std_vector(), key);
+                oprf->template evaluate_plaintext<__int128_t>(hashes_0.as_std_vector(), key);
 
             // permute the hashes
             std::vector<int> pi_vec(n);
@@ -132,7 +132,7 @@ class DMPermutationCorrelationGenerator : public DMShardedPermutationGenerator<T
             Vector<int> pi_0(std::move(pi_vec));
             orq::operators::local_apply_perm_single_threaded(hashes_1, pi_0);
 
-            Vector<__int128_t> B_1 = oprf->evaluate_sender<__int128_t>(key, n);
+            Vector<__int128_t> B_1 = oprf->template evaluate_sender<__int128_t>(key, n);
             Vector<__int128_t> C_0 = oprf->evaluate_receiver(hashes_1);
 
             // pack and move into the tuple in a single assignment
@@ -142,7 +142,7 @@ class DMPermutationCorrelationGenerator : public DMShardedPermutationGenerator<T
             // perform the plaintext PRF evaluations
             OPRF::key_t key = oprf->keyGen();
             Vector<__int128_t> A_0 =
-                oprf->evaluate_plaintext<__int128_t>(hashes_1.as_std_vector(), key);
+                oprf->template evaluate_plaintext<__int128_t>(hashes_1.as_std_vector(), key);
 
             // permute the hashes
             std::vector<int> pi_vec(n);
@@ -150,8 +150,8 @@ class DMPermutationCorrelationGenerator : public DMShardedPermutationGenerator<T
             Vector<int> pi_1(std::move(pi_vec));
             orq::operators::local_apply_perm_single_threaded(hashes_0, pi_1);
 
-            Vector<__int128_t> C_1 = oprf->evaluate_receiver<__int128_t>(hashes_0);
-            Vector<__int128_t> B_0 = oprf->evaluate_sender<__int128_t>(key, n);
+            Vector<__int128_t> C_1 = oprf->template evaluate_receiver<__int128_t>(hashes_0);
+            Vector<__int128_t> B_0 = oprf->template evaluate_sender<__int128_t>(key, n);
 
             // pack and move into the tuple in a single assignment
             perm_tuple =
