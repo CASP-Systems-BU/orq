@@ -43,7 +43,7 @@ EOF
 
 for p in 2 3 4; do
     echo "== Protocol: $p ($ENVIRO) =="
-    ./run_experiment.sh -p $p -e $REPS -s $ENVIRO -m $CMAKE -r $INPUT_SIZES -x node micro_primitives 2>&1 | tee $folder/p${p}-${ENVIRO}.txt
+    ./run_experiment.py -p $p -e $REPS -s $ENVIRO -m $CMAKE -r $INPUT_SIZES -x node micro_primitives 2>&1 | tee $folder/p${p}-${ENVIRO}.txt
 done
 
 [[ $ENVIRO == "wan" ]] && ../comm/cluster-wan-sim.sh off node{1,2,3}

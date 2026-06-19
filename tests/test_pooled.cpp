@@ -18,8 +18,9 @@ template <typename Generator>
 void test_pooled() {
     auto pID = runTime->getPartyID();
     auto comm = runTime->comm0();
+    auto r = runTime->rand0()->commonPRGManager;
 
-    auto pooled = make_pooled<Generator>(pID, comm, 0);
+    auto pooled = make_pooled<Generator>(pID, r, comm, 0);
 
     // reserve a batch and check that it's been reserved
     pooled->reserve(test_size_1);
@@ -40,8 +41,9 @@ template <typename Generator, typename T, orq::Encoding E>
 void test_pooled_triples() {
     auto pID = runTime->getPartyID();
     auto comm = runTime->comm0();
+    auto r = runTime->rand0()->commonPRGManager;
 
-    auto pooled = make_pooled<Generator>(pID, comm, 0);
+    auto pooled = make_pooled<Generator>(pID, r, comm, 0);
 
     auto btgen = std::make_shared<BeaverTripleGenerator<T, E>>(pooled, comm);
 
@@ -64,7 +66,7 @@ void test_pooled_permutations(size_t num_permutations, size_t permutation_size) 
     stopwatch::get_elapsed();
 
     auto generator =
-        runTime->rand0()->getCorrelation<int32_t, orq::random::Correlation::ShardedPermutation>();
+        runTime->rand0()->template getCorrelation<int32_t, ShardedPermutationGenerator>();
     for (int i = 0; i < num_permutations; i++) {
         generator->getNext(permutation_size);
     }
@@ -95,7 +97,7 @@ int main(int argc, char** argv) {
     } else {
         single_cout("Parallel Permutations...SKIPPED");
     }
-#else
+#elif defined(USE_LIBOTE)
     test_pooled<GilboaOLE<int8_t>>();
     test_pooled<GilboaOLE<int32_t>>();
     test_pooled<GilboaOLE<int64_t>>();
@@ -114,9 +116,9 @@ int main(int argc, char** argv) {
     test_pooled_triples<SilentOT<int32_t>, int32_t, orq::Encoding::BShared>();
     test_pooled_triples<SilentOT<int64_t>, int64_t, orq::Encoding::BShared>();
     single_cout("Pooled Beaver Triples...OK");
+#else
+    single_cout("skipped");
 #endif
-
-    // Tear down communication
 
     return 0;
 }

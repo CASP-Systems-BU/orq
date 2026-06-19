@@ -7,70 +7,70 @@
  * @brief Binary operation on columns
  *
  */
-#define binary_op_downcast(_op_, eType, vType)                                        \
-    std::unique_ptr<EncodedColumn> operator _op_(const EncodedColumn & other) const { \
-        assert(encoding == Encoding::eType && encoding == other.encoding);            \
-        auto v1 = static_cast<const vType<Share, EVector> *>(contents.get());         \
-        auto v2 = static_cast<const vType<Share, EVector> *>(other.contents.get());   \
-        return std::make_unique<SharedColumn>(*v1 _op_ * v2);                         \
+#define binary_op_downcast(_op_, eType, vType)                                                 \
+    std::unique_ptr<EncodedColumn> operator _op_(const EncodedColumn & other) const override { \
+        assert(encoding == Encoding::eType && encoding == other.encoding);                     \
+        auto v1 = static_cast<const vType<Share, EVector>*>(contents.get());                   \
+        auto v2 = static_cast<const vType<Share, EVector>*>(other.contents.get());             \
+        return std::make_unique<SharedColumn>(*v1 _op_ * v2);                                  \
     }
 
 /**
  * @brief Binary assignment operation on columns
  *
  */
-#define binary_assignment_downcast(_op_, eType, vType)                              \
-    EncodedColumn &operator _op_(const EncodedColumn & other) {                     \
-        assert(encoding == Encoding::eType && encoding == other.encoding);          \
-        auto v1 = static_cast<vType<Share, EVector> *>(contents.get());             \
-        auto v2 = static_cast<const vType<Share, EVector> *>(other.contents.get()); \
-        *v1 _op_ *v2;                                                               \
-        return *this;                                                               \
+#define binary_assignment_downcast(_op_, eType, vType)                             \
+    EncodedColumn& operator _op_(const EncodedColumn & other) override {           \
+        assert(encoding == Encoding::eType && encoding == other.encoding);         \
+        auto v1 = static_cast<vType<Share, EVector>*>(contents.get());             \
+        auto v2 = static_cast<const vType<Share, EVector>*>(other.contents.get()); \
+        *v1 _op_* v2;                                                              \
+        return *this;                                                              \
     }
 
 /**
  * @brief Binary assignment operation on pointer to column
  *
  */
-#define binary_assignment_ptr(_op_, eType, vType)                                    \
-    EncodedColumn &operator _op_(const std::unique_ptr<EncodedColumn> &&other) {     \
-        assert(encoding == Encoding::eType && encoding == other->encoding);          \
-        auto v1 = static_cast<vType<Share, EVector> *>(contents.get());              \
-        auto v2 = static_cast<const vType<Share, EVector> *>(other->contents.get()); \
-        *v1 _op_ *v2;                                                                \
-        return *this;                                                                \
+#define binary_assignment_ptr(_op_, eType, vType)                                   \
+    EncodedColumn& operator _op_(const std::unique_ptr<EncodedColumn>&& other) {    \
+        assert(encoding == Encoding::eType && encoding == other->encoding);         \
+        auto v1 = static_cast<vType<Share, EVector>*>(contents.get());              \
+        auto v2 = static_cast<const vType<Share, EVector>*>(other->contents.get()); \
+        *v1 _op_* v2;                                                               \
+        return *this;                                                               \
     }
 
 /**
  * @brief Unary operation on column
  *
  */
-#define unary_op_downcast(_op_, eType, vType)                                \
-    std::unique_ptr<EncodedColumn> operator _op_() const {                   \
-        assert(encoding == Encoding::eType);                                 \
-        auto v = static_cast<const vType<Share, EVector> *>(contents.get()); \
-        return std::make_unique<SharedColumn>(_op_(*v));                     \
+#define unary_op_downcast(_op_, eType, vType)                               \
+    std::unique_ptr<EncodedColumn> operator _op_() const override {         \
+        assert(encoding == Encoding::eType);                                \
+        auto v = static_cast<const vType<Share, EVector>*>(contents.get()); \
+        return std::make_unique<SharedColumn>(_op_(*v));                    \
     }
 
 /**
  * @brief Binary operation which applies to either AShared or BShared columns (resolved at runtime)
  *
  */
-#define binary_op_either_type(_op_)                                                             \
-    std::unique_ptr<EncodedColumn> operator _op_(const EncodedColumn & other) const {           \
-        assert(encoding == other.encoding);                                                     \
-        std::unique_ptr<SharedColumn> s;                                                        \
-        if (encoding == AShared) {                                                              \
-            auto v1 = static_cast<const ASharedVector<Share, EVector> *>(contents.get());       \
-            auto v2 = static_cast<const ASharedVector<Share, EVector> *>(other.contents.get()); \
-            s = std::make_unique<SharedColumn>(*v1 _op_ * v2);                                  \
-        } else {                                                                                \
-            auto v1 = static_cast<const BSharedVector<Share, EVector> *>(contents.get());       \
-            auto v2 = static_cast<const BSharedVector<Share, EVector> *>(other.contents.get()); \
-            s = std::make_unique<SharedColumn>(*v1 _op_ * v2);                                  \
-        }                                                                                       \
-        s->encoding = encoding;                                                                 \
-        return s;                                                                               \
+#define binary_op_either_type(_op_)                                                            \
+    std::unique_ptr<EncodedColumn> operator _op_(const EncodedColumn & other) const override { \
+        assert(encoding == other.encoding);                                                    \
+        std::unique_ptr<SharedColumn> s;                                                       \
+        if (encoding == AShared) {                                                             \
+            auto v1 = static_cast<const ASharedVector<Share, EVector>*>(contents.get());       \
+            auto v2 = static_cast<const ASharedVector<Share, EVector>*>(other.contents.get()); \
+            s = std::make_unique<SharedColumn>(*v1 _op_ * v2);                                 \
+        } else {                                                                               \
+            auto v1 = static_cast<const BSharedVector<Share, EVector>*>(contents.get());       \
+            auto v2 = static_cast<const BSharedVector<Share, EVector>*>(other.contents.get()); \
+            s = std::make_unique<SharedColumn>(*v1 _op_ * v2);                                 \
+        }                                                                                      \
+        s->encoding = encoding;                                                                \
+        return s;                                                                              \
     }
 
 /**
@@ -81,9 +81,9 @@
  *
  */
 #define binary_op_element(_op_, eType, vType)                                                     \
-    std::unique_ptr<EncodedColumn> operator _op_(const int64_t & other) const {                   \
+    std::unique_ptr<EncodedColumn> operator _op_(int64_t other) const override {                  \
         assert(encoding == Encoding::eType);                                                      \
-        auto v1 = static_cast<const vType<Share, EVector> *>(contents.get());                     \
+        auto v1 = static_cast<const vType<Share, EVector>*>(contents.get());                      \
         Vector<Share> v2_(1, (Share)other);                                                       \
         vType<Share, EVector> v2 =                                                                \
             orq::service::runTime->public_share<EVector::replicationNumber>(v2_);                 \
@@ -97,16 +97,16 @@
  *
  */
 #define binary_op_element_either_type(_op_)                                                    \
-    std::unique_ptr<EncodedColumn> operator _op_(const int64_t & other) const {                \
+    std::unique_ptr<EncodedColumn> operator _op_(const int64_t other) const override {         \
         std::unique_ptr<SharedColumn> s;                                                       \
         Vector<Share> k_(1, (Share)other);                                                     \
         if (encoding == AShared) {                                                             \
-            auto v = static_cast<const ASharedVector<Share, EVector> *>(contents.get());       \
+            auto v = static_cast<const ASharedVector<Share, EVector>*>(contents.get());        \
             ASharedVector<Share, EVector> ka =                                                 \
                 orq::service::runTime->public_share<EVector::replicationNumber>(k_);           \
             s = std::make_unique<SharedColumn>(*v _op_ ka.cyclic_subset_reference(v->size())); \
         } else {                                                                               \
-            auto v = static_cast<const BSharedVector<Share, EVector> *>(contents.get());       \
+            auto v = static_cast<const BSharedVector<Share, EVector>*>(contents.get());        \
             BSharedVector<Share, EVector> kb =                                                 \
                 orq::service::runTime->public_share<EVector::replicationNumber>(k_);           \
             s = std::make_unique<SharedColumn>(*v _op_ kb.cyclic_subset_reference(v->size())); \
@@ -120,10 +120,10 @@
  *
  */
 #define binary_op_fixed_element(_op_, eType, vType)                            \
-    std::unique_ptr<EncodedColumn> operator _op_(const int64_t & y) const {    \
+    std::unique_ptr<EncodedColumn> operator _op_(int64_t y) const override {   \
         assert(encoding == Encoding::eType);                                   \
         using T = vType<Share, EVector>;                                       \
-        auto v = static_cast<const T *>(contents.get());                       \
+        auto v = static_cast<const T*>(contents.get());                        \
         return std::make_unique<SharedColumn>(std::make_unique<T>(*v _op_ y)); \
     }
 
@@ -131,10 +131,9 @@
  * @brief Binary operation with pointer-pointer to column
  *
  */
-#define binary_op_ptr_element(_op_)                                                \
-    std::unique_ptr<EncodedColumn> operator _op_(std::unique_ptr<EncodedColumn> x, \
-                                                 const int64_t & y) {              \
-        return *x _op_ y;                                                          \
+#define binary_op_ptr_element(_op_)                                                             \
+    std::unique_ptr<EncodedColumn> operator _op_(std::unique_ptr<EncodedColumn> x, int64_t y) { \
+        return *x _op_ y;                                                                       \
     }
 
 namespace orq::relational {
@@ -175,6 +174,11 @@ class EncodedColumn {
      */
     virtual size_t size() const = 0;
 
+    /**
+     * Gets the fixed-point precision. Virtual to let subclasses override.
+     */
+    virtual size_t getPrecision() const = 0;
+
     virtual void zero() = 0;
 
     virtual std::unique_ptr<EncodedColumn> deepcopy() = 0;
@@ -186,9 +190,9 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise additions.
      */
-    virtual std::unique_ptr<EncodedColumn> operator+(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator+(const int64_t &other) const = 0;
-    virtual EncodedColumn &operator+=(const EncodedColumn &other) = 0;
+    virtual std::unique_ptr<EncodedColumn> operator+(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator+(int64_t other) const = 0;
+    virtual EncodedColumn& operator+=(const EncodedColumn& other) = 0;
 
     /**
      * Elementwise secure arithmetic subtraction.
@@ -196,8 +200,9 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise subtractions.
      */
-    virtual std::unique_ptr<EncodedColumn> operator-(const EncodedColumn &other) const = 0;
-    virtual EncodedColumn &operator-=(const EncodedColumn &other) = 0;
+    virtual std::unique_ptr<EncodedColumn> operator-(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator-(int64_t other) const = 0;
+    virtual EncodedColumn& operator-=(const EncodedColumn& other) = 0;
 
     /**
      * Elementwise secure arithmetic negation.
@@ -212,9 +217,9 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise multiplications.
      */
-    virtual std::unique_ptr<EncodedColumn> operator*(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator*(const int64_t &other) const = 0;
-    virtual EncodedColumn &operator*=(const EncodedColumn &other) = 0;
+    virtual std::unique_ptr<EncodedColumn> operator*(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator*(int64_t other) const = 0;
+    virtual EncodedColumn& operator*=(const EncodedColumn& other) = 0;
 
     /**
      * @brief Elementwise secure schoolbook (binary) division
@@ -222,8 +227,8 @@ class EncodedColumn {
      * @param other
      * @return std::unique_ptr<EncodedColumn>
      */
-    virtual std::unique_ptr<EncodedColumn> operator/(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator/(const int64_t &other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator/(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator/(int64_t other) const = 0;
 
     // **************************************** //
     //             Boolean operators            //
@@ -235,9 +240,9 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise XORs.
      */
-    virtual std::unique_ptr<EncodedColumn> operator^(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator^(const int64_t &other) const = 0;
-    virtual EncodedColumn &operator^=(const EncodedColumn &other) = 0;
+    virtual std::unique_ptr<EncodedColumn> operator^(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator^(int64_t other) const = 0;
+    virtual EncodedColumn& operator^=(const EncodedColumn& other) = 0;
 
     /**
      * Elementwise secure bitwise AND.
@@ -245,9 +250,9 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise ANDs.
      */
-    virtual std::unique_ptr<EncodedColumn> operator&(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator&(const int64_t &other) const = 0;
-    virtual EncodedColumn &operator&=(const EncodedColumn &other) = 0;
+    virtual std::unique_ptr<EncodedColumn> operator&(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator&(int64_t other) const = 0;
+    virtual EncodedColumn& operator&=(const EncodedColumn& other) = 0;
 
     /**
      * Elementwise secure bitwise OR.
@@ -255,9 +260,9 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise ORs.
      */
-    virtual std::unique_ptr<EncodedColumn> operator|(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator|(const int64_t &other) const = 0;
-    virtual EncodedColumn &operator|=(const EncodedColumn &other) = 0;
+    virtual std::unique_ptr<EncodedColumn> operator|(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator|(int64_t other) const = 0;
+    virtual EncodedColumn& operator|=(const EncodedColumn& other) = 0;
 
     /**
      * Elementwise secure boolean completion.
@@ -279,8 +284,8 @@ class EncodedColumn {
      * @param y shift amount
      * @return std::unique_ptr<EncodedColumn>
      */
-    virtual std::unique_ptr<EncodedColumn> operator<<(const int64_t &y) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator>>(const int64_t &y) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator<<(int64_t y) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator>>(int64_t y) const = 0;
 
     // **************************************** //
     //           Comparison operators           //
@@ -292,8 +297,8 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise equality comparisons.
      */
-    virtual std::unique_ptr<EncodedColumn> operator==(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator==(const int64_t &other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator==(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator==(int64_t other) const = 0;
 
     /**
      * Elementwise secure inequality.
@@ -301,8 +306,8 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise inequality comparisons.
      */
-    virtual std::unique_ptr<EncodedColumn> operator!=(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator!=(const int64_t &other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator!=(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator!=(int64_t other) const = 0;
 
     /**
      * Elementwise secure greater-than.
@@ -310,8 +315,8 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise greater-than comparisons.
      */
-    virtual std::unique_ptr<EncodedColumn> operator>(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator>(const int64_t &other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator>(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator>(int64_t other) const = 0;
 
     /**
      * Elementwise secure greater-or-equal.
@@ -319,8 +324,8 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise greater-or-equal comparisons.
      */
-    virtual std::unique_ptr<EncodedColumn> operator>=(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator>=(const int64_t &other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator>=(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator>=(int64_t other) const = 0;
 
     /**
      * Elementwise secure less-than.
@@ -328,8 +333,8 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise less-than comparisons.
      */
-    virtual std::unique_ptr<EncodedColumn> operator<(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator<(const int64_t &other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator<(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator<(int64_t other) const = 0;
 
     /**
      * Elementwise secure less-or-equal.
@@ -337,8 +342,8 @@ class EncodedColumn {
      * @return A unique pointer to an EncodedColumn that contains encoded results of
      * the elementwise less-or-equal comparisons.
      */
-    virtual std::unique_ptr<EncodedColumn> operator<=(const EncodedColumn &other) const = 0;
-    virtual std::unique_ptr<EncodedColumn> operator<=(const int64_t &other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator<=(const EncodedColumn& other) const = 0;
+    virtual std::unique_ptr<EncodedColumn> operator<=(int64_t other) const = 0;
 
     /**
      * @brief Column assignment
@@ -347,7 +352,7 @@ class EncodedColumn {
      * column.
      * @return A reference to `this` column after modification.
      */
-    virtual EncodedColumn &operator=(std::unique_ptr<EncodedColumn> &&other) = 0;
+    virtual EncodedColumn& operator=(std::unique_ptr<EncodedColumn>&& other) = 0;
 
     // TODO (john): Maybe we also need a copy assignment, e.g., in case we want to copy a column
     // into another

@@ -65,10 +65,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // TPCH Q11 query parameters
     const int NATION_NAME = 3;
@@ -143,7 +140,7 @@ int main(int argc, char** argv) {
 
     stopwatch::timepoint("SuppKey Join");
 
-    MainQuery.addColumns({"Value"}, MainQuery.size());
+    MainQuery.addColumn("Value");
     // [SQL] (ps_supplycost * ps_availqty)
     MainQuery["Value"] = MainQuery["SupplyCost"] * MainQuery["AvailQty"];
     // Deepcopy into SubQuery instead of performing the same join twice
@@ -152,7 +149,7 @@ int main(int argc, char** argv) {
     stopwatch::timepoint("Multiplication");
 
     // [SQL] sum(ps_supplycost * ps_availqty) * [FRACTION]
-    SubQuery.addColumns({"SumValue", "SumFraction", "[SumFraction]"}, SubQuery.size());
+    SubQuery.addColumns({"SumValue", "SumFraction", "[SumFraction]"});
     SubQuery.convert_b2a_bit(ENC_TABLE_VALID, "SumValue");
     SubQuery["SumValue"] *= SubQuery["Value"];
     SubQuery.prefix_sum("SumValue");
@@ -169,7 +166,7 @@ int main(int argc, char** argv) {
 
     // [SQL] sum(ps_supplycost * ps_availqty) as value
     // [SQL] group by ps_partkey
-    MainQuery.addColumns({"SumValue", "[SumValue]"}, MainQuery.size());
+    MainQuery.addColumns({"SumValue", "[SumValue]"});
     MainQuery.aggregate({"[PartKey]"}, {{"Value", "SumValue", sum<A>}});
     MainQuery.convert_a2b("SumValue", "[SumValue]");
     MainQuery.project({"[PartKey]", "[SumValue]"});

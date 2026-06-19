@@ -119,7 +119,7 @@ fi
 BASE_PORT=$((RANDOM % (50000 - 10000 + 1) + 10000))
 
 # Cleanup on exit
-trap cleanup EXIT
+trap cleanup INT TERM HUP
 
 # Either run locally or on remote hosts depending on input
 pids=()

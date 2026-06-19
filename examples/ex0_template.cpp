@@ -20,4 +20,6 @@ int main(int argc, char **argv) {
     auto pID = runTime->getPartyID();
 
     // Your code here!
+
+    return 0;
 }

@@ -4,13 +4,17 @@
 #include <sched.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <atomic>
 #include <barrier>
 #include <mutex>
 #include <queue>
 #include <thread>
 
+#include "core/random/prg/committed_seeds_queue.h"
+#include "cryptoTools/Common/CLP.h"
 #include "profiling/thread_profiling.h"
+#include "setting.h"
 #include "task.h"
 #include "worker.h"
 
@@ -20,24 +24,10 @@
 
 using namespace orq::instrumentation;
 
-#ifdef WAN_CONFIGURATION
-/**
- * @brief In WAN we need to minimize rounds
- *
- */
-#define DEFAULT_BATCH_SIZE -1
-#else
-/**
- * @brief The default batch size for normal batching, if not specified by the user.
- *
- * From 2024-Nov experiments on AWS, -12 looks to be a good default.
- */
-#define DEFAULT_BATCH_SIZE -12
-#endif
-
 namespace orq::random {
 class ShardedPermutation;
-}
+class OPRF;
+}  // namespace orq::random
 
 /**
  * @brief Helper macro to get the current execution's EVector class of type `T`
@@ -51,7 +41,7 @@ class ShardedPermutation;
  */
 #define define_reshare(S)                                                                          \
     template <int R, typename... T>                                                                \
-    void reshare(EVectorClass(S) & x, const T &...args) {                                          \
+    void reshare(EVectorClass(S) & x, const T&... args) {                                          \
         eval_protocol_reshare<RepProto<S, R>, &Worker::PROTO_OBJ_NAME(S), EVector<S, R>>(x,        \
                                                                                          args...); \
     }
@@ -61,13 +51,13 @@ class ShardedPermutation;
  * storage, like `secret_share`
  *
  */
-#define define_1_alloc(S, F, InT, OutT)                                                           \
-    template <int R, typename... T>                                                               \
-    OutT F(InT x, const T &...args) {                                                             \
-        return eval_protocol_1arg_alloc<                                                          \
-            RepProto<S, R>, &Worker::PROTO_OBJ_NAME(S),                                           \
-            static_cast<OutT (RepProto<S, R>::*)(const InT &, const T &...)>(&RepProto<S, R>::F), \
-            InT, OutT>(x, args...);                                                               \
+#define define_1_alloc(S, F, InT, OutT)                                                         \
+    template <int R, typename... T>                                                             \
+    OutT F(InT x, const T&... args) {                                                           \
+        return eval_protocol_1arg_alloc<                                                        \
+            RepProto<S, R>, &Worker::PROTO_OBJ_NAME(S),                                         \
+            static_cast<OutT (RepProto<S, R>::*)(const InT&, const T&...)>(&RepProto<S, R>::F), \
+            InT, OutT>(x, args...);                                                             \
     }
 
 /**
@@ -77,7 +67,7 @@ class ShardedPermutation;
  */
 #define define_1_pair(S, F, InT, OutT)                                             \
     template <int R, typename... T>                                                \
-    std::pair<OutT, OutT> F(InT x, const T &...args) {                             \
+    std::pair<OutT, OutT> F(InT x, const T&... args) {                             \
         return eval_protocol_1arg_pair<RepProto<S, R>, &Worker::PROTO_OBJ_NAME(S), \
                                        &RepProto<S, R>::F, InT, OutT>(x, args...); \
     }
@@ -88,7 +78,7 @@ class ShardedPermutation;
  */
 #define define_1_arg(S, F, InT, OutT)                                                           \
     template <int R, typename... T>                                                             \
-    void F(InT x, OutT &r, const T &...args) {                                                  \
+    void F(InT x, OutT& r, const T&... args) {                                                  \
         eval_protocol_1arg<RepProto<S, R>, &Worker::PROTO_OBJ_NAME(S), &RepProto<S, R>::F, InT, \
                            OutT>(x, r, args...);                                                \
     }
@@ -99,7 +89,7 @@ class ShardedPermutation;
  */
 #define define_2_arg(S, F, InT, OutT)                                                           \
     template <int R, typename... T>                                                             \
-    void F(InT x, InT y, OutT &r, const T &...args) {                                           \
+    void F(InT x, InT y, OutT& r, const T&... args) {                                           \
         eval_protocol_2arg<RepProto<S, R>, &Worker::PROTO_OBJ_NAME(S), &RepProto<S, R>::F, InT, \
                            OutT>(x, y, r, args...);                                             \
     }
@@ -111,7 +101,7 @@ class ShardedPermutation;
  */
 #define define_2_arg_aggregator(S, F, InT, OutT)                                             \
     template <int R, typename... T>                                                          \
-    void F(InT x, InT y, OutT &r, const size_t &agg, const T &...args) {                     \
+    void F(InT x, InT y, OutT& r, const size_t agg, const T&... args) {                      \
         eval_protocol_aggregator_2arg<RepProto<S, R>, &Worker::PROTO_OBJ_NAME(S),            \
                                       &RepProto<S, R>::F, InT, OutT>(x, y, r, agg, args...); \
     }
@@ -135,15 +125,39 @@ class ShardedPermutation;
     define_reshare(T);                                                                 \
     define_1_arg(T, reconstruct_from_a, orq::Vector<T>, std::vector<EVectorClass(T)>); \
     define_1_arg(T, reconstruct_from_b, orq::Vector<T>, std::vector<EVectorClass(T)>); \
-    define_1_alloc(T, open_shares_a, EVectorClass(T), orq::Vector<T>);                 \
-    define_1_alloc(T, open_shares_b, EVectorClass(T), orq::Vector<T>);                 \
-    define_1_alloc(T, secret_share_a, orq::Vector<T>, EVectorClass(T));                \
-    define_1_alloc(T, secret_share_b, orq::Vector<T>, EVectorClass(T));                \
+    define_1_alloc(T, secret_share_a_internal, orq::Vector<T>, EVectorClass(T));       \
+    define_1_alloc(T, secret_share_b_internal, orq::Vector<T>, EVectorClass(T));       \
     define_1_alloc(T, public_share, orq::Vector<T>, EVectorClass(T));                  \
     define_1_pair(T, div_const_a, EVectorClass(T), EVectorClass(T));                   \
     define_1_pair(T, redistribute_shares_b, EVectorClass(T), EVectorClass(T));
 
+#define runtime_declare_internal_open_functions(T)                       \
+    define_1_alloc(T, internal_open_a, EVectorClass(T), orq::Vector<T>); \
+    define_1_alloc(T, internal_open_b, EVectorClass(T), orq::Vector<T>);
+
 namespace orq::service {
+
+/**
+ * @brief Configure the command line interface for a given long/short argument pair
+ *
+ * @param cmd
+ * @param long
+ * @param short
+ * @param default default-initialized to T's zero value.
+ */
+template <typename T = std::string>
+T register_cli(oc::CLP& cmd, std::string _long, std::string _short, T _default = T{}) {
+    if (_long.empty() || _short.empty()) {
+        throw std::runtime_error("Must provide non-null argument to CLP");
+    }
+
+    // Long-form options take precedence over abbreviated
+    // If only short entered, use that. Otherwise use default.
+    if (cmd.hasValue(_long)) {
+        return cmd.get<T>(_long);
+    }
+    return cmd.getOr<T>(_short, _default);
+}
 
 class RunTime {
    private:
@@ -158,6 +172,14 @@ class RunTime {
 
     bool terminate_ = false;
 
+    Setting setting;
+
+    /**
+     * @brief Handle for command-line parsing
+     *
+     */
+    oc::CLP cmd;
+
     /**
      * @brief Rank of this party
      *
@@ -171,10 +193,22 @@ class RunTime {
     bool testing = false;
 
     /**
+     * @brief Number of auxiliary clusters for multinode operation (0 = single-node mode)
+     */
+    int multinode_num_aux_ = 0;
+
+    /**
+     * @brief This auxiliary's index in alphabetical prefix order (0-based)
+     */
+    int multinode_aux_index_ = 0;
+
+    /**
      * @brief We may have a different number of communication threads
      *
      */
     std::vector<std::thread> socket_comm_threads;
+
+    std::unique_ptr<ProtocolBase> verifier;
 
     template <typename T, int R>
     using RepProto = Protocol<T, std::vector<T>, Vector<T>, EVector<T, R>>;
@@ -258,10 +292,10 @@ class RunTime {
      * @param batch_size optional adjusted batch size
      */
     template <typename F>
-        requires std::invocable<F &, size_t, size_t> &&
-                 std::convertible_to<std::invoke_result_t<F &, size_t, size_t>,
+        requires std::invocable<F&, size_t, size_t> &&
+                 std::convertible_to<std::invoke_result_t<F&, size_t, size_t>,
                                      std::unique_ptr<Task>>
-    void addTask(size_t size, F &&task_factory, std::optional<long> batch_size = std::nullopt) {
+    void addTask(size_t size, F&& task_factory, std::optional<long> batch_size = std::nullopt) {
         auto boundaries = getThreadBatchBoundaries(size, batch_size);
 
         for (int t = 0; t < num_threads; t++) {
@@ -285,20 +319,27 @@ class RunTime {
      * @param batch_size optional adjusted batch size
      */
     template <typename F>
-        requires std::invocable<F &, size_t, size_t, Worker &> &&
-                 std::convertible_to<std::invoke_result_t<F &, size_t, size_t, Worker &>,
+        requires std::invocable<F&, size_t, size_t, Worker&> &&
+                 std::convertible_to<std::invoke_result_t<F&, size_t, size_t, Worker&>,
                                      std::unique_ptr<Task>>
-    void addTask(size_t size, F &&task_factory, std::optional<long> batch_size = std::nullopt) {
+    void addTask(size_t size, F&& task_factory, std::optional<long> batch_size = std::nullopt) {
         auto boundaries = getThreadBatchBoundaries(size, batch_size);
 
         for (int t = 0; t < num_threads; t++) {
             auto [start, end] = boundaries[t];
-            auto &w = workers[t];
+            auto& w = workers[t];
 
             // call the task factory
             w.addTask(task_factory(start, end, w));
         }
     }
+
+    // private open functionalities. the public call site forces a call to malicious_check first.
+    runtime_declare_internal_open_functions(int8_t);
+    runtime_declare_internal_open_functions(int16_t);
+    runtime_declare_internal_open_functions(int32_t);
+    runtime_declare_internal_open_functions(int64_t);
+    runtime_declare_internal_open_functions(__int128_t);
 
    public:
     /**
@@ -313,21 +354,21 @@ class RunTime {
      * shuffle cost model, so probably an easy way to redesign this.
      *
      */
-    Worker *worker0;
+    Worker* worker0;
 
     /**
      * @brief Get worker zero's communicator
      *
      * @return orq::Communicator*
      */
-    orq::Communicator *comm0() { return worker0->getCommunicator(); }
+    orq::Communicator* comm0() { return worker0->getCommunicator(); }
 
     /**
      * @brief Get worker zero's randomness manager
      *
      * @return orq::random::RandomnessManager*
      */
-    orq::random::RandomnessManager *rand0() { return worker0->getRandManager(); }
+    orq::random::RandomnessManager* rand0() { return worker0->getRandManager(); }
 
     /**
      * @brief Check if this runtime is terminated
@@ -338,7 +379,7 @@ class RunTime {
     bool terminated() { return terminate_; }
 
     /**
-     * @brief Destructor. Set `termiante_` to true, and wait for all socket communicator threads to
+     * @brief Destructor. Set `terminate_` to true, and wait for all socket communicator threads to
      * be joined.
      *
      */
@@ -365,14 +406,21 @@ class RunTime {
      * @param _num_threads
      * @param testing change to `true` if creating additional `RunTime` objects inside tests
      */
-    RunTime(const long _batch_size = DEFAULT_BATCH_SIZE, const int _num_threads = 1,
+    RunTime(const long _batch_size, const int _num_threads, std::optional<oc::CLP> cmd_,
             bool testing = false)
         : batch_size(_batch_size),
           num_threads(_num_threads),
           terminate_(false),
           testing(testing),
           // initialize synchronization barrier
-          barrier(std::make_shared<std::barrier<>>(_num_threads + 1)) {}
+          barrier(std::make_shared<std::barrier<>>(_num_threads + 1)) {
+        if (cmd_) {
+            cmd = *cmd_;
+            setting = parse_setting(register_cli<std::string>(cmd, "setting", "s", "same"));
+            multinode_num_aux_ = register_cli<int>(cmd, "multinode", "M", 0);
+            multinode_aux_index_ = register_cli<int>(cmd, "aux-index", "m", 0);
+        }
+    }
 
     /**
      * @brief Setup the thread workers for this party
@@ -386,7 +434,7 @@ class RunTime {
         for (int i = 0; i < num_threads; i++) {
             // Create each worker - need to use emplace to construct directly
             // inside vector.
-            workers.emplace_back(rank, barrier);
+            workers.emplace_back(rank, barrier, WorkerConfig{num_threads, i});
             // and start it
             workers.back().start();
         }
@@ -405,8 +453,13 @@ class RunTime {
      * @param t
      */
     template <typename... T>
-    void emplace_socket_thread(T &&...t) {
+    void emplace_socket_thread(T&&... t) {
         socket_comm_threads.emplace_back(std::forward<T>(t)...);
+    }
+
+    template <typename T = std::string>
+    T getArg(std::string _long, std::string _short, T _default = T{}) {
+        return register_cli(cmd, _long, _short, _default);
     }
 
     /**
@@ -431,15 +484,15 @@ class RunTime {
      * @param args
      */
     template <typename ObjectType, typename... T>
-    void execute_parallel(const ObjectType &x, ObjectType &res,
-                          ObjectType (ObjectType::*func)(const T &...) const, const T &...args) {
+    void execute_parallel(const ObjectType& x, ObjectType& res,
+                          ObjectType (ObjectType::*func)(const T&...) const, const T&... args) {
         thread_stopwatch::InstrumentBlock _ib{};
         assert(x.total_size() == res.total_size());
 
         addTask(x.total_size(), [&](const size_t start, const size_t end) {
             return std::make_unique<Task_1_ref<ObjectType, ObjectType>>(
                 x, res, start, end, batch_size,
-                [&, this](ObjectType &_x, ObjectType &_res) { _res = (_x.*func)(args...); });
+                [&, this](ObjectType& _x, ObjectType& _res) { _res = (_x.*func)(args...); });
         });
 
         main_thread_wait();
@@ -458,14 +511,14 @@ class RunTime {
      * @param args2
      */
     template <typename ObjectType, typename... T1, typename... T2>
-    void modify_parallel(ObjectType &x, void (ObjectType::*func)(const T1 &..., const T2 &...),
-                         const T1 &...args1, const T2 &...args2) {
+    void modify_parallel(ObjectType& x, void (ObjectType::*func)(const T1&..., const T2&...),
+                         const T1&... args1, const T2&... args2) {
         thread_stopwatch::InstrumentBlock _ib{};
 
         addTask(x.total_size(), [&](const size_t start, const size_t end) {
             return std::make_unique<Task_1_void<ObjectType>>(
                 x, start, end, batch_size,
-                [&, this](ObjectType &_x) { (_x.*func)(args1..., args2...); });
+                [&, this](ObjectType& _x) { (_x.*func)(args1..., args2...); });
         });
 
         main_thread_wait();
@@ -495,13 +548,13 @@ class RunTime {
      * @param func
      */
     template <typename E1, typename E2>
-    void modify_parallel_2arg(E1 &x, const E2 &y, E1 &(E1::*func)(const E2 &)) {
+    void modify_parallel_2arg(E1& x, const E2& y, E1& (E1::*func)(const E2&)) {
         thread_stopwatch::InstrumentBlock _ib{};
 
         // Task_1_ref args are (input, output) so we have to swap order of x,y
         addTask(x.total_size(), [&](const size_t start, const size_t end) {
             return std::make_unique<Task_1_ref<E2, E1>>(
-                y, x, start, end, batch_size, [&, this](E2 &_y, E1 &_x) { (_x.*func)(_y); });
+                y, x, start, end, batch_size, [&, this](E2& _y, E1& _x) { (_x.*func)(_y); });
         });
 
         main_thread_wait();
@@ -509,19 +562,33 @@ class RunTime {
 
     /**
      * @brief Execute an arbitrary function (probably passed as a lambda) in a multithreaded
-     * argument. Passed function should only take two arguments representing the start and end
-     * indices of its batch.
+     * argument. Passed function should take two arguments representing the start and end
+     * indices of its batch. Optional third argument represents the thread ID.
      *
-     * @param range_size
-     * @param func
+     * @tparam F The function type.
+     * @param range_size The number of elements to process.
+     * @param func The function to execute.
      */
-    void execute_parallel_unsafe(const int &range_size,
-                                 std::function<void(const size_t, const size_t)> func) {
+    template <typename F>
+    void execute_parallel_unsafe(int range_size, F&& func) {
         thread_stopwatch::InstrumentBlock _ib{};
 
-        addTask(range_size, [&](const size_t start, const size_t end) {
-            return std::make_unique<Task_0_void>(start, end, batch_size, func);
-        });
+        addTask(
+            range_size,
+            [&](const size_t start, const size_t end, Worker& w) {
+                size_t tid = w.getId();
+                return std::make_unique<Task_0_void>(
+                    start, end, static_cast<ssize_t>(end - start),
+                    [func, tid](const size_t s, const size_t e) {
+                        // three argument function case
+                        if constexpr (std::is_invocable_v<F, size_t, size_t, size_t>) {
+                            func(s, e, tid);
+                        } else {
+                            func(s, e);
+                        }
+                    });
+            },
+            1L);
 
         main_thread_wait();
     }
@@ -539,14 +606,14 @@ class RunTime {
      * @param args additional args to pass to the generator
      */
     template <typename InputType, typename... T>
-    void generate_parallel(void (orq::random::RandomnessManager::*func)(InputType &, T...),
-                           InputType &input, const T &...args) {
+    void generate_parallel(void (orq::random::RandomnessManager::*func)(InputType&, T...),
+                           InputType& input, const T&... args) {
         thread_stopwatch::InstrumentBlock _ib{};
 
-        addTask(input.total_size(), [&](const size_t start, const size_t end, Worker &w) {
+        addTask(input.total_size(), [&](const size_t start, const size_t end, Worker& w) {
             return std::make_unique<Task_1_void<InputType>>(
                 input, start, end, batch_size,
-                [&, this](InputType &_x) { (w.getRandManager()->*func)(_x, args...); });
+                [&, this](InputType& _x) { (w.getRandManager()->*func)(_x, args...); });
         });
 
         main_thread_wait();
@@ -563,13 +630,13 @@ class RunTime {
      * @param args
      */
     template <typename Proto, auto ProtoObj, typename EVector, typename... T>
-    void eval_protocol_reshare(EVector &x, const T &...args) {
+    void eval_protocol_reshare(EVector& x, const T&... args) {
         thread_stopwatch::InstrumentBlock _ib{};
 
-        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker &w) {
+        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker& w) {
             return std::make_unique<Task_1_void<EVector>>(
-                x, start, end, batch_size, [&, this](EVector &_x) {
-                    static_cast<Proto *>((w.*ProtoObj).get())->reshare(_x, args...);
+                x, start, end, batch_size, [&, this](EVector& _x) {
+                    static_cast<Proto*>((w.*ProtoObj).get())->reshare(_x, args...);
                 });
         });
 
@@ -591,7 +658,7 @@ class RunTime {
      */
     template <typename Proto, auto ProtoObj, auto F, typename InT, typename OutT, typename... T>
         requires std::is_member_function_pointer_v<decltype(F)>
-    OutT eval_protocol_1arg_alloc(InT &x, const T &...args) {
+    OutT eval_protocol_1arg_alloc(InT& x, const T&... args) {
         thread_stopwatch::InstrumentBlock _ib{};
 
         OutT res(x.total_size());
@@ -600,10 +667,10 @@ class RunTime {
         std::once_flag precision_flag;
         int precision = 0;
 
-        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker &w) {
+        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker& w) {
             return std::make_unique<Task_1_ref<InT, OutT>>(
-                x, res, start, end, batch_size, [&, this](InT &_x, OutT &_res) {
-                    _res = (static_cast<Proto *>((w.*ProtoObj).get())->*F)(_x, args...);
+                x, res, start, end, batch_size, [&, this](InT& _x, OutT& _res) {
+                    _res = (static_cast<Proto*>((w.*ProtoObj).get())->*F)(_x, args...);
                     std::call_once(precision_flag, [&]() { precision = _res.getPrecision(); });
                 });
         });
@@ -628,15 +695,15 @@ class RunTime {
      */
     template <typename Proto, auto ProtoObj, auto F, typename InT, typename OutT, typename... T>
         requires std::is_member_function_pointer_v<decltype(F)>
-    std::pair<OutT, OutT> eval_protocol_1arg_pair(InT &x, const T &...args) {
+    std::pair<OutT, OutT> eval_protocol_1arg_pair(InT& x, const T&... args) {
         thread_stopwatch::InstrumentBlock _ib{};
 
-        auto r = std::make_pair<OutT, OutT>(x.total_size(), x.total_size());
+        auto r = std::make_pair<OutT, OutT>(OutT(x.total_size()), OutT(x.total_size()));
 
-        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker &w) {
+        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker& w) {
             return std::make_unique<Task_1_pair<InT, OutT>>(
-                x, r, start, end, batch_size, [&, this](InT &_x, OutT &r1, OutT &r2) {
-                    std::tie(r1, r2) = (static_cast<Proto *>((w.*ProtoObj).get())->*F)(_x, args...);
+                x, r, start, end, batch_size, [&, this](InT& _x, OutT& r1, OutT& r2) {
+                    std::tie(r1, r2) = (static_cast<Proto*>((w.*ProtoObj).get())->*F)(_x, args...);
                 });
         });
 
@@ -659,13 +726,13 @@ class RunTime {
      */
     template <typename Proto, auto ProtoObj, auto F, typename InT, typename OutT, typename... T>
         requires std::is_member_function_pointer_v<decltype(F)>
-    void eval_protocol_1arg(InT &x, OutT &r, const T &...args) {
+    void eval_protocol_1arg(InT& x, OutT& r, const T&... args) {
         thread_stopwatch::InstrumentBlock _ib{};
 
-        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker &w) {
+        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker& w) {
             return std::make_unique<Task_1_ref<InT, OutT>>(
-                x, r, start, end, batch_size, [&, this](InT &_x, OutT &_r) {
-                    (static_cast<Proto *>((w.*ProtoObj).get())->*F)(_x, _r, args...);
+                x, r, start, end, batch_size, [&, this](InT& _x, OutT& _r) {
+                    (static_cast<Proto*>((w.*ProtoObj).get())->*F)(_x, _r, args...);
                 });
         });
 
@@ -688,13 +755,13 @@ class RunTime {
      */
     template <typename Proto, auto ProtoObj, auto F, typename InT, typename OutT, typename... T>
         requires std::is_member_function_pointer_v<decltype(F)>
-    void eval_protocol_2arg(InT &x, InT &y, OutT &r, const T &...args) {
+    void eval_protocol_2arg(InT& x, InT& y, OutT& r, const T&... args) {
         thread_stopwatch::InstrumentBlock _ib{};
 
-        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker &w) {
+        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker& w) {
             return std::make_unique<Task_2_ref<InT, OutT>>(
-                x, y, r, start, end, batch_size, [&, this](InT &_x, InT &_y, OutT &_r) {
-                    (static_cast<Proto *>((w.*ProtoObj).get())->*F)(_x, _y, _r, args...);
+                x, y, r, start, end, batch_size, [&, this](InT& _x, InT& _y, OutT& _r) {
+                    (static_cast<Proto*>((w.*ProtoObj).get())->*F)(_x, _y, _r, args...);
                 });
         });
 
@@ -719,8 +786,8 @@ class RunTime {
      */
     template <typename Proto, auto ProtoObj, auto F, typename InT, typename OutT, typename... T>
         requires std::is_member_function_pointer_v<decltype(F)>
-    void eval_protocol_aggregator_2arg(InT &x, InT &y, OutT &r, const size_t agg,
-                                       const T &...args) {
+    void eval_protocol_aggregator_2arg(InT& x, InT& y, OutT& r, const size_t agg,
+                                       const T&... args) {
         thread_stopwatch::InstrumentBlock _ib{};
 
         // This is required for both (1) avoiding accessing out of bounds
@@ -730,10 +797,10 @@ class RunTime {
         ssize_t old_batch_size;
         old_batch_size = makeBatchSizeDivisibleBy(x.size(), agg);
 
-        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker &w) {
+        addTask(x.total_size(), [&](const size_t start, const size_t end, Worker& w) {
             return std::make_unique<Task_2_Agg_ref<InT, OutT>>(
-                x, y, r, start, end, batch_size, agg, [&, agg, this](InT &_x, InT &_y, OutT &_r) {
-                    (static_cast<Proto *>((w.*ProtoObj).get())->*F)(_x, _y, _r, agg, args...);
+                x, y, r, start, end, batch_size, agg, [&, agg, this](InT& _x, InT& _y, OutT& _r) {
+                    (static_cast<Proto*>((w.*ProtoObj).get())->*F)(_x, _y, _r, agg, args...);
                 });
         });
 
@@ -749,7 +816,7 @@ class RunTime {
      * @param ret The set of sharded permutations to generate.
      */
     template <typename T>
-    void generate_permutations(std::vector<std::shared_ptr<orq::random::ShardedPermutation>> &ret) {
+    void generate_permutations(std::vector<std::shared_ptr<orq::random::ShardedPermutation>>& ret) {
         thread_stopwatch::InstrumentBlock _ib{};
         int num_permutations = ret.size();
 
@@ -769,10 +836,10 @@ class RunTime {
         int perm_index = 0;
         for (int t = 0; t < num_threads; ++t) {
             // get this thread's generator
-            auto &w = workers[t];
+            auto& w = workers[t];
             auto generator =
                 w.getRandManager()
-                    ->getCorrelation<T, orq::random::Correlation::ShardedPermutation>();
+                    ->template getCorrelation<T, random::ShardedPermutationGenerator>();
 
             perms.resize(perms_per_thread[t]);
 
@@ -781,11 +848,87 @@ class RunTime {
             }
 
             w.addTask(std::make_unique<Task_1_void_nobatch<permVec_t>>(
-                perms, [generator, this](permVec_t &_x) { generator->generateBatch(_x); }));
+                perms, [generator, this](permVec_t& _x) { generator->generateBatch(_x); }));
         }
 
         main_thread_wait();
     }
+
+#if defined(USE_LIBOTE) && defined(USE_SECURE_JOIN)
+    /**
+     * @brief Evaluates OPRF on an input vector in parallel using all
+     * available threads.
+     *
+     * @param input The input vector to evaluate OPRF on.
+     * @param output The output vector to store OPRF results.
+     * @param sender True if this party is the sender, false if receiver.
+     */
+    void evaluate_oprf(const Vector<__int128_t>& input, Vector<__int128_t>& output, int sender) {
+        thread_stopwatch::InstrumentBlock _ib{};
+
+        assert(input.size() == output.size());
+
+        // Generate the OPRF key once (used only by the sender).
+        // The receiver executes this as well, but they throw away the key.
+        // The sender and receiver generate different keys.
+        auto first_oprf = this->rand0()->template getCorrelation<__int128_t, orq::random::OPRF>();
+        orq::random::OPRF::key_t key = first_oprf->keyGen();
+
+        // Split the input into a single contiguous chunk per thread.  We use
+        // an explicit batch-size override so that each thread receives at
+        // most one chunk and therefore one call to the OPRF primitive.
+        size_t per_thread = std::max<size_t>(1, (input.size() + num_threads - 1) / num_threads);
+        auto boundaries = getThreadBatchBoundaries(input.size(), static_cast<long>(per_thread));
+
+        for (int t = 0; t < num_threads; ++t) {
+            auto [start, end] = boundaries[t];
+
+            // Skip threads that have no work (possible when |input| < num_threads).
+            if (start >= end) {
+                continue;
+            }
+
+            const size_t chunk_size = end - start;
+
+            auto& w = workers[t];
+            auto oprf =
+                w.getRandManager()->template getCorrelation<__int128_t, orq::random::OPRF>();
+
+            // Each task executes exactly once on its chunk (batch_size = chunk_size).
+            w.addTask(std::make_unique<Task_0_void>(
+                start, end, static_cast<ssize_t>(chunk_size),
+                [&, oprf, start, end](const size_t /*s*/, const size_t /*e*/) {
+                    const size_t local_size = end - start;
+
+                    if (sender == 1) {
+                        // Sender: evaluate using the shared key.
+                        auto out_chunk = oprf->template evaluate_sender<__int128_t>(
+                            key, static_cast<int>(local_size));
+
+                        // Copy results back to the global output vector.
+                        for (size_t i = 0; i < local_size; ++i) {
+                            output[start + i] = out_chunk[i];
+                        }
+                    } else {
+                        // Receiver: prepare the input slice for this chunk.
+                        Vector<__int128_t> in_chunk(local_size);
+                        for (size_t i = 0; i < local_size; ++i) {
+                            in_chunk[i] = input[start + i];
+                        }
+
+                        auto out_chunk = oprf->template evaluate_receiver<__int128_t>(in_chunk);
+
+                        // Copy results back to the global output vector.
+                        for (size_t i = 0; i < local_size; ++i) {
+                            output[start + i] = out_chunk[i];
+                        }
+                    }
+                }));
+        }
+
+        main_thread_wait();
+    }
+#endif
 
     /**
      * @brief Get this node's party ID (rank)
@@ -793,6 +936,20 @@ class RunTime {
      * @return int
      */
     int getPartyID() const { return rank_; }
+
+    /**
+     * @brief Get the number of auxiliary clusters for multinode operation
+     *
+     * @return int Number of auxiliary clusters (0 = single-node mode)
+     */
+    int getMultinodeNumAux() const { return multinode_num_aux_; }
+
+    /**
+     * @brief Get this auxiliary's index in alphabetical prefix order
+     *
+     * @return int Auxiliary index (0-based)
+     */
+    int getMultinodeAuxIndex() const { return multinode_aux_index_; }
 
     /**
      * @brief Get the replication number for the current protocol
@@ -816,11 +973,31 @@ class RunTime {
     ssize_t getBatchSize() const { return batch_size; }
 
     /**
+     * @brief Get the number of batches which would be required for a vector of
+     * length \f$n\f$.
+     *
+     * @param n
+     * @return size_t
+     */
+    size_t numBatches(size_t n) {
+        auto b = getBatchSize();
+        if (b < 0) {
+            // negative = equal division into that many batches
+            return -b;
+        }
+
+        // ceiling division
+        size_t total_batch = (n + b - 1) / b;
+        size_t batch_per_thread = (total_batch + num_threads - 1) / num_threads;
+        return batch_per_thread;
+    }
+
+    /**
      * @brief Update the batch size
      *
      * @param new_batch_size
      */
-    void setBatchSize(const ssize_t &new_batch_size) { batch_size = new_batch_size; }
+    void setBatchSize(const ssize_t& new_batch_size) { batch_size = new_batch_size; }
 
     /**
      * @brief Adjust the batch size to be divisible by some other divisor. Necessary for e.g.
@@ -856,11 +1033,20 @@ class RunTime {
     int get_num_threads() { return num_threads; }
 
     /**
+     * @brief Get the batch size
+     *
+     * @return int
+     */
+    int get_batch_size() { return batch_size; }
+
+    /**
      * @brief Get the number of parties
      *
      * @return const int
      */
     const int getNumParties() const { return workers[0].proto_32->getNumParties(); }
+
+    const Setting getSetting() const { return setting; }
 
     /**
      * @brief Get a set of all party indices
@@ -889,7 +1075,7 @@ class RunTime {
      * @param v vector to populate
      */
     template <typename T>
-    void populateLocalRandom(Vector<T> &v) {
+    void populateLocalRandom(Vector<T>& v) {
         generate_parallel(&orq::random::RandomnessManager::generate_local, v);
     }
 
@@ -899,7 +1085,7 @@ class RunTime {
      * @param group The group that shares a CommonPRG.
      */
     template <typename T>
-    void populateCommonRandom(Vector<T> &v, std::set<int> group) {
+    void populateCommonRandom(Vector<T>& v, std::set<int> group) {
         generate_parallel(&orq::random::RandomnessManager::generate_common, v, group);
     }
 
@@ -922,13 +1108,12 @@ class RunTime {
         // triples
         addTask(
             n,
-            [&](const size_t start, const size_t end, Worker &w) {
+            [&](const size_t start, const size_t end, Worker& w) {
                 const size_t triple_size = end - start;
-                return std::make_unique<Task_0_void>(
-                    start, end, triple_size,
-                    [&, triple_size, this](const int &_start, const int &_end) {
-                        (w.getRandManager()->*func)(triple_size);
-                    });
+                return std::make_unique<Task_0_void>(start, end, triple_size,
+                                                     [&, triple_size, this](int _start, int _end) {
+                                                         (w.getRandManager()->*func)(triple_size);
+                                                     });
             },
             -1);
 
@@ -957,18 +1142,74 @@ class RunTime {
 #endif
     }
 
-    bool malicious_check(bool should_abort = true) {
-        // Check all threads, all protocols
-        bool ok = true;
-        for (auto &w : workers) {
-            ok &= w.malicious_check(should_abort);
+    /**
+     * @brief Open an ASharedVector, returning a Vector of the same type. Runs malicious_check
+     * first, which will abort on failure.
+     *
+     * @tparam T
+     * @param shares
+     * @return orq::Vector<T>
+     */
+    template <typename T, int R>
+    orq::Vector<T> open_shares_a(EVector<T, R> shares) {
+        malicious_check();
+        return internal_open_a(shares);
+    }
+
+    /**
+     * @brief Open a BSharedVector, returning a Vector of the same type. Runs malicious_check
+     * first, which will abort on failure.
+     *
+     * @tparam T
+     * @param shares
+     * @return orq::Vector<T>
+     */
+    template <typename T, int R>
+    orq::Vector<T> open_shares_b(EVector<T, R> shares) {
+        malicious_check();
+        return internal_open_b(shares);
+    }
+
+    /**
+     * @brief Malicious check functionality. Combines results from all constituent threads
+     * (protocols may handle multithreaded checks differently.)
+     *
+     * In MAL_TEST_MODE, won't print any failure messages.
+     *
+     * @return true malicious check passed
+     * @return false malicious check failed
+     */
+    bool malicious_check() {
+        if constexpr (MALICIOUS_PROTOCOL == false) {
+            return true;
         }
 
+        // TODO: this should be in parallel. clear atomic flag if false. make sure barrier
+        // (either implicit or explicit) between phases: no thread should finalize before everyone
+        // has completed start.
+        bool ok = true;
+        for (auto& w : workers) {
+            ok &= w.start_malicious_check();
+        }
+
+        for (auto& w : workers) {
+            ok &= w.finalize_malicious_check();
+        }
+
+#ifndef MAL_TEST_MODE
         if (!ok) {
             std::cout << "P" << getPartyID() << ": Malicious Check FAILED!\n";
         }
+        assert(ok);
+#endif
 
         return ok;
+    }
+
+    void reset_malicious_state() {
+        for (auto& w : workers) {
+            w.reset_malicious_state();
+        }
     }
 
     /**
@@ -990,7 +1231,7 @@ class RunTime {
 
         size_t total_bytes_sent = 0;
         for (int i = 0; i < num_threads; ++i) {
-            size_t bytes_sent = communicators[i]->getBytesSent();
+            size_t bytes_sent = workers[i].getCommunicator()->getBytesSent();
             total_bytes_sent += bytes_sent;
 
             std::cout << _spacer << std::setw(lhs_width) << std::left
@@ -1012,6 +1253,10 @@ class RunTime {
      * needed, can be extended to multithreaded in the future.
      */
     void print_statistics() { workers[0].print_statistics(); }
+
+    void mark_statistics() { workers[0].mark_statistics(); }
+
+    void clear_statistics() { workers[0].clear_statistics(); }
 };
 
 /**

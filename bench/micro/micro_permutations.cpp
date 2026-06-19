@@ -9,20 +9,12 @@ using namespace orq::service;
 using namespace orq::random;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
-// command
-// mpirun -np 3 ./micro_permutations 1 1 8192 $ROWS
-
 int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pID = runTime->getPartyID();
-    int test_size = 1000000;
-    int num_permutations = 1;
-    if (argc >= 5) {
-        test_size = atoi(argv[4]);
-    }
-    if (argc >= 6) {
-        num_permutations = atoi(argv[5]);
-    }
+
+    auto test_size = runTime->getArg<size_t>("test-size", "r", 1 << 20);
+    auto num_permutations = runTime->getArg<size_t>("num-permutations", "p", 1);
 
     auto manager = PermutationManager::get();
 

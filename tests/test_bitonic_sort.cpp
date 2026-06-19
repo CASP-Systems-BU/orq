@@ -105,41 +105,73 @@ int main(int argc, char** argv) {
     // plaintext table type.
 
     std::vector<orq::Vector<int>> columns = {{111, 111, 0, 111, INT_MAX, 5, 5, 5},
-                                             {-14, -4, 0, -14, INT_MIN, 13, 13, 13},
+                                             {-14, -4, 0, -14, INT_MIN, 13, 20, 13},
                                              {INT_MIN, 0, 6423, -11233, INT_MIN, 7, 7, 7}};
 
     // Sort on a single column
     single_cout_nonl("Table sort on one column...");
     {
+        auto expected = (columns[0] * columns[1] * columns[2]);
+        expected.prefix_sum();
+
         EncodedTable<int> t = secret_share(columns, {"[A]", "[B]", "[C]"});
-        t.sort({"[A]"}, ASC, orq::SortingProtocol::BITONICSORT);
+        t.sort({"[A]"}, ASC, orq::SortingProtocol::NETWORK);
         auto open = t.open_with_schema();
 
         auto col_a = t.get_column(open, "[A]");
+        auto col_b = t.get_column(open, "[B]");
+        auto col_c = t.get_column(open, "[C]");
 
-        // Just check first column. TODO: check other columns
+        assert(std::is_sorted(std::begin(col_a), std::end(col_a)));
+
+        auto got_dot_prod = (col_a * col_b * col_c);
+        got_dot_prod.prefix_sum();
+
+        assert(got_dot_prod.back() == expected.back());
+    }
+    single_cout("OK");
+
+    single_cout_nonl("Table sort DESC on one column...");
+    {
+        auto expected = (columns[0] * columns[1] * columns[2]);
+        expected.prefix_sum();
+
+        EncodedTable<int> t = secret_share(columns, {"[A]", "[B]", "[C]"});
+        t.sort({"[A]"}, DESC, orq::SortingProtocol::NETWORK);
+        auto open = t.open_with_schema();
+
+        auto col_a = t.get_column(open, "[A]");
+        auto col_b = t.get_column(open, "[B]");
+        auto col_c = t.get_column(open, "[C]");
+
+        auto got_dot_prod = (col_a * col_b * col_c);
+        got_dot_prod.prefix_sum();
+
+        assert(got_dot_prod.back() == expected.back());
+
+        col_a.reverse();
+
         assert(std::is_sorted(std::begin(col_a), std::end(col_a)));
     }
-    single_cout("OK")
+    single_cout("OK");
 
-        // Input plaintext table to test secure sort on multiple columns:
-        //
-        // | col1   |   col2    |   col3 |
-        // -------------------------------
-        // 111      | -14       | INT_MIN
-        // 111      | -4        | 0
-        // 0        | 0         | 6423
-        // 111      | -14       | -11233
-        // INT_MAX  | INT_MIN   | INT_MIN
-        // 5        | 13        | 7
-        // 5        | 13        | 7
-        // 5        | 13        | 7
-        single_cout_nonl("Table sort on multiple columns... ") EncodedTable<int>
-            t = secret_share(columns, {"[col_1]", "[col_2]", "[col_3]"});
+    // Input plaintext table to test secure sort on multiple columns:
+    //
+    // | col1   |   col2    |   col3 |
+    // -------------------------------
+    // 111      | -14       | INT_MIN
+    // 111      | -4        | 0
+    // 0        | 0         | 6423
+    // 111      | -14       | -11233
+    // INT_MAX  | INT_MIN   | INT_MIN
+    // 5        | 13        | 7
+    // 5        | 13        | 7
+    // 5        | 13        | 7
+    single_cout_nonl("Table sort on multiple columns... ");
+    EncodedTable<int> t = secret_share(columns, {"[col_1]", "[col_2]", "[col_3]"});
 
     // Sort table on all columns in DESC->ASC->DESC order
-    t.sort({{"[col_1]", DESC}, {"[col_2]", ASC}, {"[col_3]", DESC}},
-           orq::SortingProtocol::BITONICSORT);
+    t.sort({{"[col_1]", DESC}, {"[col_2]", ASC}, {"[col_3]", DESC}}, orq::SortingProtocol::NETWORK);
 
     // Compare sorted table with ground truth:
     //
@@ -154,7 +186,7 @@ int main(int argc, char** argv) {
     // 5        | 13        | 7
     // 0        | 0         | 6423
     DataTable<int> truth = {{INT_MAX, 111, 111, 111, 5, 5, 5, 0},
-                            {INT_MIN, -14, -14, -4, 13, 13, 13, 0},
+                            {INT_MIN, -14, -14, -4, 13, 13, 20, 0},
                             {INT_MIN, -11233, INT_MIN, 0, 7, 7, 7, 6423}};
 
     // print_table(t.open_with_schema(), pID);
@@ -171,7 +203,7 @@ int main(int argc, char** argv) {
     // Repeat test on table with A-shared columns
     t = secret_share(columns, {"[col_1]", "col_2", "[col_3]"});
     // Sort table on two columns in DESC->ASC order
-    t.sort({{"[col_1]", DESC}, {"[col_3]", ASC}}, orq::SortingProtocol::BITONICSORT);
+    t.sort({{"[col_1]", DESC}, {"[col_3]", ASC}}, orq::SortingProtocol::NETWORK);
 
     // Compare sorted table with ground truth:
     //
@@ -188,7 +220,7 @@ int main(int argc, char** argv) {
     truth = {
         {INT_MAX, 111, 111, 111, 5, 5, 5, 0},
         {INT_MIN, INT_MIN, -11233, 0, 7, 7, 7, 6423},
-        {INT_MIN, -14, -14, -4, 13, 13, 13, 0},
+        {INT_MIN, -14, -14, -4, 13, 20, 13, 0},
     };
 
     t_open = t.open();
@@ -197,8 +229,6 @@ int main(int argc, char** argv) {
     }
 
     single_cout("OK");
-
-    // Tear down communication
 
     return 0;
 }

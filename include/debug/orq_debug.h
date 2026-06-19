@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../backend/common/util.h"
+
 /**
  * @brief Numeric codes for each protocol
  *
@@ -72,22 +74,16 @@
 // #define MPC_PRINT_RESULT 1
 // #define MPC_COMMUNICATOR_PRINT_DATA 1
 
-// #define USE_PARALLEL_PREFIX_ADDER 1
+// If defined, do not use the automatic adder circuit selector, and always use PPA.
+// (To force RCA, do not pass any network parameters. The default is RCA.)
+// #define FORCE_PARALLEL_PREFIX_ADDER 1
 #define USE_DIVISION_CORRECTION 1
 // #define RECYCLE_THREAD_MEMORY 1
 #define DEBUG_VECTOR_SAME_AS 1
 
-/**
- * @brief Whether we should run with a LAN (default) or WAN configuration. This currently affects
- * the default batch size and adder circuit, but we may make future changes.
- *
- */
-// #define WAN_CONFIGURATION
+#define USE_SECURE_JOIN
 
-#ifdef WAN_CONFIGURATION
-// In WAN, we use PPA since it has fewer rounds than RCA.
-#define USE_PARALLEL_PREFIX_ADDER
-#endif
+constexpr bool USE_GILBOA_CRT = true;
 
 /**
  * @brief If defined, Vectors use index mapping to track access patterns instead of VectorData
@@ -111,29 +107,8 @@
 // debug executions a lot faster. Of course, results will be totally incorrect.
 // #define DEBUG_SKIP_EXPENSIVE_TABLE_OPERATIONS
 
-/**
- * @brief Whether to use the original protocol of Dalskov et al., or our custom version
- *
- */
-#define USE_DALSKOV_FANTASTIC_FOUR
-
 #ifdef DEBUG_SKIP_EXPENSIVE_TABLE_OPERATIONS
 #warning DEBUG_SKIP_EXPENSIVE_TABLE_OPERATIONS enabled!
-#endif
-
-// whether to use a seeded PRG (AES; CommonPRG) or /dev/random as the local PRG
-// Turn this option on to make it easier to debug random errors.
-// #define USE_SEEDED_PRG
-
-/**
- * @brief To run on a multi-node cluster, set this define to be the cluster-routable
- * hostname of the server (party 0). For example, on CloudLab, this should be `node0`
- *
- * NOTE: if 2PC with real triples is frozen, this is probably why.
- *
- */
-#ifndef LIBOTE_SERVER_HOSTNAME
-#define LIBOTE_SERVER_HOSTNAME "localhost"
 #endif
 
 /**
@@ -157,16 +132,19 @@
 
 #if PROTOCOL_NUM == FANTASTIC4
 #define MPC_PROTOCOL_FANTASTIC_FOUR
-#define MALICIOUS_PROTOCOL
+constexpr bool MALICIOUS_PROTOCOL = true;
 #define COMPILED_MPC_PROTOCOL_NAMESPACE SERVICE_NAMESPACE::fantastic_4pc
 #elif PROTOCOL_NUM == REPLICATED3
 #define MPC_PROTOCOL_REPLICATED_THREE
+constexpr bool MALICIOUS_PROTOCOL = false;
 #define COMPILED_MPC_PROTOCOL_NAMESPACE SERVICE_NAMESPACE::replicated_3pc
 #elif PROTOCOL_NUM == BEAVER2
 #define MPC_PROTOCOL_BEAVER_TWO
+constexpr bool MALICIOUS_PROTOCOL = false;
 #define COMPILED_MPC_PROTOCOL_NAMESPACE SERVICE_NAMESPACE::beaver_2pc
 #elif PROTOCOL_NUM == PLAINTEXT1
 #define MPC_PROTOCOL_PLAINTEXT_ONE
+constexpr bool MALICIOUS_PROTOCOL = false;
 // No communicator for plaintext one-party protocol.
 #undef MPC_USE_MPI_COMMUNICATOR
 
@@ -176,6 +154,7 @@
 #define COMPILED_MPC_PROTOCOL_NAMESPACE SERVICE_NAMESPACE::plaintext_1pc
 #elif PROTOCOL_NUM == DUMMY0
 #define MPC_PROTOCOL_DUMMY_ZERO
+constexpr bool MALICIOUS_PROTOCOL = false;
 #undef MPC_USE_MPI_COMMUNICATOR
 #define ZEROPC_DUMMY_VECTOR
 
@@ -187,12 +166,38 @@
 #error Invalid protocol.
 #endif
 
+#ifndef MPC_PROTOCOL_PLAINTEXT_ONE
+constexpr bool CONFIDENTIAL_1PC = false;
+#else
+// Whether to use the confidential 1PC implementation for execution within a TEE or Confidential
+// VM. Prevents any shuffle operations from being called, since our shuffle implementation is
+// not side-channel secure. Sorting network is required in this setting.
+//
+// Set this to `true` to run Conf 1PC mode
+// Set this to `false` to use 1PC as a profiling/testing protocol.
+//
+// TODO: make this a more ergonomic compile-time argument
+constexpr bool CONFIDENTIAL_1PC = false;
+#endif
+
+// Set true to use stacked 2PC multiplication or AND
+constexpr bool USE_STACKED_MULTIPLY_A = false;
+constexpr bool USE_STACKED_AND_B = true;
+
+constexpr bool SKIP_MALICIOUS_CHECK_FLAG =
+#ifdef SKIP_MALICIOUS_CHECK
+    true;
+#else
+    false;
+#endif
+
 #include <algorithm>
 #include <bitset>
 #include <cassert>
 #include <chrono>
 #include <climits>
 #include <cmath>
+#include <fstream>
 #include <iomanip>
 #include <ios>
 #include <iostream>
@@ -249,6 +254,9 @@
 
 #define DEBUG_PRINT(x) orq::debug::print(#x, x)
 
+#define _STRINGIFY(x) #x
+#define STRINGIFY(x) _STRINGIFY(x)
+
 /**
  * @brief Compiler hack to print a type via compiler error. Just do print_type<X>.
  * Useful for figuring out complex type aliases.
@@ -256,6 +264,47 @@
  */
 template <typename>
 struct print_type;
+
+/**
+ * @brief Custom 128-bit handler for std::cin
+ *
+ * @param in
+ * @param val
+ * @return std::istream&
+ */
+std::istream& operator>>(std::istream& in, __int128& val) {
+    std::string s;
+    in >> s;  // Read the input as a string first
+    val = 0;  // Initialize the 128-bit integer
+
+    bool negative = false;
+    size_t start = 0;
+
+    // Check for negative sign
+    if (!s.empty() && s[0] == '-') {
+        negative = true;
+        start = 1;
+    } else if (!s.empty() && s[0] == '+') {
+        start = 1;
+    }
+
+    // Basic string to integer conversion logic (decimal only)
+    for (size_t i = start; i < s.length(); ++i) {
+        if (isdigit(s[i])) {
+            val = val * 10 + (s[i] - '0');
+        } else {
+            // Handle error or non-digit characters if needed
+            in.setstate(std::ios::failbit);  // Set fail bit on error
+            break;
+        }
+    }
+
+    if (negative) {
+        val = -val;
+    }
+
+    return in;
+}
 
 /**
  * @brief Custom 128-bit handler for std::cout
@@ -294,7 +343,7 @@ namespace orq::debug {
  * @param add_line
  * @param party_num
  */
-static void print_bin_(const int& num1, const int& num2, bool add_line, int party_num = 0) {
+static void print_bin_(int num1, int num2, bool add_line, int party_num = 0) {
     if (party_num == 0) {
         std::bitset<32> x(num1);
         std::bitset<32> y(num2);
@@ -314,7 +363,7 @@ static void print_bin_(const int& num1, const int& num2, bool add_line, int part
  * @param partyID party to output, default P0
  */
 template <typename VectorType>
-static void print(VectorType&& vec, const int& partyID = 0) {
+static void print(VectorType&& vec, int partyID = 0) {
     // Get the mask value for this type.
     using T = std::remove_reference_t<decltype(vec[0])>;
     const T MASK_VALUE = std::numeric_limits<T>::max();
@@ -327,7 +376,7 @@ static void print(VectorType&& vec, const int& partyID = 0) {
             if (vec[i] == MASK_VALUE) {
                 std::cout << "~";
             } else {
-                if constexpr (std::is_same<T, int8_t>::value) {
+                if constexpr (std::is_same_v<typename UnsignedTypeSelector<T>::type, uint8_t>) {
                     std::cout << (int32_t)vec[i];
                 } else {
                     std::cout << vec[i];
@@ -359,7 +408,7 @@ static void print(std::string name, T&& vec) {
  * @param partyID
  */
 template <typename TableType>
-static void print_table(const TableType& table, const int& partyID = 0) {
+static void print_table(const TableType& table, int partyID = 0) {
     if (partyID == 0) {
         std::cout << "################################################################"
                   << std::endl;
@@ -386,7 +435,7 @@ static void print_table(const TableType& table, const int& partyID = 0) {
  */
 template <typename TableType>
 static void print_table(const std::pair<TableType, std::vector<std::string>>& table,
-                        const int& partyID = 0) {
+                        int partyID = 0) {
     if (partyID != 0) {
         return;
     }
@@ -452,7 +501,7 @@ T get_bit(const T& s, int i) {
 template <typename T>
 void print_binary(const T& s) {
     // NOTE: Rounding is needed because signed share types have one digit less.
-    static const int MAX_BITS_NUMBER =
+    static const size_t MAX_BITS_NUMBER =
         std::pow(2, std::ceil(std::log2(std::numeric_limits<T>::digits)));
     char bits[MAX_BITS_NUMBER + 1];  // +1 for the final '\0'
     bits[MAX_BITS_NUMBER] = '\0';

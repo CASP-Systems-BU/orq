@@ -54,10 +54,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // TPCH Q17 query parameters
     const int BRAND = 10;
@@ -126,7 +123,7 @@ int main(int argc, char** argv) {
     // [SQL] 0.2 * avg(l_quantity)
     std::vector<std::string> sub_join_extra_columns = {"SumQuantity", "CountQuantity",
                                                        "[AvgQuantity]"};
-    SubQueryJoin.addColumns(sub_join_extra_columns, SubQueryJoin.size());
+    SubQueryJoin.addColumns(sub_join_extra_columns);
     SubQueryJoin.aggregate({"[PartKey]"}, {{"Quantity", "SumQuantity", sum<A>},
                                            {"Quantity", "CountQuantity", count<A>}});
     // After aggregation, SubQuery join has at most one row per Part. This will
@@ -146,7 +143,7 @@ int main(int argc, char** argv) {
     stopwatch::timepoint("Subquery Join");
 
     std::vector<std::string> join_extra_columns = {"[Quantity]", "SumExtendedPrice"};
-    PartSubQueryJoin.addColumns(join_extra_columns, PartSubQueryJoin.size());
+    PartSubQueryJoin.addColumns(join_extra_columns);
     PartSubQueryJoin.convert_a2b("Quantity", "[Quantity]");
 
     // [SQL] and l_quantity < (Subquery)

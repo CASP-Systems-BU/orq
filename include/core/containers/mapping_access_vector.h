@@ -7,26 +7,44 @@
 #include <numeric>
 #include <ranges>
 #include <span>
+#include <type_traits>
 #include <vector>
 
 #ifdef __BMI__
 #include <immintrin.h>
 #endif
 
+#include <NTL/GF2E.h>
+
 #include <cmath>
 
 #include "debug/orq_debug.h"
 #include "mapped_iterator.h"
 
+#ifdef USE_BLAZE_LIBRARY_FOR_PLAINTEXT_MATMUL
+#include "blaze/Blaze.h"
+#endif  // USE_BLAZE_LIBRARY_FOR_PLAINTEXT_MATMUL
+
+namespace orq {
+
+// SFINAE helper to detect NTL::GF2E
 template <typename T>
-concept arithmetic = std::integral<T> or std::floating_point<T>;
+struct is_ntl_gf2e : std::false_type {};
+
+// Specialization for NTL::GF2E if it exists
+template <>
+struct is_ntl_gf2e<NTL::GF2E> : std::true_type {};
+}  // namespace orq
+
+template <typename T>
+concept arithmetic = std::integral<T> or std::floating_point<T> or orq::is_ntl_gf2e<T>::value;
 
 /**
  * @brief Define a binary operation between two vectors, such as `a - b`.
  *
  */
 #define define_binary_vector_op(_op_)                    \
-    inline Vector operator _op_(const Vector &y) const { \
+    inline Vector operator _op_(const Vector& y) const { \
         VectorSizeType size = this->size();              \
         Vector res = this->construct_like();             \
         for (VectorSizeType i = 0; i < size; ++i) {      \
@@ -73,7 +91,7 @@ concept arithmetic = std::integral<T> or std::floating_point<T>;
  *
  */
 #define define_binary_vector_assignment_op(_op_)       \
-    inline Vector operator _op_(const Vector &other) { \
+    inline Vector operator _op_(const Vector& other) { \
         VectorSizeType size = this->size();            \
         for (VectorSizeType i = 0; i < size; i++) {    \
             (*this)[i] _op_ other[i];                  \
@@ -115,8 +133,6 @@ namespace service {
     class Task_ARGS_VOID_2;
 }  // namespace service
 
-static inline int div_ceil(int x, int y) { return x / y + (x % y > 0); }
-
 /**
  * Extracts the bit at `bitIndex` from the given element. Use a dedicated hardware instruction if
  * available (x86 SSE only).
@@ -126,7 +142,7 @@ static inline int div_ceil(int x, int y) { return x / y + (x % y > 0); }
  * @return The extracted bit as a single-bit T element.
  */
 template <typename T>
-static inline T getBit(const T &share, const int &bitIndex) {
+static inline T getBit(const T& share, int bitIndex) {
     // Preprocessor tricks to make compiler happy
 #ifdef __BMI__
     const bool _use_bmi = true;
@@ -152,7 +168,7 @@ static inline T getBit(const T &share, const int &bitIndex) {
  * `share`.
  */
 template <typename T>
-static inline void setBit(T &share, const T &bit, const int &bitIndex) {
+static inline void setBit(T& share, const T& bit, int bitIndex) {
     using Unsigned_type = typename std::make_unsigned<T>::type;
     share = (share & ~(((Unsigned_type)1 << bitIndex))) | (bit << bitIndex);
 }
@@ -165,7 +181,7 @@ static inline void setBit(T &share, const T &bit, const int &bitIndex) {
  * @param bitIndex
  */
 template <typename T>
-static inline void clrBit(T &share, const int &bitIndex) {
+static inline void clrBit(T& share, int bitIndex) {
     using Unsigned_type = typename std::make_unsigned<T>::type;
     share &= ~((Unsigned_type)1 << bitIndex);
 }
@@ -179,7 +195,7 @@ static inline void clrBit(T &share, const int &bitIndex) {
  * @param bitIndex which bit to modify
  */
 template <typename T>
-static inline void setBitValue(T &share, const T &value, const int &bitIndex) {
+static inline void setBitValue(T& share, const T& value, int bitIndex) {
     clrBit(share, bitIndex);
     share |= (value << bitIndex);
 }
@@ -197,7 +213,7 @@ static inline void setBitValue(T &share, const T &value, const int &bitIndex) {
  * @param mask which bits to modify
  */
 template <typename T>
-static inline void setBitMask(T &share, const bool &value, const std::make_unsigned_t<T> &mask) {
+static inline void setBitMask(T& share, const bool& value, const std::make_unsigned_t<T>& mask) {
     share = (share & ~mask) | (-value & mask);
 }
 
@@ -207,17 +223,28 @@ static inline void setBitMask(T &share, const bool &value, const std::make_unsig
  */
 template <typename T>
 class Vector {
+    template <typename U,
+              bool UseUnsigned = (std::integral<U> && !std::is_same_v<std::remove_cv_t<U>, bool>)>
+    struct UnsignedTypeSelector {
+        using type = U;
+    };
+
+    template <typename U>
+    struct UnsignedTypeSelector<U, true> {
+        using type = std::make_unsigned_t<U>;
+    };
+
     /**
      * @brief An alias for unsigned `T`.
      *
      */
-    using Unsigned_type = typename std::make_unsigned<T>::type;
+    using Unsigned_type = typename UnsignedTypeSelector<T>::type;
 
     /**
      * @brief Number of bits to represent `T`.
      *
      */
-    const int MAX_BITS_NUMBER = std::numeric_limits<Unsigned_type>::digits;
+    const size_t MAX_BITS_NUMBER = std::numeric_limits<Unsigned_type>::digits;
 
     /**
      * The start index of the batch that is currently being processed
@@ -233,7 +260,7 @@ class Vector {
      * A (shared) pointer to the actual vector contents. NOTE: Shallow copying of this object
      * creates two instances that share the same data.
      */
-    std::shared_ptr<std::vector<T>> data;
+    std::shared_ptr<std::vector<T>> __data;
 
     /**
      * A (shared) pointer to the vector storing the index mapping for this vector. Can be null, in
@@ -256,7 +283,7 @@ class Vector {
      */
     Vector(std::shared_ptr<std::vector<T>> _data,
            std::shared_ptr<std::vector<VectorSizeType>> _mapping = nullptr)
-        : data(_data),
+        : __data(_data),
           mapping(_mapping),
           batch_start(0),
           batch_end(_mapping ? _mapping.get()->size() : _data.get()->size()) {}
@@ -265,27 +292,27 @@ class Vector {
      * Move constructor
      * @param _other The std::vector<T> whose elements will be moved to the new Vector.
      */
-    Vector(std::vector<T> &&_other) : Vector(std::make_shared<std::vector<T>>(std::move(_other))) {}
+    Vector(std::vector<T>&& _other) : Vector(std::make_shared<std::vector<T>>(std::move(_other))) {}
 
     /**
      * Copy constructor from vector
      * @param _other The std::vector<T> whose elements will be copied to the new Vector.
      */
-    Vector(std::vector<T> &_other) : Vector(std::make_shared<std::vector<T>>(_other)) {}
+    Vector(std::vector<T>& _other) : Vector(std::make_shared<std::vector<T>>(_other)) {}
 
     /**
      * Creates a Vector of `size` values initialize to `init_val` (0 by default).
      * @param _size The size of the new Vector.
      * @param _init_val default-initialized value
      */
-    Vector(VectorSizeType _size, T _init_val = 0)
+    explicit Vector(VectorSizeType _size, T _init_val = {})
         : Vector(std::make_shared<std::vector<T>>(_size, _init_val)) {}
 
     /**
      * Constructs a new Vector from a list of `T` elements.
      * @param elements The list of elements of the new Vector.
      */
-    Vector(std::initializer_list<T> &&elements)
+    Vector(std::initializer_list<T>&& elements)
         : Vector(std::make_shared<std::vector<T>>(elements)) {}
 
     /**
@@ -302,8 +329,8 @@ class Vector {
      * WARNING: The new vector will point to the same memory location used by `other`. To copy the
      * data into a separate memory location, create a new vector first then use assignment operator.
      */
-    Vector(const Vector &other)
-        : data(other.data),
+    Vector(const Vector& other)
+        : __data(other.__data),
           mapping(other.mapping),
           batch_start(other.batch_start),
           batch_end(other.batch_end),
@@ -316,8 +343,8 @@ class Vector {
      * WARNING: The new vector will point to the same memory location used by `other`. To copy the
      * data into a separate memory location, create a new vector first then use assignment operator.
      */
-    Vector(Vector &other)
-        : data(other.data),
+    Vector(Vector& other)
+        : __data(other.__data),
           mapping(other.mapping),
           batch_start(other.batch_start),
           batch_end(other.batch_end),
@@ -330,6 +357,19 @@ class Vector {
      */
     Vector construct_like() const {
         Vector result(this->size());
+        result.setPrecision(this->getPrecision());
+        return result;
+    }
+
+    /**
+     * Creates a new Vector with the same structure as this Vector,
+     * but with newly allocated empty vectors of a different size.
+     * @param size The size of the new Vector.
+     * @return A new Vector with the same structure but empty contents.
+     */
+    Vector construct_like(const size_t size) const {
+        Vector result(size);
+        result.setPrecision(this->getPrecision());
         return result;
     }
 
@@ -338,12 +378,12 @@ class Vector {
      *
      * @tparam FP - The floating-point type to convert from.
      * @param _other - The vector of floating-point numbers to convert.
-     * @param fixed_point_precision - The number of fractional bits to use for the fixed-point
+     * @param fixed_point_size_the number of fractional bits to use for the fixed-point
      * conversion. Default is 16.
      */
     template <std::floating_point FP>
         requires std::integral<T>
-    Vector(const std::vector<FP> &_other, int fixed_point_precision = 16)
+    Vector(const std::vector<FP>& _other, int fixed_point_precision = 16)
         : Vector(static_cast<VectorSizeType>(_other.size())) {
         precision = fixed_point_precision;
         const long double scale = std::ldexp(1.0L, fixed_point_precision);  // 2^{precision}
@@ -373,7 +413,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    inline Vector bit_arithmetic_right_shift(const int &shift_size) const {
+    inline Vector bit_arithmetic_right_shift(int shift_size) const {
         VectorSizeType size = this->size();
         Vector res = this->construct_like();
         for (VectorSizeType i = 0; i < size; ++i) {
@@ -392,7 +432,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    inline Vector bit_logical_right_shift(const int &shift_size) const {
+    inline Vector bit_logical_right_shift(int shift_size) const {
         VectorSizeType size = this->size();
         Vector res = this->construct_like();
         for (VectorSizeType i = 0; i < size; ++i) {
@@ -410,7 +450,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    inline Vector bit_left_shift(const int &shift_size) const {
+    inline Vector bit_left_shift(int shift_size) const {
         VectorSizeType size = this->size();
         Vector res = this->construct_like();
         for (VectorSizeType i = 0; i < size; ++i) {
@@ -450,7 +490,7 @@ class Vector {
      * associative.
      *
      */
-    inline void prefix_sum(const T &(*op)(const T &, const T &)) {
+    inline void prefix_sum(const T& (*op)(const T&, const T&)) {
         std::inclusive_scan(begin(), end(), begin(), op);
     }
 
@@ -465,12 +505,12 @@ class Vector {
         const VectorSizeType aggSize_ = (aggSize == 0) ? this->size() : aggSize;
 
         const VectorSizeType s = this->size();
-        const VectorSizeType newSize = div_ceil(s, aggSize_);
+        const VectorSizeType newSize = math::div_ceil(s, aggSize_);
 
-        Vector res(newSize, 0);
+        Vector res(newSize);
         VectorSizeType j = 0;
         for (VectorSizeType i = 0; i < newSize; ++i) {
-            T sum = 0;
+            T sum = {};
             const VectorSizeType end = std::min(j + aggSize_, s);
             for (; j < end; ++j) {
                 sum += (*this)[j];
@@ -491,18 +531,18 @@ class Vector {
      * @return A new Vector containing the aggregated dot product results.
      *
      */
-    Vector dot_product(const Vector &other, const VectorSizeType aggSize = 0) const {
+    Vector dot_product(const Vector& other, const VectorSizeType aggSize = 0) const {
         // If aggSize is 0, we compute the dot product of all elements
         const VectorSizeType aggSize_ = (aggSize == 0) ? this->size() : aggSize;
 
         assert(this->size() == other.size());
         const VectorSizeType s = this->size();
-        const VectorSizeType newSize = div_ceil(s, aggSize_);
+        const VectorSizeType newSize = math::div_ceil(s, aggSize_);
 
         Vector res(newSize);
         VectorSizeType j = 0;
         for (VectorSizeType i = 0; i < newSize; ++i) {
-            T sum = 0;
+            T sum = {};
             const VectorSizeType end = std::min(j + aggSize_, s);
             for (; j < end; ++j) {
                 sum += (*this)[j] * other[j];
@@ -525,14 +565,14 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    Vector simple_subset(const VectorSizeType &start, const VectorSizeType &step,
-                         const VectorSizeType &end) const {
+    Vector simple_subset(const VectorSizeType& start, const VectorSizeType& step,
+                         const VectorSizeType& end) const {
         VectorSizeType res_size = end - start + 1;
 
         Vector res = this->construct_like();
 
         for (VectorSizeType i = 0; i < res_size; i += step) {
-            res.data[i / step] = (*this)[start + i];
+            res.__data[i / step] = (*this)[start + i];
         }
         return res;
     }
@@ -553,7 +593,7 @@ class Vector {
      * @param _start_ind The index of the first element in the current batch.
      * @param _end_ind The index of the last element in the current batch.
      */
-    void set_batch(const VectorSizeType &_start_ind, const VectorSizeType &_end_ind) {
+    void set_batch(const VectorSizeType& _start_ind, const VectorSizeType& _end_ind) {
         batch_start = (_start_ind >= 0) ? _start_ind : 0;
         batch_end = (_end_ind <= this->total_size()) ? _end_ind : this->total_size();
     }
@@ -565,7 +605,7 @@ class Vector {
         if (has_mapping()) {
             return this->mapping->size();
         } else {
-            return this->data->size();
+            return this->__data->size();
         }
     }
 
@@ -579,9 +619,9 @@ class Vector {
      */
     inline IteratorType begin() const {
         if (has_mapping()) {
-            return IteratorType(data->begin(), mapping->begin());
+            return IteratorType(__data->begin(), mapping->begin());
         } else {
-            return IteratorType(data->begin());
+            return IteratorType(__data->begin());
         }
     }
 
@@ -592,11 +632,13 @@ class Vector {
      */
     inline IteratorType end() const {
         if (has_mapping()) {
-            return IteratorType(data->begin(), mapping->end());
+            return IteratorType(__data->begin(), mapping->end());
         } else {
-            return IteratorType(data->end());
+            return IteratorType(__data->end());
         }
     }
+
+    const T back() const { return (*this)[size() - 1]; }
 
     /**
      * @brief Return a new C++ vector with the same data. This is not a reference to the underlying
@@ -609,26 +651,22 @@ class Vector {
     /**
      * @brief Return the underlying storage of this Vector.
      *
-     * @return std::vector<T>
+     * @return T*
      */
-    std::vector<T> _get_internal_data() const { return *data; }
+    T* data() const { return __data->data(); }
 
-    /**
-     * @brief Return a span with a view of the underlying data
-     *
-     * @return std::span<T>
-     */
-    std::span<T> span() { return std::span<T>(*data); }
+    size_t storage_size() const { return __data->size(); }
 
     /**
      * @brief Return an unmapped span to the current batch. Useful for protocols that need direct
-     * access to the underlying storage.
+     * access to the underlying storage. If no batch is configured, returns a span to the full
+     * vector.
      *
      * @return std::span<T>
      */
-    std::span<T> batch_span() {
+    std::span<T> span() {
         assert(!has_mapping());
-        return std::span<T>(data->begin() + batch_start, size());
+        return std::span<T>(__data->begin() + batch_start, size());
     }
 
     /**
@@ -636,9 +674,9 @@ class Vector {
      *
      * @return std::span<const T>
      */
-    std::span<const T> batch_span() const {
+    std::span<const T> span() const {
         assert(!has_mapping());
-        return std::span<const T>(data->begin() + batch_start, size());
+        return std::span<const T>(__data->begin() + batch_start, size());
     }
 
     /**
@@ -675,7 +713,7 @@ class Vector {
             (*new_mapping)[i] = mapping ? (*mapping)[j] : j;
         }
 
-        return Vector<T>(data, new_mapping);
+        return Vector<T>(__data, new_mapping);
     }
 
     /**
@@ -724,7 +762,7 @@ class Vector {
         } else {
             std::iota(new_mapping->begin(), new_mapping->end(), start);
         }
-        return Vector<T>(data, new_mapping);
+        return Vector<T>(__data, new_mapping);
     }
 
     /**
@@ -771,7 +809,7 @@ class Vector {
         // We only used `mi` indices of the mapping; resize it.
         new_mapping->resize(mi);
 
-        return Vector<T>(data, new_mapping);
+        return Vector<T>(__data, new_mapping);
     }
 
     /**
@@ -786,18 +824,17 @@ class Vector {
      * different index mapping.
      */
     Vector alternating_subset_reference(const VectorSizeType _subset_included_size,
-                                        VectorSizeType _subset_excluded_size) const {
-        if (_subset_excluded_size == -1) {
-            _subset_excluded_size = this->total_size() - _subset_included_size;
-        }
+                                        const VectorSizeType _subset_excluded_size) const {
+        auto excluded_size = (_subset_excluded_size == -1)
+                                 ? this->total_size() - _subset_included_size
+                                 : _subset_excluded_size;
 
         VectorSizeType size =
-            this->total_size() / (_subset_included_size + _subset_excluded_size) *
-                (_subset_included_size) +
+            this->total_size() / (_subset_included_size + excluded_size) * (_subset_included_size) +
             std::min(_subset_included_size,
-                     this->total_size() % (_subset_included_size + _subset_excluded_size));
+                     this->total_size() % (_subset_included_size + excluded_size));
         auto new_mapping = std::make_shared<std::vector<VectorSizeType>>(size);
-        auto chunk_size = _subset_included_size + _subset_excluded_size;
+        auto chunk_size = _subset_included_size + excluded_size;
         VectorSizeType i = 0;
         VectorSizeType j = 0;
         while (i < size) {
@@ -806,7 +843,11 @@ class Vector {
             }
             j += chunk_size;
         }
-        return Vector<T>(data, new_mapping);
+        return Vector<T>(__data, new_mapping);
+    }
+
+    Vector alternating_subset_reference(const VectorSizeType subset_size) const {
+        return alternating_subset_reference(subset_size, subset_size);
     }
 
     /**
@@ -841,7 +882,7 @@ class Vector {
         for (VectorSizeType j = 0; j < last_chunk_size; ++j) {
             (*new_mapping)[i++] = mapping ? (*mapping)[chunk_end - j] : chunk_end - j;
         }
-        return Vector<T>(data, new_mapping);
+        return Vector<T>(__data, new_mapping);
     }
 
     /**
@@ -862,7 +903,34 @@ class Vector {
             }
         }
 
-        return Vector<T>(data, new_mapping);
+        return Vector<T>(__data, new_mapping);
+    }
+
+    /**
+     * Applies a new indexing mapping to the current vector so that each subset of elements is
+     * repeated a number of times consecutively.
+     *
+     * @param _elements_count the number of elements in each subset.
+     * @param _subset_repetition the number of times each subset is repeated.
+     * @return `Vector` that points to the same memory location as the original vector but with
+     * different index mapping.
+     */
+    Vector repeated_subset_reference(const VectorSizeType _elements_count,
+                                     const VectorSizeType _subset_repetition) const {
+        VectorSizeType size = this->total_size() * _subset_repetition;
+        VectorSizeType orig_size = this->total_size();
+
+        auto new_mapping = std::make_shared<std::vector<VectorSizeType>>(size);
+        auto i = 0;
+        for (auto j = 0; j < orig_size; j += _elements_count) {
+            for (auto k = 0; k < _subset_repetition; ++k) {
+                for (auto l = 0; l < _elements_count; ++l) {
+                    (*new_mapping)[i++] = mapping ? (*mapping)[j + l] : j + l;
+                }
+            }
+        }
+
+        return Vector<T>(__data, new_mapping);
     }
 
     /**
@@ -883,7 +951,7 @@ class Vector {
             }
         }
 
-        return Vector<T>(data, new_mapping);
+        return Vector<T>(__data, new_mapping);
     }
 
     /**
@@ -899,7 +967,7 @@ class Vector {
             for (size_t i = 0, j = size - 1; i < size; ++i, --j) {
                 (*new_mapping)[i] = mapping ? (*mapping)[j] : j;
             }
-            return Vector<T>(data, new_mapping);
+            return Vector<T>(__data, new_mapping);
         } else {
             return *this;
         }
@@ -915,14 +983,13 @@ class Vector {
      * @param repetition number of times each bit will be included.
      * @return a new `Vector` that has only the chosen bits in its elements (less size than input).
      */
-    Vector simple_bit_compress(const int &start, const int &step, const int &end,
-                               const int &repetition) const {
+    Vector simple_bit_compress(int start, int step, int end, int repetition) const {
         const int _step = step;
         const int _repetition = repetition;
 
         const int bits_per_element = std::abs(((end - start + 1) / step) * repetition);
         const VectorSizeType total_bits = bits_per_element * this->size();
-        const VectorSizeType total_new_elements = div_ceil(total_bits, MAX_BITS_NUMBER);
+        const VectorSizeType total_new_elements = math::div_ceil(total_bits, MAX_BITS_NUMBER);
 
         Vector res(total_new_elements);
 
@@ -950,11 +1017,10 @@ class Vector {
      * @param end index of the last bit bit to be included (most significant)
      * @param repetition number of times each bit will be included.
      */
-    void simple_bit_decompress(const Vector &other, const int &start, const int &step,
-                               const int &end, const int &repetition) {
+    void simple_bit_decompress(const Vector& other, int start, int step, int end, int repetition) {
         const int bits_per_element = std::abs(((end - start + 1) / step) * repetition);
         const VectorSizeType total_bits = bits_per_element * this->size();
-        const VectorSizeType total_new_elements = div_ceil(total_bits, MAX_BITS_NUMBER);
+        const VectorSizeType total_new_elements = math::div_ceil(total_bits, MAX_BITS_NUMBER);
 
         for (VectorSizeType i = 0, j = 0; j < total_bits; i++, j += MAX_BITS_NUMBER) {
             auto r = other[i];
@@ -971,7 +1037,7 @@ class Vector {
      * @param source The Vector to take bits from
      * @param position The bit position to take
      */
-    void pack_from(const Vector &source, const int &position) {
+    void pack_from(const Vector& source, int position) {
         const VectorSizeType base_index = batch_start * MAX_BITS_NUMBER;
         const VectorSizeType total_bits =
             std::min(this->size() * MAX_BITS_NUMBER, source.size() - base_index);
@@ -997,7 +1063,7 @@ class Vector {
      * @param source The packed Vector to take bits from
      * @param position The bit position to put the bits in
      */
-    void unpack_from(const Vector &source, const T &position) {
+    void unpack_from(const Vector& source, const T& position) {
         const VectorSizeType total_bits = this->size();
         // Restrict batch size to a multiple of MAX_BITS_NUMBER
         // because we assume we're starting at boundary of a packed element
@@ -1027,10 +1093,9 @@ class Vector {
      * least significant first. `-1` means most significant first. (default: `1`, LSB first.)
      * @return a new `Vector` that has only the chosen bits in its elements (less size than input).
      */
-    Vector alternating_bit_compress(const VectorSizeType &start, const VectorSizeType &step,
-                                    const VectorSizeType &included_size,
-                                    const VectorSizeType &excluded_size,
-                                    const int &direction = 1) const {
+    Vector alternating_bit_compress(const VectorSizeType& start, const VectorSizeType& step,
+                                    const VectorSizeType& included_size,
+                                    const VectorSizeType& excluded_size, int direction = 1) const {
         const VectorSizeType bits_per_chunk = included_size / step;
         const VectorSizeType bits_per_element =
             (MAX_BITS_NUMBER - start) / (included_size + excluded_size) * bits_per_chunk;
@@ -1043,7 +1108,7 @@ class Vector {
         const int direction_offset = (direction == -1) ? included_size - 1 : 0;
 
         const VectorSizeType total_bits = total_bits_per_element * this->size();
-        const VectorSizeType total_new_elements = div_ceil(total_bits, MAX_BITS_NUMBER);
+        const VectorSizeType total_new_elements = math::div_ceil(total_bits, MAX_BITS_NUMBER);
 
         Vector res(total_new_elements);
 
@@ -1073,10 +1138,9 @@ class Vector {
      * @param direction direction for picking up the bits in each included_size chunk. `1` means
      * least significant first. `-1` means most significant first. (default: `1`)
      */
-    void alternating_bit_decompress(const Vector &other, const VectorSizeType &start,
-                                    const VectorSizeType &step, const VectorSizeType &included_size,
-                                    const VectorSizeType &excluded_size,
-                                    const int &direction = 1) const {
+    void alternating_bit_decompress(const Vector& other, const VectorSizeType& start,
+                                    const VectorSizeType& step, const VectorSizeType& included_size,
+                                    const VectorSizeType& excluded_size, int direction = 1) const {
         const VectorSizeType bits_per_chunk = included_size / step;
         const VectorSizeType bits_per_element =
             (MAX_BITS_NUMBER - start) / (included_size + excluded_size) * bits_per_chunk;
@@ -1089,7 +1153,7 @@ class Vector {
         const int direction_offset = (direction == -1) ? included_size - 1 : 0;
 
         const VectorSizeType total_bits = total_bits_per_element * this->size();
-        const VectorSizeType total_new_elements = div_ceil(total_bits, MAX_BITS_NUMBER);
+        const VectorSizeType total_new_elements = math::div_ceil(total_bits, MAX_BITS_NUMBER);
 
         for (VectorSizeType i = 0; i < total_bits; ++i) {
             const VectorSizeType element_index = i / total_bits_per_element;
@@ -1134,7 +1198,7 @@ class Vector {
         if (has_mapping()) {
             Vector<T> res = this->construct_like();
             res = *this;
-            data = std::move(res.data);
+            __data = std::move(res.__data);
             // Goodbye mapping
             mapping.reset();
             reset_batch();
@@ -1151,7 +1215,7 @@ class Vector {
     Vector mapping_reference(std::vector<VectorSizeType> map) const {
         assert(!has_mapping());
         auto new_mapping = std::make_shared<std::vector<VectorSizeType>>(std::move(map));
-        return Vector<T>(data, new_mapping);
+        return Vector<T>(__data, new_mapping);
     }
 
     /**
@@ -1166,7 +1230,7 @@ class Vector {
         assert(!has_mapping());
         auto new_mapping = std::make_shared<std::vector<VectorSizeType>>(map.size());
         std::copy(map.begin(), map.end(), new_mapping->begin());
-        return Vector<T>(data, new_mapping);
+        return Vector<T>(__data, new_mapping);
     }
 
     /**
@@ -1181,7 +1245,7 @@ class Vector {
         assert(!has_mapping());
         auto new_mapping = std::make_shared<std::vector<VectorSizeType>>(map.size());
         std::copy(map.begin(), map.end(), new_mapping->begin());
-        return Vector<T>(data, new_mapping);
+        return Vector<T>(__data, new_mapping);
     }
 
     /**
@@ -1243,7 +1307,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    Vector &operator=(const Vector &&other) {
+    Vector& operator=(const Vector&& other) {
         VectorSizeType size = this->size();
         assert(size == other.size());
         for (VectorSizeType i = 0; i < size; ++i) {
@@ -1260,8 +1324,12 @@ class Vector {
      * @param other the Vector that contains the values to be copied.
      * @return A reference to `this` Vector after modification.
      */
-    Vector &operator=(const Vector &other) {
+    Vector& operator=(const Vector& other) {
         VectorSizeType size = this->size();
+
+        if (size != other.size()) {
+            std::cout << size << " " << other.size() << "\n";
+        }
         assert(size == other.size());
         for (VectorSizeType i = 0; i < size; ++i) {
             (*this)[i] = other[i];
@@ -1276,7 +1344,7 @@ class Vector {
      *
      */
     template <typename OtherT>
-    Vector &operator=(const Vector<OtherT> &other) {
+    Vector& operator=(const Vector<OtherT>& other) {
         VectorSizeType size = this->size();
         assert(size == other.size());
         for (VectorSizeType i = 0; i < size; i++) {
@@ -1294,7 +1362,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    Vector simple_subset(const VectorSizeType &start, const VectorSizeType &size) const {
+    Vector simple_subset(const VectorSizeType& start, const VectorSizeType& size) const {
         Vector res = this->construct_like();
 
         for (VectorSizeType i = 0; i < size; ++i) {
@@ -1309,19 +1377,9 @@ class Vector {
      * define_binary_vector_element_assignment_op
      * @param n The mask.
      */
-    void mask(const T &n) {
+    void mask(const T& n) {
         for (VectorSizeType i = 0; i < this->size(); ++i) {
             (*this)[i] &= n;
-        }
-    }
-
-    /**
-     * Sets the bits of each element in `this` vector by doing a bitwise logical OR with `n`
-     * @param n The element that encodes the bits to set.
-     */
-    void set_bits(const T &n) {
-        for (VectorSizeType i = 0; i < this->size(); ++i) {
-            (*this)[i] |= n;
         }
     }
 
@@ -1358,15 +1416,15 @@ class Vector {
 
             if (n_new_elm > 0) {
                 // grew - need to add this many new elements to data
-                size_t data_old_size = data->size();
-                data->resize(data_old_size + n_new_elm);
+                size_t data_old_size = __data->size();
+                __data->resize(data_old_size + n_new_elm);
 
                 // new indices for mapping point to the newly added elements.
                 std::iota(mapping->begin() + old_size, mapping->end(), data_old_size);
             }
         } else {
             // no mapping, just change data
-            data->resize(n);
+            __data->resize(n);
         }
 
         reset_batch();
@@ -1387,11 +1445,25 @@ class Vector {
             mapping->erase(mapping->begin(), mapping->begin() + n_remove);
         } else {
             // no mapping. can actually erase data
-            data->erase(data->begin(), data->begin() + n_remove);
+            __data->erase(__data->begin(), __data->begin() + n_remove);
         }
 
         reset_batch();
         assert(total_size() == n);
+    }
+
+    /**
+     * @brief Concatenate `this` vector with `other` by resizing `this` and placing `other`
+     * into the new positions.
+     *
+     * @param other
+     */
+    void concatenate(const Vector& other) {
+        size_t old_size = total_size();
+        this->resize(old_size + other.size());
+        for (VectorSizeType i = old_size; i < total_size(); ++i) {
+            (*this)[i] = other[i - old_size];
+        }
     }
 
     // **************************************** //
@@ -1501,6 +1573,8 @@ class Vector {
 
     define_binary_vector_element_op(>);
     define_binary_vector_element_op(<);
+    define_binary_vector_element_op(>=);
+    define_binary_vector_element_op(<=);
     define_binary_vector_element_op(==);
     define_binary_vector_element_op(!=);
 
@@ -1588,11 +1662,11 @@ class Vector {
      * @param index The index of the target element.
      * @return A mutable reference to the element at the given `index`.
      */
-    inline T &operator[](const VectorSizeType &index) {
+    inline T& operator[](const VectorSizeType& index) {
         if (has_mapping()) {
-            return (*data)[(*mapping)[batch_start + index]];
+            return (*__data)[(*mapping)[batch_start + index]];
         } else {
-            return (*data)[batch_start + index];
+            return (*__data)[batch_start + index];
         }
     }
 
@@ -1603,13 +1677,21 @@ class Vector {
      * @param index The index of the target element.
      * @return Returns a read-only reference of the element at the given `index`.
      */
-    inline const T &operator[](const VectorSizeType &index) const {
+    inline const T& operator[](const VectorSizeType& index) const {
         if (has_mapping()) {
-            return (*data)[(*mapping)[batch_start + index]];
+            return (*__data)[(*mapping)[batch_start + index]];
         } else {
-            return (*data)[batch_start + index];
+            return (*__data)[batch_start + index];
         }
     }
+
+    /**
+     * @brief Create a length-1 slice of this vector at the given index.
+     *
+     * @param idx
+     * @return Vector
+     */
+    Vector singleton(size_t idx) { return slice(idx, idx + 1); }
 
     /**
      * @brief Checks if the two input vectors (`this` and `other`) contain the same elements.
@@ -1621,7 +1703,7 @@ class Vector {
      * @return true the Vectors are the same
      * @return false they are not
      */
-    bool same_as(const Vector<T> &other, bool print_warn = true) const {
+    bool same_as(const Vector<T>& other, bool print_warn = true) const {
         if (this->size() != other.size()) {
 #ifdef DEBUG_VECTOR_SAME_AS
             if (print_warn) {
@@ -1636,7 +1718,7 @@ class Vector {
             if ((*this)[i] != other[i]) {
 #ifdef DEBUG_VECTOR_SAME_AS
                 if (print_warn) {
-                    if constexpr (std::is_same<T, int8_t>::value) {
+                    if constexpr (std::is_same_v<Unsigned_type, uint8_t>) {
                         std::cout << "[same_as]: mismatch @ " << i << ": this "
                                   << (int32_t)(*this)[i] << " != " << (int32_t)other[i] << "\n";
                     } else {
@@ -1658,7 +1740,7 @@ class Vector {
      * @return true if the argument is a prefix
      * @return false otherwise
      */
-    bool starts_with(const Vector<T> &prefix) {
+    bool starts_with(const Vector<T>& prefix) {
         if (prefix.total_size() > total_size()) {
             return false;
         }
@@ -1671,8 +1753,27 @@ class Vector {
         return true;
     }
 
+    bool contains(const T element) { return std::find(begin(), end(), element) != end(); }
+
+    /**
+     * @brief Returns true if all elements of this vector are truthy, and false otherwise.
+     *
+     * @return true
+     * @return false
+     */
+    bool all_true() {
+        return std::all_of(begin(), end(), [](const T& x) { return x; });
+    }
+
+    /**
+     * @brief Elementwise plaintext greater-or-equal-zero comparison.
+     *
+     * @return Vector The resulting vector containing the comparison bits.
+     */
+    Vector gtez() const { return (*this) >= (T)0; }
+
     // Friend classes
-    template <typename Share, int ReplicationNumber>
+    template <typename Share, int ReplicationNumber, int Bitwidth>
     friend class EVector;
     friend class service::RunTime;
 
@@ -1715,15 +1816,15 @@ class Vector {
  */
 // TODO (john): Move this to utils
 template <typename Share>
-static Vector<Share> compare_rows(const std::vector<Vector<Share> *> &x_vec,
-                                  const std::vector<Vector<Share> *> &y_vec,
-                                  const std::vector<bool> &inverse) {
+static Vector<Share> compare_rows(const std::vector<Vector<Share>*>& x_vec,
+                                  const std::vector<Vector<Share>*>& y_vec,
+                                  const std::vector<bool>& inverse) {
     assert((x_vec.size() > 0) && (x_vec.size() == y_vec.size()) &&
            (inverse.size() == x_vec.size()));
     const auto cols_num = x_vec.size();  // Number of keys
     // Compare elements on first key
-    Vector<Share> *t = inverse[0] ? y_vec[0] : x_vec[0];
-    Vector<Share> *o = inverse[0] ? x_vec[0] : y_vec[0];
+    Vector<Share>* t = inverse[0] ? y_vec[0] : x_vec[0];
+    Vector<Share>* o = inverse[0] ? x_vec[0] : y_vec[0];
     Vector<Share> eq = (*t == *o);
     Vector<Share> gt = (*t > *o);
 
@@ -1755,8 +1856,8 @@ static Vector<Share> compare_rows(const std::vector<Vector<Share> *> &x_vec,
  */
 // TODO (john): Move this to utils
 template <typename Share>
-static void swap(std::vector<Vector<Share> *> &x_vec, std::vector<Vector<Share> *> &y_vec,
-                 const Vector<Share> &bits) {
+static void swap(std::vector<Vector<Share>*>& x_vec, std::vector<Vector<Share>*>& y_vec,
+                 const Vector<Share>& bits) {
     // Make sure the input arrays have the same dimensions
     assert((x_vec.size() > 0) && (x_vec.size() == y_vec.size()));
     const auto cols_num = x_vec.size();  // Number of columns
@@ -1789,7 +1890,7 @@ static void swap(std::vector<Vector<Share> *> &x_vec, std::vector<Vector<Share> 
  */
 // TODO (john): Move this to utils
 template <typename Share>
-static void swap(Vector<Share> &x_vec, Vector<Share> &y_vec, const Vector<Share> &bits) {
+static void swap(Vector<Share>& x_vec, Vector<Share>& y_vec, const Vector<Share>& bits) {
     // Make sure the input arrays have the same dimensions
     assert((x_vec.size() > 0) && (x_vec.size() == y_vec.size()) && (bits.size() == x_vec.size()));
     auto b = bits.extend_lsb();

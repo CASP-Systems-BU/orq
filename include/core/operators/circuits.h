@@ -33,15 +33,15 @@ using unique_B = std::unique_ptr<BSharedVector<S, E>>;
  * additions
  */
 template <typename Share, typename EVector>
-static unique_B<Share, EVector> ripple_carry_adder(const BSharedVector<Share, EVector> &a,
-                                                   const BSharedVector<Share, EVector> &b,
+static unique_B<Share, EVector> ripple_carry_adder(const BSharedVector<Share, EVector>& a,
+                                                   const BSharedVector<Share, EVector>& b,
                                                    const bool carry_in) {
-    static const int MAX_BITS_NUMBER = std::numeric_limits<std::make_unsigned_t<Share>>::digits;
-    size_t compressed_size = a.size() / MAX_BITS_NUMBER + ((a.size() % MAX_BITS_NUMBER) > 0);
+    static const size_t MAX_BITS_NUMBER = std::numeric_limits<std::make_unsigned_t<Share>>::digits;
+    size_t compressed_size = math::div_ceil(a.size(), MAX_BITS_NUMBER);
 
     // Compressed vectors
-    BSharedVector<Share, EVector> a_xor_b_i(compressed_size), a_i(compressed_size),
-        carry_i(compressed_size);
+    BSharedVector<Share, EVector> carry_i(compressed_size), a_xor_b_i(compressed_size),
+        a_i(compressed_size);
     auto sum = std::make_unique<BSharedVector<Share, EVector>>(a.size());
 
     auto a_xor_b = a ^ b;
@@ -91,12 +91,12 @@ static unique_B<Share, EVector> ripple_carry_adder(const BSharedVector<Share, EV
  * @return unique pointer to a BSharedVector
  */
 template <typename S, typename E>
-static unique_B<S, E> rca_compare(const BSharedVector<S, E> &a, const BSharedVector<S, E> &b) {
+static unique_B<S, E> rca_compare(const BSharedVector<S, E>& a, const BSharedVector<S, E>& b) {
     // compute a + (~b) + 1
     auto nb = ~b;
 
-    static const int MAX_BITS_NUMBER = std::numeric_limits<std::make_unsigned_t<S>>::digits;
-    size_t compressed_size = a.size() / MAX_BITS_NUMBER + ((a.size() % MAX_BITS_NUMBER) > 0);
+    static const size_t MAX_BITS_NUMBER = std::numeric_limits<std::make_unsigned_t<S>>::digits;
+    size_t compressed_size = math::div_ceil(a.size(), MAX_BITS_NUMBER);
 
     // Compressed vectors
     BSharedVector<S, E> a_xor_b_i(compressed_size), a_i(compressed_size), carry_i(compressed_size);
@@ -112,7 +112,6 @@ static unique_B<S, E> rca_compare(const BSharedVector<S, E> &a, const BSharedVec
         a_xor_b_i.pack_from(a_xor_b, i);
 
         // don't care about intermediate sum bits - no unpack!
-
         if (i == MAX_BITS_NUMBER - 1) {
             break;
         }
@@ -146,8 +145,8 @@ static unique_B<S, E> rca_compare(const BSharedVector<S, E> &a, const BSharedVec
  */
 template <typename S, typename E>
 std::pair<BSharedVector<S, E>, BSharedVector<S, E>> prefix_sum(
-    const std::pair<BSharedVector<S, E>, BSharedVector<S, E>> &x,
-    const std::pair<BSharedVector<S, E>, BSharedVector<S, E>> &y) {
+    const std::pair<BSharedVector<S, E>, BSharedVector<S, E>>& x,
+    const std::pair<BSharedVector<S, E>, BSharedVector<S, E>>& y) {
     auto [g_x, p_x] = x;
     auto [g_y, p_y] = y;
 
@@ -178,8 +177,8 @@ std::pair<BSharedVector<S, E>, BSharedVector<S, E>> prefix_sum(
  * shares of the elementwise additions
  */
 template <typename S, typename E>
-unique_B<S, E> parallel_prefix_adder(const BSharedVector<S, E> &current,
-                                     const BSharedVector<S, E> &other, const bool carry_in) {
+unique_B<S, E> parallel_prefix_adder(const BSharedVector<S, E>& current,
+                                     const BSharedVector<S, E>& other, const bool carry_in) {
     static const uint MAX_BITS_NUMBER = std::numeric_limits<std::make_unsigned_t<S>>::digits;
     static const uint LOG_MAX_BITS_NUMBER = std::bit_width(MAX_BITS_NUMBER - 1);
 
@@ -214,6 +213,74 @@ unique_B<S, E> parallel_prefix_adder(const BSharedVector<S, E> &current,
     p.bit_left_shift(g, 1);
     return propagate ^ p;
 }
+
+/**
+ * @brief Internal equals comparison equivalent to `bit_same` but using a linear
+ * approach. Operates linearly by ANDing together the NXOR of *this and other. The two
+ * inputs are used as temporary storage. Results returned by reference to shared vectors
+ * passed as arguments.
+ *
+ * @param current
+ * @param other
+ * @param eq_bits output containing the equality result
+ * @param gt_bits output containing the greater-than result.
+ */
+template <typename S, typename E>
+static void linear_compare(const BSharedVector<S, E>& current, const BSharedVector<S, E>& other,
+                           BSharedVector<S, E>& eq_bits, BSharedVector<S, E>& gt_bits) {
+    auto& runtime = current.runtime;
+    const size_t size = current.size();
+    assert(size == other.size());
+
+    // Number of bits in the share representation
+    const size_t MAX_BITS_NUMBER = std::numeric_limits<std::make_unsigned_t<S>>::digits;
+
+    auto compressed_size = math::div_ceil(size, MAX_BITS_NUMBER);
+    BSharedVector<S, E> b1(compressed_size), b2(compressed_size), r(compressed_size);
+
+    auto t = current ^ other;
+    for (int i = MAX_BITS_NUMBER - 1; i >= 0; i--) {
+        b1.pack_from(t, i);
+        b1.inplace_invert();
+
+        if (i == MAX_BITS_NUMBER - 1)
+            r = b1;
+        else
+            r &= b1;
+
+        eq_bits.unpack_from(r, i);
+    }
+
+    gt_bits.bit_arithmetic_right_shift(eq_bits, 1);
+    gt_bits ^= eq_bits;
+    gt_bits &= current;
+    // inner expr is ((eq_bits >> 1) ^ eq_bits) & (*this))
+    gt_bits.bit_xor(gt_bits);
+
+    // If the shares are signed numbers, we need to treat the sign bits differently
+    if (std::is_signed<S>::value) {
+        // Extract MSB (sign bit), compressed
+        b1.pack_from(current, MAX_BITS_NUMBER - 1);
+        b2.pack_from(other, MAX_BITS_NUMBER - 1);
+
+        // Extract LSB from above
+        r.pack_from(gt_bits, 0);
+
+        // Update greater bits: `this` is greater than `other` iff the
+        // signs are different and `other` is negative, otherwise keep
+        // the existing greater bits
+        r ^= b2;
+        b2 ^= b1;
+        b2 |= r;
+        b1 ^= b2;  // result is actually in s1, not r
+
+        // Decompress result
+        gt_bits.unpack_from(b1, 0);
+    }
+
+    eq_bits.mask(1);
+    gt_bits.mask(1);
+}
 }  // namespace orq::operators
 
 // Out-of-line definitions for BSharedVector member circuits.
@@ -229,16 +296,28 @@ unique_B<S, E> parallel_prefix_adder(const BSharedVector<S, E> &current,
  * @param gt_bits output containing the greater-than result.
  */
 template <typename T, typename E>
-void orq::BSharedVector<T, E>::_compare(const orq::BSharedVector<T, E> &other,
-                                        orq::BSharedVector<T, E> &eq_bits,
-                                        orq::BSharedVector<T, E> &gt_bits) const {
+void orq::BSharedVector<T, E>::_compare(const orq::BSharedVector<T, E>& other,
+                                        orq::BSharedVector<T, E>& eq_bits,
+                                        orq::BSharedVector<T, E>& gt_bits) const {
     const size_t size = this->size();
     assert(size == other.size());
 
-    // Number of bits in the share representation
-    const int MAX_BITS_NUMBER = std::numeric_limits<std::make_unsigned_t<T>>::digits;
+    if constexpr (CONFIDENTIAL_1PC) {
+        // In Confidential 1PC, "shares" are plaintext values, so we can use direct comparison - no
+        // need for a circuit.
 
-    auto compressed_size = size / MAX_BITS_NUMBER + (size % MAX_BITS_NUMBER > 0);
+        using B = orq::BSharedVector<T, E>;
+
+        gt_bits = B(this->asEVector() > other.asEVector());
+        eq_bits = B(this->asEVector() == other.asEVector());
+
+        return;
+    }
+
+    // Number of bits in the share representation
+    const size_t MAX_BITS_NUMBER = std::numeric_limits<std::make_unsigned_t<T>>::digits;
+
+    auto compressed_size = math::div_ceil(size, MAX_BITS_NUMBER);
 
     // Compute same-bits prefix. Use eq_bits as temp storage, then copy
     // result in.
@@ -294,29 +373,6 @@ void orq::BSharedVector<T, E>::_compare(const orq::BSharedVector<T, E> &other,
     gt_bits.mask(1);
 }
 
-// Helper struct for division.
-template <typename T>
-struct DoubleWidth;
-
-// We haven't yet added support for 16-bit protocols, so just bump 8 bits up
-// to 32.
-template <>
-struct DoubleWidth<int8_t> {
-    using type = int32_t;
-};
-template <>
-struct DoubleWidth<int16_t> {
-    using type = int32_t;
-};
-template <>
-struct DoubleWidth<int32_t> {
-    using type = int64_t;
-};
-template <>
-struct DoubleWidth<int64_t> {
-    using type = __int128_t;
-};
-
 /**
  * @brief Binary division using non-restoring algorithm.
  *
@@ -332,83 +388,90 @@ struct DoubleWidth<int64_t> {
  */
 template <typename T, typename E>
 inline std::unique_ptr<orq::BSharedVector<T, E>> orq::BSharedVector<T, E>::operator/(
-    const orq::BSharedVector<T, E> &other) const {
-    /* The data type of intermediate values. Eventually, this could be
-     * dynamically generated (i.e., for int8_t BSharedVector, use
-     * int16_t intermediates).
-     */
-    using T2 = DoubleWidth<T>::type;
+    const orq::BSharedVector<T, E>& other) const {
+    // Division is not supported for 128-bit types (no 256-bit type exists for intermediate values)
+    if constexpr (std::is_same_v<T, __int128_t> || std::is_same_v<T, __uint128_t>) {
+        std::cerr << "Error: Division operator is not supported for 128-bit integer types."
+                  << std::endl;
+        exit(-1);
+    } else {
+        /* The data type of intermediate values. Eventually, this could be
+         * dynamically generated (i.e., for int8_t BSharedVector, use
+         * int16_t intermediates).
+         */
+        using T2 = DoubleWidth<T>::type;
 
-    /* The EVector type (this should mirror the current EVector type,
-     * just with a larger base datatype T.)
-     */
-    using E2 = orq::EVector<T2, E::replicationNumber>;
+        /* The EVector type (this should mirror the current EVector type,
+         * just with a larger base datatype T.)
+         */
+        using E2 = orq::EVector<T2, E::replicationNumber>;
 
-    auto size = this->size();
+        auto size = this->size();
 
 #ifdef INSTRUMENT_TABLES
-    single_cout("[PRIV_DIV] n=" << size);
+        single_cout("[PRIV_DIV] n=" << size);
 #endif
 
-    BSharedVector<T2, E2> r(size);
-    r = *this;
+        BSharedVector<T2, E2> r(size);
+        r = *this;
 
-    // Must do this in 3 steps to force larger types
-    BSharedVector<T2, E2> d(size);
-    d = other;
-    d <<= BSharedVector<T, E>::MAX_BITS_NUMBER;
+        // Must do this in 3 steps to force larger types
+        BSharedVector<T2, E2> d(size);
+        d = other;
+        d <<= BSharedVector<T, E>::MAX_BITS_NUMBER;
 
-    BSharedVector<T2, E2> q(size);
+        BSharedVector<T2, E2> q(size);
 
-    BSharedVector<T2, E2> c(size);
+        BSharedVector<T2, E2> c(size);
 
-    BSharedVector<T2, E2> neg_d = -d;
+        BSharedVector<T2, E2> neg_d = -d;
 
-    for (int i = BSharedVector<T, E>::MAX_BITS_NUMBER - 1; i >= 0; i--) {
-        // c := r >= 0
-        c = !r.ltz();
+        for (int i = BSharedVector<T, E>::MAX_BITS_NUMBER - 1; i >= 0; i--) {
+            // c := r >= 0
+            c = !r.ltz();
 
-        /* 1 bit of the division, q(i). Instead of indexing, use
-         * bitshift to get bit `c` to the `i`th location.
-         *
-         * If r >= 0 (c == 1), q(i) := 1
-         * Otherwise (c == 0), q(i) := 0
-         */
-        q ^= c << i;
+            /* 1 bit of the division, q(i). Instead of indexing, use
+             * bitshift to get bit `c` to the `i`th location.
+             *
+             * If r >= 0 (c == 1), q(i) := 1
+             * Otherwise (c == 0), q(i) := 0
+             */
+            q ^= c << i;
 
 #ifdef DEBUG_DIVISION
-        single_cout_nonl(VAR(i) << "r ");
-        print(r.open());
-        single_cout_nonl("q ");
-        print(q.open());
-        single_cout_nonl("c ");
-        print(c.open());
+            single_cout_nonl(VAR(i) << "r ");
+            print(r.open());
+            single_cout_nonl("q ");
+            print(q.open());
+            single_cout_nonl("c ");
+            print(c.open());
 #endif
 
-        /* Update r. We multiply by 2 (`r << 1`) and then either add or
-         * subtract d, based on the sign of r.
+            /* Update r. We multiply by 2 (`r << 1`) and then either add or
+             * subtract d, based on the sign of r.
+             *
+             * If c == 1, subtract d.
+             * If c == 0, add d.
+             *
+             * Implement the above with multiplex.
+             */
+            r = (r << 1) + operators::multiplex(c, d, neg_d);
+        }
+
+        /* Perform final correction. At this point, we don't actually have
+         * a real binary string: `0` bits represent -1. The expression
+         * `q -= ~q` corrects this.
          *
-         * If c == 1, subtract d.
-         * If c == 0, add d.
+         * Then, adjust the parity of q: at this stage, q is always odd. If
+         * r is negative (`r.ltz() == 1`), we subtract 1.
          *
-         * Implement the above with multiplex.
          */
-        r = (r << 1) + operators::multiplex(c, d, neg_d);
+        q -= (~q) + r.ltz();
+
+        // Reassign to the base type
+        auto res = std::make_unique<BSharedVector<T, E>>(size);
+        *res = q;
+
+        return res;
     }
-
-    /* Perform final correction. At this point, we don't actually have
-     * a real binary string: `0` bits represent -1. The expression
-     * `q -= ~q` corrects this.
-     *
-     * Then, adjust the parity of q: at this stage, q is always odd. If
-     * r is negative (`r.ltz() == 1`), we subtract 1.
-     *
-     */
-    q -= (~q) + r.ltz();
-
-    // Reassign to the base type
-    auto res = std::make_unique<BSharedVector<T, E>>(size);
-    *res = q;
-
-    return res;
 }

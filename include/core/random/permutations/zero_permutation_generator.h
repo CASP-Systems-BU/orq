@@ -59,7 +59,7 @@ class ZeroPermutationGenerator : public ShardedPermutationGenerator {
      * @param n The size of the permutations to generate.
      * @return A set of permutations, one for each group.
      */
-    std::shared_ptr<ShardedPermutation> getNext(size_t n) {
+    std::shared_ptr<ShardedPermutation> getNext(const size_t n) {
         return std::make_shared<ZeroPermutation>(n);
     }
 

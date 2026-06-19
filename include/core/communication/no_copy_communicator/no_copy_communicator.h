@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <unordered_map>
 
 #include "core/communication/communicator.h"
@@ -40,9 +41,12 @@ class NoCopyCommunicator : public Communicator {
      * value in this map and should be ignored.
      * @param _numParties The number of parties in this execution
      */
-    NoCopyCommunicator(const int& _currentId, const std::vector<int>& socket_map,
-                       const int& _numParties)
-        : Communicator(_currentId), numParties(_numParties), _party_map(_numParties) {
+    NoCopyCommunicator(int _currentId, const std::vector<int>& socket_map, int _numParties,
+                       std::string host_prefix, double latency, double bandwidth,
+                       orq::service::Setting setting = orq::service::Setting::SAME)
+        : Communicator(_currentId, host_prefix, latency, bandwidth, setting),
+          numParties(_numParties),
+          _party_map(_numParties) {
 #if defined(MPC_USE_NO_COPY_COMMUNICATOR)
         for (int pID = 0; pID < socket_map.size(); pID++) {
             if (pID == _currentId) {
@@ -124,8 +128,9 @@ class NoCopyCommunicator : public Communicator {
      * @param _size size of the vector (TODO: use size of `_shares`)
      */
     template <typename T>
-    void sendSharesGeneric(const Vector<T>& _shares, PartyID _id, size_t _size) {
+    void sendSharesGeneric(const Vector<T>& _shares, PartyID _id) {
 #if defined(MPC_USE_NO_COPY_COMMUNICATOR)
+        auto _size = _shares.size();
         bytes_sent += (sizeof(T) * _size);
         thread_stopwatch::InstrumentBlock _ib("comm");
 
@@ -179,9 +184,11 @@ class NoCopyCommunicator : public Communicator {
      * @param _size number of elements to receive
      */
     template <typename T>
-    void receiveSharesGeneric(Vector<T>& _shareVector, PartyID _id, size_t _size) {
+    void receiveSharesGeneric(Vector<T>& _shareVector, PartyID _id) {
 #if defined(MPC_USE_NO_COPY_COMMUNICATOR)
         thread_stopwatch::InstrumentBlock _ib("comm");
+
+        auto _size = _shareVector.size();
 
         int from_id =
             (numParties + _id + this->currentId) % numParties;  // Convert relative ID to PartyID
@@ -226,8 +233,10 @@ class NoCopyCommunicator : public Communicator {
      */
     template <typename T>
     void exchangeSharesGeneric(Vector<T> sent_shares, Vector<T>& received_shares, PartyID _to_id,
-                               PartyID _from_id, size_t _size) {
+                               PartyID _from_id) {
 #if defined(MPC_USE_NO_COPY_COMMUNICATOR)
+        auto _size = sent_shares.size();
+
         bytes_sent += (sizeof(T) * _size);
         thread_stopwatch::InstrumentBlock _ib("comm");
 
@@ -322,7 +331,21 @@ class NoCopyCommunicator : public Communicator {
 
         printType<T>("receiveBroadcast", "");
 
-        for (int party_idx = 0; party_idx < partyID.size(); ++party_idx) {
+        // Temporary workaround for exchangeShares race condition. See issue #976 for more.
+        std::vector<size_t> receiveOrder(partyID.size());
+        for (size_t i = 0; i < receiveOrder.size(); ++i) {
+            receiveOrder[i] = i;
+        }
+
+        // Sort by absolute party index
+        std::sort(receiveOrder.begin(), receiveOrder.end(), [&](size_t lhs, size_t rhs) {
+            int lhs_from = (numParties + partyID[lhs] + this->currentId) % numParties;
+            int rhs_from = (numParties + partyID[rhs] + this->currentId) % numParties;
+            return lhs_from < rhs_from;
+        });
+
+        for (size_t order_idx = 0; order_idx < receiveOrder.size(); ++order_idx) {
+            auto party_idx = receiveOrder[order_idx];
             // Convert relative ID to PartyID
             int from_id = (numParties + partyID[party_idx] + this->currentId) % numParties;
 
@@ -418,24 +441,22 @@ class NoCopyCommunicator : public Communicator {
 
     void sendShare(int64_t share, PartyID _id) { sendShareGeneric(share, _id); }
 
-    void sendShares(const Vector<int8_t>& _shares, PartyID _id, size_t _size) {
-        sendSharesGeneric(_shares, _id, _size);
+    void sendShares(const Vector<int8_t>& _shares, PartyID _id) { sendSharesGeneric(_shares, _id); }
+
+    void sendShares(const Vector<int16_t>& _shares, PartyID _id) {
+        sendSharesGeneric(_shares, _id);
     }
 
-    void sendShares(const Vector<int16_t>& _shares, PartyID _id, size_t _size) {
-        sendSharesGeneric(_shares, _id, _size);
+    void sendShares(const Vector<int32_t>& _shares, PartyID _id) {
+        sendSharesGeneric(_shares, _id);
     }
 
-    void sendShares(const Vector<int32_t>& _shares, PartyID _id, size_t _size) {
-        sendSharesGeneric(_shares, _id, _size);
+    void sendShares(const Vector<int64_t>& _shares, PartyID _id) {
+        sendSharesGeneric(_shares, _id);
     }
 
-    void sendShares(const Vector<int64_t>& _shares, PartyID _id, size_t _size) {
-        sendSharesGeneric(_shares, _id, _size);
-    }
-
-    void sendShares(const Vector<__int128_t>& _shares, PartyID _id, size_t _size) {
-        sendSharesGeneric(_shares, _id, _size);
+    void sendShares(const Vector<__int128_t>& _shares, PartyID _id) {
+        sendSharesGeneric(_shares, _id);
     }
 
     void receiveShare(int8_t& _share, PartyID _id) { receiveShareGeneric(_share, _id); }
@@ -446,74 +467,73 @@ class NoCopyCommunicator : public Communicator {
 
     void receiveShare(int64_t& _share, PartyID _id) { receiveShareGeneric(_share, _id); }
 
-    void receiveShares(Vector<int8_t>& _shareVector, PartyID _id, size_t _size) {
-        receiveSharesGeneric(_shareVector, _id, _size);
+    void receiveShares(Vector<int8_t>& _shareVector, PartyID _id) {
+        receiveSharesGeneric(_shareVector, _id);
     }
 
-    void receiveShares(Vector<int16_t>& _shareVector, PartyID _id, size_t _size) {
-        receiveSharesGeneric(_shareVector, _id, _size);
+    void receiveShares(Vector<int16_t>& _shareVector, PartyID _id) {
+        receiveSharesGeneric(_shareVector, _id);
     }
 
-    void receiveShares(Vector<int32_t>& _shareVector, PartyID _id, size_t _size) {
-        receiveSharesGeneric(_shareVector, _id, _size);
+    void receiveShares(Vector<int32_t>& _shareVector, PartyID _id) {
+        receiveSharesGeneric(_shareVector, _id);
     }
 
-    void receiveShares(Vector<int64_t>& _shareVector, PartyID _id, size_t _size) {
-        receiveSharesGeneric(_shareVector, _id, _size);
+    void receiveShares(Vector<int64_t>& _shareVector, PartyID _id) {
+        receiveSharesGeneric(_shareVector, _id);
     }
 
-    void receiveShares(Vector<__int128_t>& _shareVector, PartyID _id, size_t _size) {
-        receiveSharesGeneric(_shareVector, _id, _size);
+    void receiveShares(Vector<__int128_t>& _shareVector, PartyID _id) {
+        receiveSharesGeneric(_shareVector, _id);
     }
 
-    void exchangeShares(Vector<int8_t> sent_shares, Vector<int8_t>& received_shares, PartyID _id,
-                        size_t _size) {
-        exchangeShares(sent_shares, received_shares, _id, _id, _size);
-    }
-
-    void exchangeShares(Vector<int16_t> sent_shares, Vector<int16_t>& received_shares, PartyID _id,
-                        size_t _size) {
-        exchangeShares(sent_shares, received_shares, _id, _id, _size);
-    }
-
-    void exchangeShares(Vector<int32_t> sent_shares, Vector<int32_t>& received_shares, PartyID _id,
-                        size_t _size) {
-        exchangeShares(sent_shares, received_shares, _id, _id, _size);
-    }
-
-    void exchangeShares(Vector<int64_t> sent_shares, Vector<int64_t>& received_shares, PartyID _id,
-                        size_t _size) {
-        exchangeShares(sent_shares, received_shares, _id, _id, _size);
-    }
-
-    void exchangeShares(Vector<__int128_t> sent_shares, Vector<__int128_t>& received_shares,
-                        PartyID _id, size_t _size) {
-        exchangeShares(sent_shares, received_shares, _id, _id, _size);
-    }
-
-    void exchangeShares(Vector<int8_t> sent_shares, Vector<int8_t>& received_shares, PartyID to_id,
-                        PartyID from_id, size_t _size) {
-        exchangeSharesGeneric(sent_shares, received_shares, to_id, from_id, _size);
+    void exchangeShares(Vector<int8_t> sent_shares, Vector<int8_t>& received_shares, PartyID _id) {
+        exchangeShares(sent_shares, received_shares, _id, _id);
     }
 
     void exchangeShares(Vector<int16_t> sent_shares, Vector<int16_t>& received_shares,
-                        PartyID to_id, PartyID from_id, size_t _size) {
-        exchangeSharesGeneric(sent_shares, received_shares, to_id, from_id, _size);
+                        PartyID _id) {
+        exchangeShares(sent_shares, received_shares, _id, _id);
     }
 
     void exchangeShares(Vector<int32_t> sent_shares, Vector<int32_t>& received_shares,
-                        PartyID to_id, PartyID from_id, size_t _size) {
-        exchangeSharesGeneric(sent_shares, received_shares, to_id, from_id, _size);
+                        PartyID _id) {
+        exchangeShares(sent_shares, received_shares, _id, _id);
     }
 
     void exchangeShares(Vector<int64_t> sent_shares, Vector<int64_t>& received_shares,
-                        PartyID to_id, PartyID from_id, size_t _size) {
-        exchangeSharesGeneric(sent_shares, received_shares, to_id, from_id, _size);
+                        PartyID _id) {
+        exchangeShares(sent_shares, received_shares, _id, _id);
     }
 
     void exchangeShares(Vector<__int128_t> sent_shares, Vector<__int128_t>& received_shares,
-                        PartyID to_id, PartyID from_id, size_t _size) {
-        exchangeSharesGeneric(sent_shares, received_shares, to_id, from_id, _size);
+                        PartyID _id) {
+        exchangeShares(sent_shares, received_shares, _id, _id);
+    }
+
+    void exchangeShares(Vector<int8_t> sent_shares, Vector<int8_t>& received_shares, PartyID to_id,
+                        PartyID from_id) {
+        exchangeSharesGeneric(sent_shares, received_shares, to_id, from_id);
+    }
+
+    void exchangeShares(Vector<int16_t> sent_shares, Vector<int16_t>& received_shares,
+                        PartyID to_id, PartyID from_id) {
+        exchangeSharesGeneric(sent_shares, received_shares, to_id, from_id);
+    }
+
+    void exchangeShares(Vector<int32_t> sent_shares, Vector<int32_t>& received_shares,
+                        PartyID to_id, PartyID from_id) {
+        exchangeSharesGeneric(sent_shares, received_shares, to_id, from_id);
+    }
+
+    void exchangeShares(Vector<int64_t> sent_shares, Vector<int64_t>& received_shares,
+                        PartyID to_id, PartyID from_id) {
+        exchangeSharesGeneric(sent_shares, received_shares, to_id, from_id);
+    }
+
+    void exchangeShares(Vector<__int128_t> sent_shares, Vector<__int128_t>& received_shares,
+                        PartyID to_id, PartyID from_id) {
+        exchangeSharesGeneric(sent_shares, received_shares, to_id, from_id);
     }
 
     void sendShares(const std::vector<Vector<int8_t>>& shares, std::vector<PartyID> partyID) {

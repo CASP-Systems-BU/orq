@@ -20,22 +20,23 @@ class ShardedPermutation {
 /**
  * An abstract base class for sharded permutation generators.
  */
-class ShardedPermutationGenerator : public CorrelationGenerator {
+class ShardedPermutationGenerator : public RandomGenerator {
    public:
+    const int rank;
     /**
      * Constructor for the base sharded permutation generator.
      * @param _rank The rank of this party.
      * @param _comm Optional communicator.
      */
     ShardedPermutationGenerator(int _rank, std::optional<Communicator*> _comm = std::nullopt)
-        : CorrelationGenerator(_rank) {}
+        : RandomGenerator(0), rank(_rank) {}
 
     /**
      * Generate and return a ShardedPermutation.
      * @param n The size of the permutation.
      * @return A shared pointer to the generated ShardedPermutation.
      */
-    virtual std::shared_ptr<ShardedPermutation> getNext(size_t n) = 0;
+    virtual std::shared_ptr<ShardedPermutation> getNext(const size_t n) = 0;
 
     /**
      * Allocate memory for many ShardedPermutations so they can be passed to and
@@ -52,11 +53,5 @@ class ShardedPermutationGenerator : public CorrelationGenerator {
      * @param ret A vector of ShardedPermutations to fill.
      */
     virtual void generateBatch(std::vector<std::shared_ptr<ShardedPermutation>>& ret) = 0;
-};
-
-// Template specialization
-template <typename T>
-struct CorrelationEnumType<T, Correlation::ShardedPermutation> {
-    using type = ShardedPermutationGenerator;
 };
 }  // namespace orq::random

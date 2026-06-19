@@ -14,10 +14,16 @@ class BSharedVector;
 template <typename Share, typename EVector>
 class ASharedVector;
 
+template <typename EVector>
+class ElementwisePermutation;
+
 namespace operators {
     template <typename Share, typename EVector>
     static void shuffle(SharedVector<Share, EVector> &x);
-}
+
+    template <typename T, typename Container>
+    static void quicksort_body(BSharedVector<T, Container> &v);
+}  // namespace operators
 
 /**
  * A secret-shared vector with share and container types.
@@ -54,6 +60,8 @@ namespace operators {
  */
 template <typename T, typename EVector>
 class SharedVector : public EncodedVector {
+    using B_t = BSharedVector<T, EVector>;
+
    public:
     // The contents of the shared vector
     EVector vector;
@@ -63,7 +71,7 @@ class SharedVector : public EncodedVector {
      * @param _size The size of the SharedVector.
      * @param eType The encoding of the SharedVector.
      */
-    explicit SharedVector(const size_t &_size, const Encoding &eType)
+    explicit SharedVector(const size_t _size, const Encoding &eType)
         : EncodedVector(eType), vector(_size) {}
 
     /**
@@ -73,8 +81,7 @@ class SharedVector : public EncodedVector {
      * @param _input_file The file containing the contents of the SharedVector.
      * @param eType The encoding of the SharedVector.
      */
-    explicit SharedVector(const size_t &_size, const std::string &_input_file,
-                          const Encoding &eType)
+    explicit SharedVector(const size_t _size, const std::string &_input_file, const Encoding &eType)
         : EncodedVector(eType), vector(_size, _input_file) {}
 
     /**
@@ -116,7 +123,7 @@ class SharedVector : public EncodedVector {
     virtual ~SharedVector() {}
 
     /**
-     * Opens the shared vector to all computing parties.
+     * Opens the shared vector to all computing parties. For malicious protocols, also runs checks.
      * @return The opened (plaintext) vector.
      */
     Vector<T> open() const {
@@ -124,13 +131,11 @@ class SharedVector : public EncodedVector {
         // don't support access patterns. If no mapping, this is a nop.
         auto v = this->vector.has_mapping() ? this->vector.materialize() : this->vector;
 
-        return [&, this] {
-            if (this->encoding == Encoding::BShared) {
-                return service::runTime->open_shares_b(v);
-            } else {
-                return service::runTime->open_shares_a(v);
-            }
-        }();
+        if (this->encoding == Encoding::BShared) {
+            return service::runTime->open_shares_b(v);
+        } else {
+            return service::runTime->open_shares_a(v);
+        }
     }
 
     void print() const {
@@ -143,7 +148,7 @@ class SharedVector : public EncodedVector {
      */
     VectorSizeType size() const { return vector.size(); }
 
-    void zero() { orq::service::runTime->modify_parallel(this->vector, &EVector::zero); }
+    void zero() { service::runTime->modify_parallel(this->vector, &EVector::zero); }
 
     /**
      * @brief Resize a shared vector. If the new vector is larger, the tail
@@ -161,11 +166,29 @@ class SharedVector : public EncodedVector {
      */
     void tail(size_t n) { vector.tail(n); }
 
+    /**
+     * @brief Concatenate `this` vector with `other` by resizing `this` and placing `other`
+     * into the new positions.
+     *
+     * @param other
+     */
+    void concatenate(const SharedVector &other) { vector.concatenate(other.vector); }
+
     SharedVector slice(size_t start, size_t end) {
         return SharedVector(this->asEVector().slice(start, end), encoding);
     }
 
     SharedVector slice(size_t start) { return slice(start, size()); }
+
+    SharedVector subset(size_t start, size_t step) { return subset(start, step, size() - 1); }
+
+    SharedVector subset(size_t start, size_t step, size_t end) {
+        return SharedVector(this->asEVector().simple_subset_reference(start, step, end), encoding);
+    }
+
+    SharedVector reversed_view() {
+        return SharedVector(this->asEVector().directed_subset_reference(-1), encoding);
+    }
 
     /**
      * @brief Create a deep copy (allocate new space and copy all elements)
@@ -189,9 +212,9 @@ class SharedVector : public EncodedVector {
      */
     SharedVector &operator=(const SharedVector &other) {
         assert(this->encoding == other.encoding);
+        assert(this->size() == other.size());
         // Multithreaded equivalent to: this->vector = other.vector;
-        orq::service::runTime->modify_parallel_2arg(this->vector, other.vector,
-                                                    &EVector::operator=);
+        service::runTime->modify_parallel_2arg(this->vector, other.vector, &EVector::operator=);
         return *this;
     }
 
@@ -217,13 +240,11 @@ class SharedVector : public EncodedVector {
      * @param other
      * @return SharedVector&
      */
-    template <typename T2>
-    SharedVector &operator=(
-        const SharedVector<T2, orq::EVector<T2, EVector::replicationNumber>> &other) {
+    template <typename T2, typename E2>
+    SharedVector &operator=(const SharedVector<T2, E2> &other) {
         assert(this->encoding == other.encoding);
         // Calls overloaded EVector -> Vector cast-and-copy operators
-        orq::service::runTime->modify_parallel_2arg(this->vector, other.vector,
-                                                    &EVector::operator=);
+        service::runTime->modify_parallel_2arg(this->vector, other.vector, &EVector::operator=);
         return *this;
     }
 

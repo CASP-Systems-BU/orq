@@ -89,10 +89,8 @@ fi
 
 if [[ $ENVIRO == "wan" ]]; then
     ./comm/cluster-wan-sim.sh on node{1,2,3}
-    CMAKE="$CMAKE,-DWAN_CONFIGURATION"
 else
     ./comm/cluster-wan-sim.sh off node{1,2,3}
-    CMAKE=
 fi
 
 folder="../results/query-benchmark/$EXP_TYPE/$(date +%m%d-%H%M)-${PROTOCOL}PC-$ENVIRO-SF${SCALE_FACTOR}"
@@ -141,7 +139,7 @@ for query in $query_list; do
 
     echo -e "Query $query | Scale Factor $SCALE_FACTOR | Protocol $PROTOCOL | Threads $THREADS\n" | tee -a $output_file
 
-    ./run_experiment.sh -e 1 -m "${CMAKE}" -x node -p $PROTOCOL -s $ENVIRO \
+    ./run_experiment.py -e 1 -m "${CMAKE}" -x node -p $PROTOCOL -s $ENVIRO \
         -c $COMM -n $COMM_THREADS -f $SCALE_FACTOR -T $THREADS -b $BATCH_SIZE \
         $EXTRA $query 2>&1 | tee -a $output_file
     

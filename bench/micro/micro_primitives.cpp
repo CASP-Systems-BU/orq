@@ -20,10 +20,7 @@ using T = int32_t;
 int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pID = runTime->getPartyID();
-    int test_size = 1 << 20;
-    if (argc >= 5) {
-        test_size = atoi(argv[4]);
-    }
+    auto test_size = runTime->getArg<size_t>("test-size", "r", 1 << 20);
 
     BSharedVector<T> a(test_size), b(test_size);
     ASharedVector<T> x(test_size), y(test_size);
@@ -55,7 +52,13 @@ int main(int argc, char** argv) {
     stopwatch::timepoint("GR");
 
     auto f = a + b;
+    stopwatch::timepoint("Boolean +");
+
+    auto f2 = ripple_carry_adder(a, b);
     stopwatch::timepoint("RCA");
+
+    auto f3 = parallel_prefix_adder(a, b);
+    stopwatch::timepoint("PPA");
 
     auto g = rca_compare(a, b);
     stopwatch::timepoint("RCA<");

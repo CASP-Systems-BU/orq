@@ -2,9 +2,10 @@
 
 // Core - Containers
 #include "backend/common/runtime.h"
+#include "backend/common/util.h"
 #include "core/containers/e_vector.h"
 #include "core/containers/vector.h"
-#include "core/protocols/protocol.h"
+#include "core/protocols/interface.h"
 
 // Core - Communication
 #include "core/communication/communicator.h"
@@ -15,8 +16,6 @@
 #include "core/communication/null_communicator.h"
 
 // Core - Random
-#include "core/random/correlation/dummy_auth_random_generator.h"
-#include "core/random/correlation/dummy_auth_triple_generator.h"
 #include "core/random/manager.h"
 #include "core/random/permutations/hm_sharded_permutation_generator.h"
 #include "core/random/permutations/zero_permutation_generator.h"
@@ -25,15 +24,15 @@
 #ifdef MPC_PROTOCOL_BEAVER_TWO
 #include "core/random/correlation/beaver_triple_generator.h"
 #include "core/random/correlation/dummy_ole.h"
+#include "core/random/correlation/gilboa_crt.h"
+#include "core/random/correlation/gilboa_mod_p.h"
 #include "core/random/correlation/gilboa_ole.h"
+#include "core/random/correlation/libsecjoin.h"
+#include "core/random/correlation/registry.h"
 #include "core/random/correlation/silent_ot.h"
 #include "core/random/correlation/zero_ole.h"
-#ifdef USE_LIBOTE
-#include "core/random/correlation/oprf.h"
-#endif
 #endif
 
-#include "core/protocols/protocol_factory.h"
 #include "core/random/pooled/pooled_generator.h"
 #include "core/random/prg/common_prg.h"
 
@@ -44,6 +43,7 @@
 
 #ifdef USE_DALSKOV_FANTASTIC_FOUR
 #include "core/protocols/dalskov_4pc.h"
+#include "core/protocols/verifier_4pc.h"
 #else
 #include "core/protocols/custom_4pc.h"
 #endif
@@ -65,6 +65,9 @@
 
 // Operators
 #include "core/operators/operators.h"
+
+// Core - Math
+#include "core/math/math.h"
 
 // Macros Section
 #define init_mpc_types(_Element_, _Vector_, _ReplicatedShare_, _EVector_, _Replication_)      \
@@ -96,9 +99,8 @@
         orq::relational::EncodedTable<T, SharedColumn<T>, ASharedVector<T>, BSharedVector<T>, \
                                       orq::EncodedVector, DataTable<T>>;
 
-#define init_mpc_system(_Communicator_, _RG_, _Protocol_, _ProtocolFactory_)                 \
+#define init_mpc_system(_Communicator_, _Protocol_, _ProtocolFactory_)                       \
     typedef _Communicator_ Communicator;                                                     \
-    typedef _RG_ RG;                                                                         \
     typedef _Protocol_<int8_t, ReplicatedShare<int8_t>, Vector<int8_t>, EVector<int8_t>>     \
         Protocol_8;                                                                          \
     typedef _Protocol_<int16_t, ReplicatedShare<int16_t>, Vector<int16_t>, EVector<int16_t>> \
@@ -115,18 +117,18 @@
 #define init_mpc_functions(_Replication_)                                                          \
     template <typename T, typename... T2>                                                          \
     static EVector<T> secret_share_a(const orq::Vector<T>& data, const T2&... args) {              \
-        return runTime->secret_share_a<_Replication_>(data, args...);                              \
+        return runTime->secret_share_a_internal<_Replication_>(data, args...);                     \
     }                                                                                              \
                                                                                                    \
     template <typename T, typename... T2>                                                          \
     static EVector<T> secret_share_b(const orq::Vector<T>& data, const T2&... args) {              \
-        return runTime->secret_share_b<_Replication_>(data, args...);                              \
+        return runTime->secret_share_b_internal<_Replication_>(data, args...);                     \
     }                                                                                              \
                                                                                                    \
     template <typename T>                                                                          \
     static std::vector<std::shared_ptr<EncodedColumn>> secret_share(                               \
         const DataTable<T>& data_table, const std::vector<std::string>& schema,                    \
-        const int& _party_id = 0) {                                                                \
+        const int _party_id = 0) {                                                                 \
         return EncodedTable<T>::template secret_share<T, _Replication_>(data_table, schema,        \
                                                                         _party_id);                \
     }                                                                                              \

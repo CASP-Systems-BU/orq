@@ -104,7 +104,7 @@ void test_vector_aggregation(const size_t test_size = 32) {
 
     // Check operations
 
-    // not reversed: results at top of group
+    // reversed: results at top of group
     std::vector<BSharedVector<S>> keys = {gb};
     aggregate(keys,
               {
@@ -116,17 +116,17 @@ void test_vector_aggregation(const size_t test_size = 32) {
                   {da, ra1, sum},
                   {da, ra2, count},
                   {da, ra3, copy},
-              });
+              },
+              Direction::Reverse);
 
-    // Check a few reversed: results at bottom of group
+    // Check a few not reversed: results at bottom of group
     aggregate(keys,
               {
                   {db, rbr, max},
               },
               {
                   {da, rar, sum},
-              },
-              Direction::Reverse);
+              });
 
     auto sum_ = ra1.open();
     auto sum_rev = rar.open();
@@ -262,9 +262,6 @@ void test_table_operators() {
     single_cout("Testing " << std::numeric_limits<std::make_unsigned_t<S>>::digits
                            << "-bit tables...");
 
-    // streaming ops and division currently only work for int32.
-    const bool do_int32_operations = std::is_same<S, int>::value;
-
     const std::vector<std::string> schema = {
         "[SEL]",      "[DATA]",          "DATA",         "SUM",
         "SUM_R",      "[MAX]",           "[MAX_R]",      "[MIN]",
@@ -297,15 +294,14 @@ void test_table_operators() {
                     {"[DATA]", "[MIN]", orq::aggregators::min<B>},
                     {"DATA", "COUNT", orq::aggregators::count<A>},
                 },
-                {.reverse = false, .mark_valid = false});
+                {.reverse = true, .mark_valid = false});
 
 #ifdef PRINT
     print_table(t.open_with_schema(), pid);
 #endif
 
-    // NOTE: once aggregations condense their results, this reverse aggregation
-    // will need to be performed on (a copy of) the original table, since `t`
-    // will no longer contain the full data set.
+    // NOTE: once aggregations condense their results, this aggregation will need to be performed on
+    // (a copy of) the original table, since `t` will no longer contain the full data set.
 
     t.aggregate({"[SEL]"},
                 {
@@ -314,17 +310,13 @@ void test_table_operators() {
                     {"[DATA]", "[MIN_R]", orq::aggregators::min<B>},
                     {"DATA", "COUNT_R", orq::aggregators::count<A>},
                 },
-                {.reverse = true, .mark_valid = false});
+                {.reverse = false, .mark_valid = false});
 
     t.distinct({"[SEL]"}, "[DISTINCT]");
 
-    // streaming operators only work for int, and non-2PC
-    if constexpr (do_int32_operations) {
-        t.tumbling_window("DATA", 2, "TUMBLING_WINDOW");
-        t.gap_session_window({"[SEL]"}, "DATA", "[DATA]", "[GAP_WINDOW]", 2);
-        t.threshold_session_window({"[SEL]"}, "[DATA]", "[DATA]", "[THRESHOLD_WINDOW]", 3, true,
-                                   false);
-    }
+    t.tumbling_window("DATA", 2, "TUMBLING_WINDOW");
+    t.gap_session_window({"[SEL]"}, "DATA", "[DATA]", "[GAP_WINDOW]", 2);
+    t.threshold_session_window({"[SEL]"}, "[DATA]", "[DATA]", "[THRESHOLD_WINDOW]", 3, true, false);
 
     t.convert_a2b("SUM_R", "[SUM]");
     t["[DIV]"] = t["[SUM]"] / t["[DATA]"];
@@ -364,23 +356,28 @@ void test_table_operators() {
     assert(_COUNT(max_col, 4) >= 1);
     assert(_COUNT(max_col, 8) >= 1);
 
-    if constexpr (do_int32_operations) {
-        // Other time series operators: gap, threshold, tumbling
-        auto gap_col = t.get_column(R, "[GAP_WINDOW]");
-        ASSERT_SAME(4, _COUNT(gap_col, 1));
-        ASSERT_SAME(4, _COUNT(gap_col, -1));
-        auto thresh_col = t.get_column(R, "[THRESHOLD_WINDOW]");
-        ASSERT_SAME(1, _COUNT(thresh_col, 4));
-        ASSERT_SAME(7, _COUNT(thresh_col, -1));
+    // Other time series operators: gap, threshold, tumbling
+    auto gap_col = t.get_column(R, "[GAP_WINDOW]");
+    ASSERT_SAME(4, _COUNT(gap_col, 1));
+    ASSERT_SAME(4, _COUNT(gap_col, -1));
+    auto thresh_col = t.get_column(R, "[THRESHOLD_WINDOW]");
+    ASSERT_SAME(1, _COUNT(thresh_col, 4));
+    ASSERT_SAME(7, _COUNT(thresh_col, -1));
+
+    // For int8, probability of catastrophic failure in public division is too high, and CI
+    // sometimes fails. Skip this test.
+    if constexpr (!std::is_same_v<S, int8_t>) {
         auto tumbl_col = t.get_column(R, "TUMBLING_WINDOW");
         ASSERT_SAME(2, _COUNT(tumbl_col, 1));
         ASSERT_SAME(2, _COUNT(tumbl_col, 2));
         ASSERT_SAME(2, _COUNT(tumbl_col, 3));
-
-        auto div_col = t.get_column(R, "[DIV]");
-        auto data_col = t.get_column(R, "[DATA]");
-        assert(div_col.same_as(sum_r_col / data_col));
+    } else {
+        single_cout("Skipping tumbling_window for int8.");
     }
+
+    auto div_col = t.get_column(R, "[DIV]");
+    auto data_col = t.get_column(R, "[DATA]");
+    assert(div_col.same_as(sum_r_col / data_col));
 
     t["SUM"].zero();
 
@@ -401,8 +398,8 @@ void test_table_operators() {
     auto sum_col2 = t2.get_column(R2, "SUM");
     // For some reason, 8-bit table returns (correct) result in opposite order,
     // so can't just check vector equal.
-    ASSERT_CONTAINS(sum_col2, 26);
-    ASSERT_CONTAINS(sum_col2, 10);
+    assert(sum_col2.contains(26));
+    assert(sum_col2.contains(10));
 
     ////////////
     // ...and in the opposite direction
@@ -423,8 +420,8 @@ void test_table_operators() {
     auto sum_col_rev = t3.get_column(Rrev, "SUM_R");
     // For some reason, 8-bit table returns (correct) result in opposite order,
     // so can't just check vector equal.
-    ASSERT_CONTAINS(sum_col_rev, 26);
-    ASSERT_CONTAINS(sum_col_rev, 10);
+    assert(sum_col_rev.contains(26));
+    assert(sum_col_rev.contains(10));
 }
 
 /**
@@ -453,11 +450,11 @@ void test_max_monotonic() {
         runTime->populateLocalRandom(x_);
 
         // std::iota(x_.begin(), x_.end(), 1);
-        // std::shuffle(x_.begin(), x_.end(), std::default_random_engine{});
+        // std::shuffle(x_.begin(), x_.end(), std::default_random_runtime{});
 
         BSharedVector<int> x = secret_share_b(x_, 0);
 
-        aggregate(empty_keys, {{x, y, orq::aggregators::max}}, {}, Direction::Reverse);
+        aggregate(empty_keys, {{x, y, orq::aggregators::max}}, {}, Direction::Forward);
 
         auto o = y.open();
 
@@ -478,7 +475,8 @@ void test_prefix_sum() {
     // Only party 0 checks plaintext
     if (pid == 0) {
         runTime->populateLocalRandom(x);
-        x %= 10;
+        // x is signed, add after mod to make unsigned (0 - 20)
+        x = (x % 10) + 10;
 
         y = x;
 
@@ -513,6 +511,13 @@ void test_prefix_sum() {
     if (pid == 0) {
         assert(z.same_as(y));
     }
+
+    auto c = sh_b.count_nonzero();
+    auto d = c->open()[0];
+    // just an approximate check, actual count is randomized
+    if (pid == 0) {
+        assert(d > 0);
+    }
 }
 
 int main(int argc, char** argv) {
@@ -541,8 +546,6 @@ int main(int argc, char** argv) {
     test_max_monotonic();
 
     test_prefix_sum();
-
-    // Tear down communication
 
     return 0;
 }

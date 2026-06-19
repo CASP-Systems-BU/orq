@@ -36,10 +36,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // Setup SQLite DB for output validation
     sqlite3* sqlite_db = nullptr;
@@ -128,8 +125,6 @@ int main(int argc, char** argv) {
     runTime->print_communicator_statistics();
 
 #ifndef QUERY_PROFILE
-
-    // runTime->print_statistics();
 
     auto T123_out = T123.open_with_schema();
     print_table(T123_out, pid);

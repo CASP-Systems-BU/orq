@@ -2,8 +2,8 @@
 
 ORQ is a multi-party computation framework for relational analytics. For more information, see our paper at SOSP '25.
 
-- [Paper](https://arxiv.org/abs/2509.10793)
-- [Documentation](https://casp-systems-bu.github.io/orq/)
+- Paper
+- Documentation
 - [Our Lab](https://sites.bu.edu/casp/)
 
 > ORQ has received all SOSP artifact evaluation badges. Evaluation occurred on the `sosp-artifact` tag, available [here](https://github.com/CASP-Systems-BU/orq/tree/sosp-artifact). The current version of the repository has gone through a substantial cleanup for public release, but is functionally identical.
@@ -11,12 +11,6 @@ ORQ is a multi-party computation framework for relational analytics. For more in
 > ORQ is also archived on Zenodo:
 >
 > [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17027577.svg)](https://doi.org/10.5281/zenodo.17027577)
-
-> [!NOTE]
-> _(March 2026)_ We have been notified of an [attack on the Fantastic Four protocol](https://eprint.iacr.org/2026/234) (to appear at Eurocrypt'26). An implementation of the fix following $\Pi_\mathrm{CheckEqs}$ (Fig. 6 of [BS26]) is currently under development. Separately, we also identified some issues with our malicious-secure opening protocol. We will push both fixes to this repository soon.
-
-> [!NOTE]
-> Here for S2MPC? See the [README](https://github.com/CASP-Systems-BU/orq/blob/s2mpc-2026/bench/queries/s2mpc/README.md).
 
 ## Table of Contents
 
@@ -135,7 +129,7 @@ Various options can be specified to `cmake`.
    - `-DPROTOCOL=1` a single-party plaintext test protocol
    - `-DPROTOCOL=2` [ABY](https://www.ndss-symposium.org/ndss2015/ndss-2015-programme/aby-framework-efficient-mixed-protocol-secure-two-party-computation/) two party dishonest majority protocol with Beaver Triples
    - `-DPROTOCOL=3` [Araki et al.](https://eprint.iacr.org/2016/768) three party replicated honest majority protocol (the default)
-   - `-DPROTOCOL=4` [Fantastic Four](https://eprint.iacr.org/2020/1330) honest-majority malicious 4PC protocol (**Note:** security fix in progress)
+   - `-DPROTOCOL=4` [Fantastic Four](https://eprint.iacr.org/2020/1330) honest-majority malicious 4PC protocol
 - `-DNO_X86_SSE=1` to disable x86 hardware optimizations (you will get warnings otherwise if built on ARM platforms, like newer Macs)
 - `-DPROFILE=1` enable profiling (compile with `-pg`)
 - `-DEXTRA=XXX` pass the additional argument `XXX` to `make`
@@ -159,31 +153,34 @@ $ make -j other-queries
 
 See `debug/orq_debug.h` and `CMakeLists.txt` for more information on compile options. Not all compile options are made available via CMake and instead must be manually configured within `orq_debug.h`.
 
-### `run_experiment.sh`
+### `run_experiment.py`
 
-We provide an execution harness script, `run_experiment.sh`, which automates the compilation and execution process. **This is the recommended method of running ORQ programs.**
+We provide an execution harness script, `run_experiment.py`, which automates the compilation and execution process. **This is the recommended method of running ORQ programs.**
 
-To see a comprehensive set of options for the `run_experiment` script, simply run it without arguments to display a help message.
+To see a comprehensive set of options for the `run_experiment` script, simply run it with `-h` to display a help message:
 
 ```bash
-Usage: ../scripts/run_experiment.sh [options] <exp_name>
-  exp_name Experiment to run
-OPTIONS:
-  [-h]                                    Show this help
-  [-p 1|2|3|4]                            Protocol; default: 3
-  [-s same|lan|wan]                       Setting; default: same
-  [-c mpi|nocopy]                         Communicator; default: mpi for same; nocopy otherwise"
-  [-n num_comm_threads]                   [NoCopyComm only] Number of communicator threads (negative: # per worker); default: -1
-  [-r min_rows_pow[-max_rows_pow]]        Number of rows, as powers of 2, can be a range; default: 20
-  [-d]                                    Use powers of 10 for the number of rows flag (-r)
-  [-f scale_factor]                       Scale factor for TPC-H and other queries. Overrides -r if set.
-  [-t min_threads_pow[-max_threads_pow]]  Number of threads, as powers of 2, can be a range
-  [-T threads]                            Number of threads (arbitrary); default: 1
-  [-b batch_size]                         Batch size; default: -12
-  [-e exp_repetitions]                    Number of times to repeat each rows/threads pairing; default: {exp_repetitions}
-  [-m cmake_args]                         Pass additional arguments to cmake (can be repeated for more)
-  [-a experiment_args]                    Pass additional arguments to the experiment binary (can be repeated for more)
-  [-x node prefix]                        Prefix for remote nodes. Machines are prefix0, prefix1, ...; default: node
+$ ../scripts/run_experiment.py -h
+```
+
+Key options include:
+- `-p` Protocol (1-5); default: 3
+- `-npc` Number of parties; default: protocol number
+- `-s` Setting (same/lan/wan); default: same
+- `-c` Communicator (mpi/nocopy); default: mpi for same, nocopy otherwise
+- `-n` Number of communicator threads (NoCopyComm only); default: -1
+- `-r` Number of rows (comma-separated INT or a^b expressions); default: 2^20
+- `-d` Use powers of 10 for -r flag (allows ranges like 6-8 to expand to [10^6, 10^7, 10^8])
+- `-f` Scale factor for TPC-H queries (overrides -r if set)
+- `-t` Number of threads as powers of 2 (MIN or MIN-MAX)
+- `-T` Number of threads (arbitrary); default: 0
+- `-b` Batch size; default: -12
+- `-e` Number of repetitions; default: 1
+- `-o` Optimization level (0-3); default: 2
+- `-y` Type of Beaver triples for 2PC (zero/dummy/real); default: zero
+- `-m` Additional cmake arguments (can be repeated)
+- `-a` Additional experiment arguments (can be repeated)
+- `-x` Prefix for remote nodes; default: node
 ```
 
 ### Running ORQ Programs Locally
@@ -194,7 +191,7 @@ A minimal test:
 
 ```bash
 $ cd build
-$ ../scripts/run_experiment.sh test_primitives
+$ ../scripts/run_experiment.py test_primitives
 # ... everything should pass ...
 ```
 
@@ -210,7 +207,7 @@ This command will run the program `test_primitives.cpp` with all default options
 
 We can try a different program:
 ```bash
-$ ../scripts/run_experiment.sh micro_primitives    
+$ ../scripts/run_experiment.py micro_primitives    
 # ...
 Vector 1048576 x 32b
 [=SW]            Start
@@ -227,7 +224,7 @@ Vector 1048576 x 32b
 
 More rows ($2^{24}\approx 16\mathrm{M}$):
 ```bash
-$ ../scripts/run_experiment.sh -r 24 micro_primitives
+$ ../scripts/run_experiment.py -r 2^24 micro_primitives
 # ...
 Vector 16777216 x 32b
 [=SW]            Start
@@ -244,8 +241,8 @@ Vector 16777216 x 32b
 
 A different protocol (Malicious-secure Fantastic 4PC):
 
-```bash 
-$ ../scripts/run_experiment.sh -r 24 -p 4 micro_primitives
+```bash
+$ ../scripts/run_experiment.py -r 2^24 -p 4 micro_primitives
 # ...
 Vector 16777216 x 32b
 [=SW]            Start
@@ -263,7 +260,7 @@ Vector 16777216 x 32b
 Or more threads:
 
 ```bash
-$ ../scripts/run_experiment.sh -r 24 -p 4 -T 4 micro_primitives
+$ ../scripts/run_experiment.py -r 2^24 -p 4 -T 4 micro_primitives
 # ...
 Vector 16777216 x 32b
 [=SW]            Start
@@ -282,13 +279,13 @@ You should not expect much of a speedup with more threads when running locally: 
 
 ### Running ORQ Programs on Multiple Servers
 
-ORQ programs can be run over LAN just by changing the setting (`-s`) argument to `run_experiment.sh`:
+ORQ programs can be run over LAN just by changing the setting (`-s`) argument to `run_experiment.py`:
 
 ```
-$ ../scripts/run_experiment.sh -s lan -c nocopy -n 4 -T 8 micro_sorting
+$ ../scripts/run_experiment.py -s lan -c nocopy -n 4 -T 8 micro_sorting
 ```
 
-This runs the `micro_sorting` experiment, with the 3PC protocol (the default), on nodes `node0`, `node1`, and `node2`. We use the `nocopy` communicator with `4` communication threads and `8` worker threads. `run_experiment.sh` takes care of configuring the other nodes, and copies the compiled binary from `node0` to all other nodes in the cluster. 
+This runs the `micro_sorting` experiment, with the 3PC protocol (the default), on nodes `node0`, `node1`, and `node2`. We use the `nocopy` communicator with `4` communication threads and `8` worker threads. `run_experiment.py` takes care of configuring the other nodes, and copies the compiled binary from `node0` to all other nodes in the cluster. 
 
 > [!WARNING]
 > ORQ programs will crash in mysterious ways if different versions of a binary are present on different hosts.
@@ -297,17 +294,17 @@ This runs the `micro_sorting` experiment, with the 3PC protocol (the default), o
 > We recommend using `-c nocopy` for LAN tests. We have found `-n 4` (4 communication threads) sufficient for the LAN environment.
 >
 > If your machines are named something else, you can specify a new prefix with `-x [node]`. However, our scripts assume a consistent numbering:
-> 
+>
 > ```bash
-> $ ../scripts/run_experiment.sh -s lan -p 4 -x lab-server- test_primitives
+> $ ../scripts/run_experiment.py -s lan -p 4 -x lab-server- test_primitives
 > ```
-> 
+>
 > This will run `test_primitives`, with the 4PC protocol, on nodes `lab-server-0`,`lab-server-1`, `lab-server-2`, and `lab-server-3`.
 
 To check the scaling behavior of ORQ, we can use the variable-thread (`-t`) argument. This example will run `micro_sorting` in LAN, with the 3PC protocol, using `1, 2, 4, 8, 16, 32` worker threads.
 
 ```bash
-$ ../scripts/run_experiment.sh -s lan -c nocopy -n 4 -t 0-5 micro_sorting
+$ ../scripts/run_experiment.py -s lan -c nocopy -n 4 -t 0-5 micro_sorting
 ```
 
 ### Running ORQ Programs in Simulated WAN
@@ -322,7 +319,7 @@ The WAN simulator is very easy to use:
 $ ../scripts/comm/cluster-wan-sim.sh on node{1,2,3}
 # Run your experiment
 # [Soon, run_experiment will handle running cluster-wan-sim for you]
-$ ../scripts/run_experiment.sh -s wan ...
+$ ../scripts/run_experiment.py -s wan ...
 # Disable simWAN
 $ ../scripts/comm/cluster-wan-sim.sh off node{1,2,3}
 ```

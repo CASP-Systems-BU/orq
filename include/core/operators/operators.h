@@ -10,4 +10,5 @@
 #include "radixsort.h"
 #include "shuffle.h"
 #include "sorting.h"
+#include "sorting_network.h"
 #include "streaming.h"

@@ -9,6 +9,7 @@
 #include "core/containers/a_shared_vector.h"
 #include "core/containers/b_shared_vector.h"
 #include "debug/orq_debug.h"
+#include "prefix_network.h"
 
 using namespace orq::operators;
 using namespace orq::debug;
@@ -146,12 +147,6 @@ template <typename Share, typename EVector>
 using B_ = BSharedVector<Share, EVector>;
 
 /**
- * @brief Denotes the direction of an aggregation.
- *
- */
-enum class Direction { Forward, Reverse } Direction;
-
-/**
  * @brief Sorting-network based agregation. Assumes all vectors are the same
  * size.
  *
@@ -248,36 +243,25 @@ void aggregate(
         }
     }
 
-    // computes 1 + floor(log2(x)) ...
-    const int log_size = std::bit_width(total_size) - 1;
+    auto aggNet = BrentKung<S, E>(dir, total_size);
 
-    for (int i = 1; i <= log_size; ++i) {
-        size_t d = total_size / (1 << i);
-        if (dir == Direction::Reverse) {
-            d = total_size / (1 << (log_size - i + 1));
-        }
-
-        // the rest of the vector...
-        auto d_rest = total_size - d;
-
-        B_<S, E> group_bits_b(d_rest);
-        B_<S, E> join_group_bits_b(group_bits_b.size());
+    for (auto [sz, level_func] : aggNet) {
+        B_<S, E> group_bits_b(sz);
+        B_<S, E> join_group_bits_b(sz);
 
         A_<S, E> group_bits_a(group_bits_b.size());
         A_<S, E> join_group_bits_a(group_bits_b.size());
 
         if (keys.size() == 0) {
-            group_bits_b = shared_one_b.repeated_subset_reference(group_bits_b.size());
-            group_bits_a = shared_one_a.repeated_subset_reference(group_bits_a.size());
+            group_bits_b = shared_one_b.repeated_subset_reference(sz);
+            group_bits_a = shared_one_a.repeated_subset_reference(sz);
         } else {
-            B_<S, E> first_vector = keys[0].slice(0, d_rest);
-            B_<S, E> second_vector = keys[0].slice(d);
+            auto [first_vector, second_vector] = level_func(keys[0]);
             group_bits_b = first_vector == second_vector;
 
             // for remaining columns
             for (int j = 1; j < keys.size(); ++j) {
-                B_<S, E> first_vector = keys[j].slice(0, d_rest);
-                B_<S, E> second_vector = keys[j].slice(d);
+                auto [first_vector, second_vector] = level_func(keys[j]);
                 group_bits_b &= first_vector == second_vector;
             }
         }
@@ -285,34 +269,35 @@ void aggregate(
         join_group_bits_b = group_bits_b;
         join_group_bits_a = group_bits_a;
         if (sel_b.has_value() && (a_any_noncopy || b_any_noncopy)) {
-            auto s = ~(sel_b->slice(d) ^ sel_b->slice(0, d_rest));
-            group_bits_b &= s;
+            auto [sa, sb] = level_func(*sel_b);
+            group_bits_b &= ~(sa ^ sb);
         }
 
         group_bits_b.mask(1);
+
+        // If we're using a `copy` aggregation, use the `join_group_bits`. Otherwise, use the
+        // regular `group_bits`. Use type deduction so we only have to declare this lambda once.
+        auto which_group_bits = [&](const auto& func, const auto& group_bits,
+                                    const auto& join_group_bits) {
+            using FuncType = std::decay_t<decltype(func)>;
+            if (func == static_cast<FuncType>(&copy<std::decay_t<decltype(group_bits)>>)) {
+                return join_group_bits;
+            } else {
+                return group_bits;
+            }
+        };
 
         // Iterate through the aggregations: boolean...
         for (auto s : agg_spec_b) {
             auto [_in, out, func] = s;
 
-            auto a(out.slice(0, d_rest));
-            auto b(out.slice(d));
+            auto [a, b] = level_func(out);
+            auto g = which_group_bits(func, group_bits_b, join_group_bits_b);
 
-            B_<S, E> g(group_bits_b.size());
-            if (func == &copy<B_<S, E>>) {
-                g = join_group_bits_b;
-            } else {
-                g = group_bits_b;
-            }
-
-            if (dir == Direction::Reverse) {
-                func(g, b, a);
-            } else {
-                func(g, a, b);
-            }
+            func(g, b, a);
         }
 
-        // only do if needed
+        // (only perform b2a if needed)
         if (keys.size() > 0 && have_a_aggs) {
             if (a_any_noncopy) {
                 group_bits_a = group_bits_b.b2a_bit();
@@ -326,21 +311,10 @@ void aggregate(
         for (auto s : agg_spec_a) {
             auto [_in, out, func] = s;
 
-            A_<S, E> a(out.slice(0, d_rest));
-            A_<S, E> b(out.slice(d));
+            auto [a, b] = level_func(out);
+            auto g = which_group_bits(func, group_bits_a, join_group_bits_a);
 
-            A_<S, E> g(group_bits_b.size());
-            if (func == &copy<A_<S, E>>) {
-                g = join_group_bits_a;
-            } else {
-                g = group_bits_a;
-            }
-
-            if (dir == Direction::Reverse) {
-                func(g, b, a);
-            } else {
-                func(g, a, b);
-            }
+            func(g, b, a);
         }
     }  // end odd-even aggregation loop
 }

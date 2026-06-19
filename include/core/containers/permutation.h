@@ -152,10 +152,7 @@ class ElementwisePermutation {
     /**
      * Open the underlying SharedVector.
      */
-    Vector<int> open() {
-        Vector<int> opened = sharedVector.open();
-        return opened;
-    }
+    Vector<int> open() { return sharedVector.open(); }
 
     /**
      * Shuffle the underlying SharedVector

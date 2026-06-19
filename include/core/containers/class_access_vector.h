@@ -14,7 +14,7 @@
 
 #define define_binary_vector_op(_op_)                    \
     ;                                                    \
-    inline Vector operator _op_(const Vector &y) const { \
+    inline Vector operator _op_(const Vector& y) const { \
         size_t size = this->size();                      \
         Vector res(size);                                \
         for (size_t i = 0; i < size; ++i) {              \
@@ -39,7 +39,7 @@
 #define define_binary_vector_element_op(_op_)                   \
     ;                                                           \
     template <typename OtherType>                               \
-    inline Vector operator _op_(const OtherType &other) const { \
+    inline Vector operator _op_(const OtherType& other) const { \
         size_t size = this->size();                             \
         Vector res(size);                                       \
         for (size_t i = 0; i < size; ++i) {                     \
@@ -51,7 +51,7 @@
 
 #define define_binary_vector_assignment_op(_op_)          \
     template <typename OtherType>                         \
-    inline Vector operator _op_(const OtherType &other) { \
+    inline Vector operator _op_(const OtherType& other) { \
         size_t size = this->size();                       \
         for (size_t i = 0; i < size; i++) {               \
             (*this)[i] _op_ other[i];                     \
@@ -78,8 +78,6 @@ namespace service {
     class Task_ARGS_VOID_2;
 }  // namespace service
 
-static inline int div_ceil(int x, int y) { return x / y + (x % y > 0); }
-
 /**
  * Extracts the bit at `bitIndex` from the given element. Use dedicated
  * hardware instruction if available.
@@ -89,7 +87,7 @@ static inline int div_ceil(int x, int y) { return x / y + (x % y > 0); }
  * @return The extracted bit as a single-bit T element.
  */
 template <typename T>
-static inline T getBit(const T &share, const int &bitIndex) {
+static inline T getBit(const T& share, int bitIndex) {
 #ifdef __BMI__
     return _bextr_u64(share, bitIndex, 1);
 #else
@@ -105,7 +103,7 @@ static inline T getBit(const T &share, const int &bitIndex) {
  * @param bitIndex The zero-based index (0 is the LSB) of the bit to be updated in element `share`.
  */
 template <typename T>
-static inline void setBit(T &share, const T &bit, const int &bitIndex) {
+static inline void setBit(T& share, const T& bit, int bitIndex) {
     using Unsigned_type = typename std::make_unsigned<T>::type;
     share = (share & ~(((Unsigned_type)1 << bitIndex))) | (bit << bitIndex);
 }
@@ -118,7 +116,7 @@ static inline void setBit(T &share, const T &bit, const int &bitIndex) {
  * @param bitIndex
  */
 template <typename T>
-static inline void clrBit(T &share, const int &bitIndex) {
+static inline void clrBit(T& share, int bitIndex) {
     using Unsigned_type = typename std::make_unsigned<T>::type;
     share &= ~((Unsigned_type)1 << bitIndex);
 }
@@ -132,7 +130,7 @@ static inline void clrBit(T &share, const int &bitIndex) {
  * @param bitIndex which bit to modify
  */
 template <typename T>
-static inline void setBitValue(T &share, const T &value, const int &bitIndex) {
+static inline void setBitValue(T& share, const T& value, int bitIndex) {
     using Unsigned_type = typename std::make_unsigned<T>::type;
     clrBit(share, bitIndex);
     share |= (value << bitIndex);
@@ -153,7 +151,7 @@ static inline void setBitValue(T &share, const T &value, const int &bitIndex) {
  * @param mask which bits to modify
  */
 template <typename T>
-static inline void setBitMask(T &share, const bool &value, const std::make_unsigned_t<T> &mask) {
+static inline void setBitMask(T& share, const bool& value, const std::make_unsigned_t<T>& mask) {
     share = (share & ~mask) | (-value & mask);
 }
 
@@ -191,7 +189,7 @@ class Vector {
      * prefix adder for boolean addition.
      */
 
-    inline Vector reverse_bit_level_shift(const int &level_size) const {
+    inline Vector reverse_bit_level_shift(int level_size) const {
         // NOTE: Rounding is needed because signed data types have one digit less.
         size_t size = this->size();
         Vector res(size);
@@ -219,7 +217,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    inline Vector bit_arithmetic_right_shift(const int &shift_size) const {
+    inline Vector bit_arithmetic_right_shift(int shift_size) const {
         size_t size = this->size();
         Vector res(size);
         for (size_t i = 0; i < size; ++i) {
@@ -238,7 +236,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    inline Vector bit_logical_right_shift(const int &shift_size) const {
+    inline Vector bit_logical_right_shift(int shift_size) const {
         size_t size = this->size();
         Vector res(size);
         for (size_t i = 0; i < size; ++i) {
@@ -257,7 +255,7 @@ class Vector {
      * NOTE: This method works relatively to the current batch.
      */
 
-    inline Vector bit_left_shift(const int &shift_size) const {
+    inline Vector bit_left_shift(int shift_size) const {
         size_t size = this->size();
         Vector res(size);
         for (size_t i = 0; i < size; ++i) {
@@ -308,7 +306,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    Vector simple_subset(const int &start, const int &step, const int &end) const {
+    Vector simple_subset(int start, int step, int end) const {
         size_t res_size = end - start + 1;
 
         auto res = Vector(res_size);
@@ -335,7 +333,7 @@ class Vector {
      * @param _start_ind The index of the first element in the current batch.
      * @param _end_ind The index of the last element in the current batch.
      */
-    void set_batch(const int &_start_ind, const int &_end_ind) {
+    void set_batch(int _start_ind, int _end_ind) {
         batch_start = (_start_ind >= 0) ? _start_ind : 0;
         batch_end = (_end_ind <= this->total_size()) ? _end_ind : this->total_size();
     }
@@ -359,7 +357,7 @@ class Vector {
      * Helper that sets this vector's precision to match another Vector.
      * @param other The Vector whose precision should be copied.
      */
-    void matchPrecision(const Vector<T> &other) { precision = other.getPrecision(); }
+    void matchPrecision(const Vector<T>& other) { precision = other.getPrecision(); }
 
     /**
      * @return The total number of elements in the vector.
@@ -573,8 +571,7 @@ class Vector {
      * @param repetition number of times each bit will be included.
      * @return a new `Vector` that has only the chosen bits in its elements (less size than input).
      */
-    Vector simple_bit_compress(const size_t &start, const size_t &step, const size_t &end,
-                               const size_t &repetition) const {
+    Vector simple_bit_compress(size_t start, size_t step, size_t end, size_t repetition) const {
         const size_t _step = step;
         const size_t _repetition = repetition;
 
@@ -606,7 +603,7 @@ class Vector {
      * @param res vector to compress into
      * @param position single bit position to compress (= start = end)
      */
-    void simple_bit_compress(Vector &res, const size_t &position) const {
+    void simple_bit_compress(Vector& res, size_t position) const {
         const size_t total_bits = this->size();
 
         for (size_t i = 0, j = 0; j < total_bits; i++, j += MAX_BITS_NUMBER) {
@@ -633,8 +630,8 @@ class Vector {
      * @param end index of the last bit bit to be included (most significant)
      * @param repetition number of times each bit will be included.
      */
-    void simple_bit_decompress(const Vector &other, const size_t &start, const size_t &step,
-                               const size_t &end, const size_t &repetition) {
+    void simple_bit_decompress(const Vector& other, size_t start, size_t step, size_t end,
+                               size_t repetition) {
         const size_t bits_per_element = std::abs(((end - start + 1) / step) * repetition);
         const size_t total_bits = bits_per_element * this->size();
         const size_t total_new_elements = div_ceil(total_bits, MAX_BITS_NUMBER);
@@ -659,7 +656,7 @@ class Vector {
      * setBitValue
      *
      */
-    void simple_bit_decompress(const Vector &other, const T &position) {
+    void simple_bit_decompress(const Vector& other, const T& position) {
         const int total_bits = this->size();
 
         for (int i = 0, j = 0; j < total_bits; i++, j += MAX_BITS_NUMBER) {
@@ -685,9 +682,8 @@ class Vector {
      * least significant first. `-1` means most significant first.
      * @return a new `Vector` that has only the chosen bits in its elements (less size than input).
      */
-    Vector alternating_bit_compress(const size_t &start, const size_t &step,
-                                    const size_t &included_size, const size_t &excluded_size,
-                                    const int &direction) const {
+    Vector alternating_bit_compress(size_t start, size_t step, size_t included_size,
+                                    size_t excluded_size, int direction) const {
         const size_t bits_per_chunk = included_size / step;
         const size_t bits_per_element =
             (MAX_BITS_NUMBER - start) / (included_size + excluded_size) * bits_per_chunk;
@@ -716,9 +712,8 @@ class Vector {
         return res;
     }
 
-    inline Vector alternating_bit_compress(const size_t &start, const size_t &step,
-                                           const size_t &included_size,
-                                           const size_t &excluded_size) const {
+    inline Vector alternating_bit_compress(size_t start, size_t step, size_t included_size,
+                                           size_t excluded_size) const {
         return alternating_bit_compress(start, step, included_size, excluded_size, 1);
     }
 
@@ -734,9 +729,9 @@ class Vector {
      * @param direction direction for picking up the bits in each included_size chunk. `1` means
      * least significant first. `-1` means most significant first.
      */
-    void alternating_bit_decompress(const Vector &other, const size_t &start, const size_t &step,
-                                    const size_t &included_size, const size_t &excluded_size,
-                                    const int &direction) const {
+    void alternating_bit_decompress(const Vector& other, size_t start, size_t step,
+                                    size_t included_size, size_t excluded_size,
+                                    int direction) const {
         const size_t bits_per_chunk = included_size / step;
         const size_t bits_per_element =
             (MAX_BITS_NUMBER - start) / (included_size + excluded_size) * bits_per_chunk;
@@ -794,7 +789,7 @@ class Vector {
      * Move constructor
      * @param other The std::vector<T> whose elements will be moved to the new Vector.
      */
-    Vector(std::vector<T> &&_other)
+    Vector(std::vector<T>&& _other)
         : data(std::shared_ptr<VectorDataBase<T>>(new VectorData<T>(_other))),
           batch_end(_other.size()) {}
 
@@ -802,7 +797,7 @@ class Vector {
      * Copy constructor
      * @param other The std::vector<T> whose elements will be copied to the new Vector.
      */
-    Vector(std::vector<T> &_other)
+    Vector(std::vector<T>& _other)
         : data(std::shared_ptr<VectorDataBase<T>>(new VectorData<T>(_other))),
           batch_end(_other.size()) {}
 
@@ -810,7 +805,7 @@ class Vector {
      * Constructs a new Vector from a list of `T` elements.
      * @param elements The list of elements of the new Vector.
      */
-    Vector(std::initializer_list<T> &&elements)
+    Vector(std::initializer_list<T>&& elements)
         : data(std::shared_ptr<VectorDataBase<T>>(new VectorData<T>(elements))) {
         batch_end = data.get()->size();
     }
@@ -822,7 +817,7 @@ class Vector {
      * WARNING: The new vector will point to the same memory location used by `other`. To copy the
      * data into a separate memory location, create a new vector first then use assignment operator.
      */
-    Vector(const Vector &other)
+    Vector(const Vector& other)
         : data(other.data),
           batch_start(other.batch_start),
           batch_end(other.batch_end),
@@ -842,7 +837,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    Vector &operator=(const Vector &&other) {
+    Vector& operator=(const Vector&& other) {
         size_t size = this->size();
         for (size_t i = 0; i < size; ++i) {
             (*this)[i] = other[i];
@@ -858,7 +853,7 @@ class Vector {
      * @param other the Vector that contains the values to be copied.
      * @return A reference to `this` Vector after modification.
      */
-    Vector &operator=(const Vector &other) {
+    Vector& operator=(const Vector& other) {
         size_t size = this->size();
         for (size_t i = 0; i < size; ++i) {
             (*this)[i] = other[i];
@@ -873,7 +868,7 @@ class Vector {
      *
      */
     template <typename OtherT>
-    Vector &operator=(const Vector<OtherT> &other) {
+    Vector& operator=(const Vector<OtherT>& other) {
         size_t size = this->size();
         for (size_t i = 0; i < size; i++) {
             (*this)[i] = (T)other[i];
@@ -890,7 +885,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    Vector simple_subset(const size_t &start, const size_t &size) const {
+    Vector simple_subset(size_t start, size_t size) const {
         auto res = Vector(size);
 
         for (size_t i = 0; i < size; ++i) {
@@ -904,19 +899,9 @@ class Vector {
      * Masks each element in `this` vector by doing a bitwise logical AND with `n`.
      * @param n The mask.
      */
-    void mask(const T &n) {
+    void mask(const T& n) {
         for (int i = 0; i < this->size(); ++i) {
             (*this)[i] &= n;
-        }
-    }
-
-    /**
-     * Sets the bits of each element in `this` vector by doing a bitwise logical OR with `n`
-     * @param n The element that encodes the bits to set.
-     */
-    void set_bits(const T &n) {
-        for (int i = 0; i < this->size(); ++i) {
-            (*this)[i] |= n;
         }
     }
 
@@ -958,7 +943,7 @@ class Vector {
      *
      * Moved from private so we can test this method externally.
      */
-    inline Vector bit_level_shift(const int &log_level_size) const {
+    inline Vector bit_level_shift(int log_level_size) const {
         static const int MAX_BITS_NUMBER = std::numeric_limits<std::make_unsigned_t<T>>::digits;
 
         auto mask = LEVEL_MASKS[log_level_size];
@@ -1162,7 +1147,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    inline T &operator[](const int &index) { return (*data.get())[batch_start + index]; }
+    inline T& operator[](int index) { return (*data.get())[batch_start + index]; }
 
     /**
      * Returns an immutable reference of the element at the given `index`.
@@ -1171,9 +1156,7 @@ class Vector {
      *
      * NOTE: This method works relatively to the current batch.
      */
-    inline const T &operator[](const int &index) const {
-        return (*data.get())[batch_start + index];
-    }
+    inline const T& operator[](int index) const { return (*data.get())[batch_start + index]; }
 
     //        /**
     //         * Unpacks bits in the elements of `this` vector to create a new vector of size `n`
@@ -1201,7 +1184,7 @@ class Vector {
      * @param other The vector to compare `this` with.
      * @return True if `this` vector contains the same elements with `other`, False otherwise.
      */
-    bool same_as(const Vector<T> &other) const {
+    bool same_as(const Vector<T>& other) const {
         if (this->size() != other.size()) {
 #ifdef DEBUG_VECTOR_SAME_AS
             std::cout << "[same_as]: size mismatch: this size " << this->size()
@@ -1227,7 +1210,7 @@ class Vector {
      * @return true if the argument is a prefix
      * @return false otherwise
      */
-    bool starts_with(const Vector<T> &prefix) {
+    bool starts_with(const Vector<T>& prefix) {
         if (prefix.total_size() > total_size()) {
             return false;
         }
@@ -1241,7 +1224,7 @@ class Vector {
     }
 
     // Friend classes
-    template <typename Share, int ReplicationNumber>
+    template <typename Share, int ReplicationNumber, int Bitwidth>
     friend class EVector;
     friend class service::RunTime;
 
@@ -1284,15 +1267,15 @@ class Vector {
  */
 // TODO (john): Move this to utils
 template <typename Share>
-static Vector<Share> compare_rows(const std::vector<Vector<Share> *> &x_vec,
-                                  const std::vector<Vector<Share> *> &y_vec,
-                                  const std::vector<bool> &inverse) {
+static Vector<Share> compare_rows(const std::vector<Vector<Share>*>& x_vec,
+                                  const std::vector<Vector<Share>*>& y_vec,
+                                  const std::vector<bool>& inverse) {
     assert((x_vec.size() > 0) && (x_vec.size() == y_vec.size()) &&
            (inverse.size() == x_vec.size()));
     const int cols_num = x_vec.size();  // Number of keys
     // Compare elements on first key
-    Vector<Share> *t = inverse[0] ? y_vec[0] : x_vec[0];
-    Vector<Share> *o = inverse[0] ? x_vec[0] : y_vec[0];
+    Vector<Share>* t = inverse[0] ? y_vec[0] : x_vec[0];
+    Vector<Share>* o = inverse[0] ? x_vec[0] : y_vec[0];
     Vector<Share> eq = (*t == *o);
     Vector<Share> gt = (*t > *o);
 
@@ -1324,8 +1307,8 @@ static Vector<Share> compare_rows(const std::vector<Vector<Share> *> &x_vec,
  */
 // TODO (john): Move this to utils
 template <typename Share>
-static void swap(std::vector<Vector<Share> *> &x_vec, std::vector<Vector<Share> *> &y_vec,
-                 const Vector<Share> &bits) {
+static void swap(std::vector<Vector<Share>*>& x_vec, std::vector<Vector<Share>*>& y_vec,
+                 const Vector<Share>& bits) {
     // Make sure the input arrays have the same dimensions
     assert((x_vec.size() > 0) && (x_vec.size() == y_vec.size()));
     const int cols_num = x_vec.size();  // Number of columns
@@ -1358,7 +1341,7 @@ static void swap(std::vector<Vector<Share> *> &x_vec, std::vector<Vector<Share> 
  */
 // TODO (john): Move this to utils
 template <typename Share>
-static void swap(Vector<Share> &x_vec, Vector<Share> &y_vec, const Vector<Share> &bits) {
+static void swap(Vector<Share>& x_vec, Vector<Share>& y_vec, const Vector<Share>& bits) {
     // Make sure the input arrays have the same dimensions
     assert((x_vec.size() > 0) && (x_vec.size() == y_vec.size()) && (bits.size() == x_vec.size()));
     auto b = bits.extend_lsb();

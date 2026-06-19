@@ -7,7 +7,7 @@
 #include "orq.h"
 
 // This test only runs on 2pc
-#ifdef MPC_PROTOCOL_BEAVER_TWO
+#if defined(MPC_PROTOCOL_BEAVER_TWO) && defined(USE_LIBOTE)
 
 #include "coproto/Socket/AsioSocket.h"
 #include "coproto/Socket/BufferingSocket.h"
@@ -36,7 +36,7 @@ using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 using Ctx = CoeffCtxInteger;
 
 // Don't conflict with ORQ's libOTe instance
-#define TESTING_ADDRESS "localhost:29876"
+#define TESTING_ADDRESS ":29876"
 
 inline auto eval(macoro::task<>& t0, macoro::task<>& t1) {
     auto r = macoro::sync_wait(macoro::when_all_ready(std::move(t0), std::move(t1)));
@@ -247,7 +247,7 @@ void test_silent_vole_loopback(u64 n) {
 
     bool isServer = (runTime->getPartyID() == 0);
 
-    auto sock = cp::asioConnect(TESTING_ADDRESS, isServer);
+    auto sock = cp::asioConnect(runTime->comm0()->host_prefix + TESTING_ADDRESS, isServer);
 
     VecF A(n), B(n), C(n);
     F delta = 0;
@@ -313,7 +313,7 @@ void test_silent_ot_loopback(u64 n) {
     }
 
     PRNG prng(sysRandomSeed());
-    auto sock = cp::asioConnect(TESTING_ADDRESS, isServer);
+    auto sock = cp::asioConnect(runTime->comm0()->host_prefix + TESTING_ADDRESS, isServer);
 
     // OT gives 128 bit outputs, so we actually need fewer than requested;
     // exact amount depends on size of the element requested.
@@ -408,7 +408,7 @@ void test_silent_ot_chosen(u64 n) {
     }
 
     PRNG prng(sysRandomSeed());
-    auto sock = cp::asioConnect(TESTING_ADDRESS, isServer);
+    auto sock = cp::asioConnect(runTime->comm0()->host_prefix + TESTING_ADDRESS, isServer);
 
     if (isServer) {
         // rOT Receiver
@@ -465,7 +465,7 @@ void test_softspoken(u64 n) {
     }
 
     PRNG prng(sysRandomSeed());
-    auto sock = cp::asioConnect(TESTING_ADDRESS, isRecv);
+    auto sock = cp::asioConnect(runTime->comm0()->host_prefix + TESTING_ADDRESS, isRecv);
 
     BitVector ch(n);
     AlignedUnVector<block> r_msg(n);
@@ -497,6 +497,67 @@ void test_softspoken(u64 n) {
 
         std::cout << "OK\n";
     }
+}
+
+void test_dpf_local_keygen(int test_size) {
+    auto pID = runTime->getPartyID();
+
+    int domain = 32;
+
+    orq::random::DPF<int64_t> dpf(pID, 0, runTime->comm0());
+
+    // test distributed key generation
+    orq::Vector<int64_t> input(test_size);
+    for (int i = 0; i < test_size; i++) {
+        input[i] = i;
+    }
+
+    // party 0 generates the keys and distributes them
+    if (pID == 0) {
+        auto [key0, key1] = dpf.keyGenNonInteractive(input, domain);
+        dpf.distributeKeys(std::make_optional(std::array<oc::RegularDpfKey, 2>{key0, key1}));
+    } else {
+        dpf.distributeKeys();
+    }
+
+    auto sparse_results = dpf.expand();
+    auto full_results = dpf.expandFullMatrix();
+
+    // test DPF correlation
+    dpf.assertCorrelated(sparse_results);
+    dpf.assertCorrelated(full_results);
+
+    single_cout("DPF with Local Keygen...OK");
+}
+
+void test_dpf_dkg(int test_size) {
+    auto pID = runTime->getPartyID();
+
+    int domain = 32;
+
+    orq::random::DPF<int64_t> dpf(pID, 0, runTime->comm0());
+
+    // test distributed key generation
+    orq::Vector<int64_t> input(test_size);
+    for (int i = 0; i < test_size; i++) {
+        // input needs to be a secret sharing
+        if (pID == 0) {
+            input[i] = i;
+        } else {
+            input[i] = 0;
+        }
+    }
+
+    dpf.keyGen(input, domain);
+
+    auto sparse_results = dpf.expand();
+    auto full_results = dpf.expandFullMatrix();
+
+    // test DPF correlation
+    dpf.assertCorrelated(sparse_results);
+    dpf.assertCorrelated(full_results);
+
+    single_cout("DPF with Distributed Keygen...OK");
 }
 
 int main(int argc, char** argv) {
@@ -534,6 +595,11 @@ int main(int argc, char** argv) {
     test_silent_ot_chosen<int32_t>(test_size);
 
     test_softspoken(test_size);
+
+#if defined(USE_SECURE_JOIN)
+    test_dpf_local_keygen(test_size);
+    test_dpf_dkg(test_size);
+#endif
 }
 #else  // MPC_PROTOCOL_BEAVER_TWO
 

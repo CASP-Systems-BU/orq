@@ -186,10 +186,10 @@ std::shared_ptr<DMShardedPermutation<T>> dm_perm_convert_b2a(
         C_binary.vector(0) = B;
     }
 
-    // convert to ASharedVectors
+    // convert to ASharedVectors with conditional dereferencing due to type mismatch
 #ifdef USE_LIBOTE
-    ASharedVector<T, EVector<T, 1>> B_arithmetic = B_binary.b2a();
-    ASharedVector<T, EVector<T, 1>> C_arithmetic = C_binary.b2a();
+    auto B_arithmetic = *B_binary.b2a();
+    auto C_arithmetic = *C_binary.b2a();
 #else
     ASharedVector<T, EVector<T, 1>> B_arithmetic = B_binary.insecure_b2a();
     ASharedVector<T, EVector<T, 1>> C_arithmetic = C_binary.insecure_b2a();
@@ -215,7 +215,7 @@ std::shared_ptr<DMShardedPermutation<T>> dm_perm_convert_b2a(
  */
 template <typename T>
 class DMShardedPermutationGenerator : public ShardedPermutationGenerator {
-    int rank;
+   protected:
     std::optional<Communicator*> comm;
 
    public:
@@ -229,14 +229,14 @@ class DMShardedPermutationGenerator : public ShardedPermutationGenerator {
      *              Defaults to std::nullopt if not provided.
      */
     DMShardedPermutationGenerator(int _rank, std::optional<Communicator*> _comm = std::nullopt)
-        : ShardedPermutationGenerator(_rank, _comm), rank(_rank), comm(_comm) {}
+        : ShardedPermutationGenerator(_rank, _comm), comm(_comm) {}
 
     /**
      * Generate and return a DMShardedPermutation.
      * @param n The size of the permutation.
      * @return The DMShardedPermutation.
      */
-    virtual std::shared_ptr<ShardedPermutation> getNext(size_t n) {
+    virtual std::shared_ptr<ShardedPermutation> getNext(const size_t n) {
         return std::make_shared<DMShardedPermutation<T>>(n);
     }
 
@@ -272,7 +272,7 @@ class DMShardedPermutationGenerator : public ShardedPermutationGenerator {
      */
     void assertCorrelated(std::shared_ptr<DMShardedPermutation<T>>& perm) {
         if (!comm.has_value()) {
-            if (getRank() == 0) {
+            if (this->rank == 0) {
                 std::cout << "Skipping Permutation check: communicator not defined\n";
             }
             return;
@@ -287,14 +287,14 @@ class DMShardedPermutationGenerator : public ShardedPermutationGenerator {
         Vector<T> A_0(n), B_0(n), C_0(n);
         Vector<T> A_1(n), B_1(n), C_1(n);
 
-        if (getRank() == 0) {
+        if (this->rank == 0) {
             auto [pi_0, A_1, B_1, C_0] = perm_tuple;
 
-            comm.value()->receiveShares(A_0, 1, n);
-            comm.value()->receiveShares(B_0, 1, n);
+            comm.value()->receiveShares(A_0, 1);
+            comm.value()->receiveShares(B_0, 1);
 
-            comm.value()->receiveShares(pi_1, 1, n);
-            comm.value()->receiveShares(C_1, 1, n);
+            comm.value()->receiveShares(pi_1, 1);
+            comm.value()->receiveShares(C_1, 1);
 
             Vector<T> pi_A_0(n);
             Vector<T> pi_A_1(n);
@@ -325,11 +325,11 @@ class DMShardedPermutationGenerator : public ShardedPermutationGenerator {
         } else {
             auto [pi_1, A_0, B_0, C_1] = perm_tuple;
 
-            comm.value()->sendShares(A_0, 1, n);
-            comm.value()->sendShares(B_0, 1, n);
+            comm.value()->sendShares(A_0, 1);
+            comm.value()->sendShares(B_0, 1);
 
-            comm.value()->sendShares(pi_1, 1, n);
-            comm.value()->sendShares(C_1, 1, n);
+            comm.value()->sendShares(pi_1, 1);
+            comm.value()->sendShares(C_1, 1);
         }
     }
 

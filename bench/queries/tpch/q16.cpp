@@ -67,10 +67,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // TPCH Q16 query parameters
     const int BRAND = 10;
@@ -168,14 +165,14 @@ int main(int argc, char** argv) {
     stopwatch::timepoint("Distinct");
 
     // Adding extra columns for count
-    PartPartSuppJoin.addColumns({"SupplierCount"}, PartPartSuppJoin.size());
+    PartPartSuppJoin.addColumns({"SupplierCount"});
     PartPartSuppJoin.aggregate({"[Brand]", "[Type]", "[Size]"},
                                {{"SupplierCount", "SupplierCount", count<A>}});
 
     stopwatch::timepoint("Group by count");
 
     // convert SupplierCount to boolean for sort
-    PartPartSuppJoin.addColumns({"[SupplierCount]"}, PartPartSuppJoin.size());
+    PartPartSuppJoin.addColumns({"[SupplierCount]"});
     PartPartSuppJoin.convert_a2b("SupplierCount", "[SupplierCount]");
     PartPartSuppJoin.deleteColumns({"SupplierCount"});
 

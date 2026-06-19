@@ -5,7 +5,7 @@ using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 int main(int argc, char** argv) {
     orq_init(argc, argv);
 
-#ifdef MPC_PROTOCOL_BEAVER_TWO
+#if defined(MPC_PROTOCOL_BEAVER_TWO)
     return 0;
 #endif
 

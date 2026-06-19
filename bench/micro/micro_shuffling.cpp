@@ -6,20 +6,13 @@ using namespace orq::service;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
 #include <unistd.h>
-// command
-// mpirun -np 3 ./micro_shuffling 1 1 8192 $ROWS
 
 int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pID = runTime->getPartyID();
-    int test_size = 128;
-    int num_columns = 2;
-    if (argc >= 5) {
-        test_size = atoi(argv[4]);
-    }
-    if (argc >= 6) {
-        num_columns = atoi(argv[5]);
-    }
+
+    auto test_size = runTime->getArg<size_t>("test-size", "r", 1 << 20);
+    auto num_columns = runTime->getArg<int>("num-columns", "nc", 2);
 
     orq::Vector<int> v(test_size);
     for (int i = 0; i < test_size; i++) {

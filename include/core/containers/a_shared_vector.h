@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/math/util.h"
+#include "core/operators/circuits.h"
 #include "shared_vector.h"
 
 namespace orq {
@@ -16,7 +18,7 @@ class ASharedVector : public SharedVector<Share, EVector> {
      * Creates an ASharedVector of size `_size` and initializes it with zeros.
      * @param _size The size of the ASharedVector.
      */
-    explicit ASharedVector(const size_t& _size)
+    explicit ASharedVector(const size_t _size)
         : SharedVector<Share, EVector>(_size, Encoding::AShared) {}
 
     /**
@@ -25,7 +27,7 @@ class ASharedVector : public SharedVector<Share, EVector> {
      * @param _size The size of the ASharedVector.
      * @param _input_file The file that contains the secret shares.
      */
-    explicit ASharedVector(const size_t& _size, const std::string& _input_file)
+    explicit ASharedVector(const size_t _size, const std::string& _input_file)
         : SharedVector<Share, EVector>(_size, _input_file, Encoding::AShared) {}
 
     /**
@@ -96,6 +98,18 @@ class ASharedVector : public SharedVector<Share, EVector> {
     explicit ASharedVector(ASharedVector* _base) : ASharedVector(std::move(*_base)) {}
 
     /**
+     * @brief Construct a new ASharedVector object like another ASharedVector but with a different
+     * size.
+     *
+     * @param size The size of the new ASharedVector.
+     * @return ASharedVector The newly constructed ASharedVector.
+     */
+    ASharedVector construct_like(std::optional<size_t> size = {}) const {
+        auto new_size = size.value_or(this->size());
+        return ASharedVector(this->vector.construct_like(new_size));
+    }
+
+    /**
      * @brief Use the underlying SharedVector's implementation of `operator=`.
      *
      */
@@ -136,6 +150,11 @@ class ASharedVector : public SharedVector<Share, EVector> {
      *
      */
     std::unique_ptr<B> a2b() const {
+        if constexpr (CONFIDENTIAL_1PC) {
+            // No point doing conversion!
+            return std::make_unique<B>(this->asEVector());
+        }
+
         std::pair<B, B> v = service::runTime->redistribute_shares_b(this->vector);
         // This `+` here is actually a call to our binary adder circuit.
         auto res = v.first + v.second;
@@ -170,6 +189,23 @@ class ASharedVector : public SharedVector<Share, EVector> {
     binary_element_op(+, add_a, ASharedVector, Share);
     binary_element_op(-, add_a, ASharedVector, Share);
     binary_element_op(*, add_a, ASharedVector, Share);
+
+    /**
+     * @brief Multiply by a public floating-point constant (local, no MPC protocol).
+     * Scales the float to a fixed-point integer using this vector's precision,
+     * multiplies each share locally, and truncates.
+     */
+    template <std::floating_point FP>
+    std::unique_ptr<ASharedVector> operator*(FP y) const {
+        int p = this->getPrecision();
+        Share scaled =
+            static_cast<Share>(std::llround(static_cast<long double>(y) * std::ldexp(1.0L, p)));
+        auto result_ev = this->vector * scaled;
+        if (p > 0) {
+            result_ev = result_ev / (Share(1) << p);
+        }
+        return std::make_unique<ASharedVector>(std::move(result_ev));
+    }
 
     compound_assignment_op(+=, add_a, ASharedVector);
     compound_assignment_op(-=, sub_a, ASharedVector);
@@ -234,12 +270,12 @@ class ASharedVector : public SharedVector<Share, EVector> {
      * @return A unique pointer to a new ASharedVector that contains the result of the dot product.
      */
     std::unique_ptr<ASharedVector> dot_product(const ASharedVector& other,
-                                               const int aggSize) const {
+                                               const size_t aggSize) const {
         // Number of elements in the dot product must match.
         assert(this->vector.size() == other.vector.size());
 
         // Compute the size of the resulting vector.
-        auto newSize = div_ceil(this->vector.size(), aggSize);
+        auto newSize = math::div_ceil(this->vector.size(), aggSize);
         auto res = std::make_unique<ASharedVector>(newSize);
 
         // Compute the dot product
@@ -247,6 +283,23 @@ class ASharedVector : public SharedVector<Share, EVector> {
 
         // Return the result as a new ASharedVector
         return res;
+    }
+
+    /**
+     * @brief Negate this vector in place.
+     *
+     */
+    void inplace_invert() { service::runTime->neg_a(this->vector, this->vector); }
+
+    /**
+     * @brief Compute chunked sums over groups of consecutive elements.
+     * Simply calls down to the underlying EVector's chunkedSum method.
+     *
+     * @param aggSize The number of elements to aggregate in each sum.
+     * @return ASharedVector containing the chunked sums.
+     */
+    ASharedVector chunkedSum(const size_t aggSize = 0) const {
+        return ASharedVector(this->vector.chunkedSum(aggSize));
     }
 };
 

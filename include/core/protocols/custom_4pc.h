@@ -49,8 +49,12 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         return {{0, 1, 2}, {1, 2, 3}, {2, 3, 0}, {3, 0, 1}};
     }
 
+    inline int abs2rel(int p) { return (p - this->partyID + 4) % 4; }
+
+    inline int abs2sh(int p) { return p == this->partyID ? 0 : (abs2rel(p) - 1 + 4) % 4; }
+
     // Configuration Parameters
-    static int parties_num;
+    static constexpr int parties_num = 4;
 
     /**
      * @brief Constructor for Fantastic_4PC protocol.
@@ -59,7 +63,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param _communicator Pointer to communicator.
      * @param _randomnessManager Pointer to randomness manager.
      */
-    Fantastic_4PC(PartyID _partyID, Communicator *_communicator,
+    Fantastic_4PC(PartyID _partyID, WorkerConfig wc, Communicator *_communicator,
                   random::RandomnessManager *_randomnessManager)
         : Protocol<Data, Share, Vector, EVector>(_communicator, _randomnessManager, _partyID, 4,
                                                  3) {}
@@ -93,9 +97,9 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         Vector mult_recv(size), mult_recv_check(size);
 
         // Exchange with next (previous) party
-        this->communicator->exchangeShares(cross_10, mult_recv, +1, +3, size);
+        this->communicator->exchangeShares(cross_10, mult_recv, +1, +3);
         // Exchange with opposite party
-        this->communicator->exchangeShares(cross_12, mult_recv_check, +2, +2, size);
+        this->communicator->exchangeShares(cross_12, mult_recv_check, +2, +2);
 
         malicious_check(mult_recv, mult_recv_check, +2, -1);
 
@@ -116,7 +120,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
 
             // Randomize cross term with new randomness and send to P1
             cross_02 -= r_next;
-            this->communicator->sendShares(cross_02, +1, size);
+            this->communicator->sendShares(cross_02, +1);
 
             // Adjust shares
             z(0) += r_next;
@@ -129,8 +133,8 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
             // P2. Run malicious check. Both values are masked by a random
             // value which *excludes* P1.
             cross_02 -= r_next;
-            this->communicator->exchangeShares(cross_02, mult_recv_check, +1, +1, size);
-            this->communicator->receiveShares(mult_recv, -1, size);
+            this->communicator->exchangeShares(cross_02, mult_recv_check, +1, +1);
+            this->communicator->receiveShares(mult_recv, -1);
 
             malicious_check(mult_recv, mult_recv_check, +2, -1);
 
@@ -143,8 +147,8 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
 
             cross_02 -= r_prev;
 
-            this->communicator->exchangeShares(cross_02, mult_recv_check, -1, -1, size);
-            this->communicator->receiveShares(mult_recv, +1, size);
+            this->communicator->exchangeShares(cross_02, mult_recv_check, -1, -1);
+            this->communicator->receiveShares(mult_recv, +1);
 
             malicious_check(mult_recv, mult_recv_check, +1, +2);
 
@@ -157,7 +161,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
 
             // Randomize and send our cross term to P2
             cross_02 -= r_prev;
-            this->communicator->sendShares(cross_02, -1, size);
+            this->communicator->sendShares(cross_02, -1);
 
             z(0) += cross_02;
             z(1) += r_opp;
@@ -181,7 +185,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param h Fourth party in sequence (randomness generator).
      * @return Shared vector.
      */
-    EVector inp_a(const Vector &x, const int &i, const int &j, const int &g, const int &h) {
+    EVector inp_a(const Vector &x, const int i, const int j, const int g, const int h) {
         EVector res(x.size());
         long long size = x.size();
 
@@ -190,19 +194,19 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
             // res(0) = r_1, res(1) = res - r_1, res(2) = 0
             this->randomnessManager->commonPRGManager->get(+(g - i))->getNext(res(0));
             res(1) = x - res(0);
-            this->communicator->sendShares(res(1), +1, res(1).size());
+            this->communicator->sendShares(res(1), +1);
         } else if (this->partyID == j) {
             // First working as main computer (j in inp)
             // res(0) = 0, res(1) = r_2, res(2) = res - r_2
             this->randomnessManager->commonPRGManager->get(+(g - j))->getNext(res(1));
             res(2) = x - res(1);
-            this->communicator->sendShares(res(2), +2, res(2).size());
+            this->communicator->sendShares(res(2), +2);
         } else if (this->partyID == g) {
             // working as receiver (g in inp)
             // res(0) = [res - r_0]_, res(1) = 0, res(2) = 0
             Vector other(x.size());
-            this->communicator->receiveShares(res(0), +3, x.size());
-            this->communicator->receiveShares(other, +2, x.size());
+            this->communicator->receiveShares(res(0), +3);
+            this->communicator->receiveShares(other, +2);
             if (!other.same_as(res(0))) {
                 printf("party %d accuses (%d,%d)\n", this->partyID, (this->partyID + 3) % 4,
                        (this->partyID + 2) % 4);
@@ -224,7 +228,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param c Constant divisor.
      * @return Pair of vectors (quotient and error correction).
      */
-    std::pair<EVector, EVector> div_const_a(const EVector &x, const Data &c) {
+    std::pair<EVector, EVector> div_const_a(const EVector &x, const Data c) {
         auto size = x.size();
         EVector res(size), err(size);
 
@@ -289,7 +293,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param h Fourth party in sequence (randomness generator).
      * @return Shared vector.
      */
-    EVector inp_b(const Vector &x, const int &i, const int &j, const int &g, const int &h) {
+    EVector inp_b(const Vector &x, const int i, const int j, const int g, const int h) {
         EVector res(x.size());
         long long size = x.size();
 
@@ -301,19 +305,19 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
             // res(0) = r_1, res(1) = res ^ r_1, res(2) = 0
             this->randomnessManager->commonPRGManager->get(+(g - i))->getNext(res(0));
             res(1) = x ^ res(0);
-            this->communicator->sendShares(res(1), +1, res(1).size());
+            this->communicator->sendShares(res(1), +1);
         } else if (this->partyID == j) {
             // First working as main computer (j in inp)
             // res(0) = 0, res(1) = r_2, res(2) = res ^ r_2
             this->randomnessManager->commonPRGManager->get(+(g - j))->getNext(res(1));
             res(2) = x ^ res(1);
-            this->communicator->sendShares(res(2), +2, res(2).size());
+            this->communicator->sendShares(res(2), +2);
         } else if (this->partyID == g) {
             // working as receiver (g in inp)
             // res(0) = [res ^ r_0]_, res(1) = 0, res(2) = 0
             Vector other(x.size());
-            this->communicator->receiveShares(res(0), +3, x.size());
-            this->communicator->receiveShares(other, +2, x.size());
+            this->communicator->receiveShares(res(0), +3);
+            this->communicator->receiveShares(other, +2);
             if (!other.same_as(res(0))) {
                 printf("party %d accuses (%d,%d)\n", this->partyID, (this->partyID + 3) % 4,
                        (this->partyID + 2) % 4);
@@ -357,9 +361,9 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         Vector mult_recv(size), mult_recv_check(size);
 
         // Exchange with next (previous) party
-        this->communicator->exchangeShares(cross_10, mult_recv, +1, -1, size);
+        this->communicator->exchangeShares(cross_10, mult_recv, +1, -1);
         // Exchange with opposite party
-        this->communicator->exchangeShares(cross_12, mult_recv_check, +2, +2, size);
+        this->communicator->exchangeShares(cross_12, mult_recv_check, +2, +2);
 
         malicious_check(mult_recv, mult_recv_check, +2, -1);
 
@@ -380,7 +384,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
 
             // Randomize cross term with new randomness and send to P1
             cross_02 ^= r_next;
-            this->communicator->sendShares(cross_02, +1, size);
+            this->communicator->sendShares(cross_02, +1);
 
             // Adjust shares
             z(0) ^= r_next;
@@ -393,8 +397,8 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
             // P2. Run malicious check. Both values are masked by a random
             // value which *excludes* P1.
             cross_02 ^= r_next;
-            this->communicator->exchangeShares(cross_02, mult_recv_check, +1, +1, size);
-            this->communicator->receiveShares(mult_recv, -1, size);
+            this->communicator->exchangeShares(cross_02, mult_recv_check, +1, +1);
+            this->communicator->receiveShares(mult_recv, -1);
 
             malicious_check(mult_recv, mult_recv_check, +2, -1);
 
@@ -407,8 +411,8 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
 
             cross_02 ^= r_prev;
 
-            this->communicator->exchangeShares(cross_02, mult_recv_check, -1, -1, size);
-            this->communicator->receiveShares(mult_recv, +1, size);
+            this->communicator->exchangeShares(cross_02, mult_recv_check, -1, -1);
+            this->communicator->receiveShares(mult_recv, +1);
 
             malicious_check(mult_recv, mult_recv_check, +1, +2);
 
@@ -421,7 +425,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
 
             // Randomize and send our cross term to P2
             cross_02 ^= r_prev;
-            this->communicator->sendShares(cross_02, -1, size);
+            this->communicator->sendShares(cross_02, -1);
 
             z(0) ^= cross_02;
             z(1) ^= r_opp;
@@ -492,8 +496,7 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param y Output arithmetic shared vector.
      */
     void b2a_bit(const EVector &x, EVector &y) {
-        EVector x_prime(x);
-        x_prime.mask(1);
+        EVector x_prime = x & 1;
 
         Vector s0(x.size()), s1(x.size());
 
@@ -601,11 +604,11 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vector.
      * @return Opened plaintext vector.
      */
-    Vector open_shares_a(const EVector &shares) {
+    Vector internal_open_a(const EVector &shares) {
         // shares have 0 & 1 & 2 ... go fetch 3
         size_t size = shares.size();
         Vector shares_4(size);
-        this->communicator->exchangeShares(shares(0), shares_4, 1, +3, size);
+        this->communicator->exchangeShares(shares(0), shares_4, 1, +3);
         return shares(0) + shares(1) + shares(2) + shares_4;
     }
 
@@ -617,11 +620,11 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vector.
      * @return Opened plaintext vector.
      */
-    Vector open_shares_b(const EVector &shares) {
+    Vector internal_open_b(const EVector &shares) {
         // shares have 0 & 1 & 2 ... go fetch 3
         size_t size = shares.size();
         Vector shares_4(size);
-        this->communicator->exchangeShares(shares(0), shares_4, 1, +3, size);
+        this->communicator->exchangeShares(shares(0), shares_4, 1, +3);
         return shares(0) ^ shares(1) ^ shares(2) ^ shares_4;
     }
 
@@ -704,30 +707,30 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data_party Party ID of the data party.
      * @return Secret shared vector.
      */
-    EVector secret_share_b(const Vector &data, const PartyID &data_party = 0) {
+    EVector secret_share_b_internal(const Vector &data, const PartyID &data_party = 0) {
         auto size = data.size();
         if (this->partyID == data_party) {
             // Generate shares
             auto boolean_shares = get_shares_b(data);
             // Send first shared vector to the successor
-            this->communicator->sendShares(boolean_shares[1](0), this->partyID + 1, size);
-            this->communicator->sendShares(boolean_shares[1](1), this->partyID + 1, size);
-            this->communicator->sendShares(boolean_shares[1](2), this->partyID + 1, size);
+            this->communicator->sendShares(boolean_shares[1](0), this->partyID + 1);
+            this->communicator->sendShares(boolean_shares[1](1), this->partyID + 1);
+            this->communicator->sendShares(boolean_shares[1](2), this->partyID + 1);
             // Send second shared vector to the successor + 1
-            this->communicator->sendShares(boolean_shares[2](0), this->partyID + 2, size);
-            this->communicator->sendShares(boolean_shares[2](1), this->partyID + 2, size);
-            this->communicator->sendShares(boolean_shares[2](2), this->partyID + 2, size);
+            this->communicator->sendShares(boolean_shares[2](0), this->partyID + 2);
+            this->communicator->sendShares(boolean_shares[2](1), this->partyID + 2);
+            this->communicator->sendShares(boolean_shares[2](2), this->partyID + 2);
             // Send second shared vector to the successor + 2
-            this->communicator->sendShares(boolean_shares[3](0), this->partyID + 3, size);
-            this->communicator->sendShares(boolean_shares[3](1), this->partyID + 3, size);
-            this->communicator->sendShares(boolean_shares[3](2), this->partyID + 3, size);
+            this->communicator->sendShares(boolean_shares[3](0), this->partyID + 3);
+            this->communicator->sendShares(boolean_shares[3](1), this->partyID + 3);
+            this->communicator->sendShares(boolean_shares[3](2), this->partyID + 3);
             return boolean_shares[0];
         } else {
             EVector s(size);
             // Receive second shared vector from the predecessor
-            this->communicator->receiveShares(s(0), data_party - this->partyID, size);
-            this->communicator->receiveShares(s(1), data_party - this->partyID, size);
-            this->communicator->receiveShares(s(2), data_party - this->partyID, size);
+            this->communicator->receiveShares(s(0), data_party - this->partyID);
+            this->communicator->receiveShares(s(1), data_party - this->partyID);
+            this->communicator->receiveShares(s(2), data_party - this->partyID);
             return s;
         }
     }
@@ -739,30 +742,30 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data_party Party ID of the data party.
      * @return Secret shared vector.
      */
-    EVector secret_share_a(const Vector &data, const PartyID &data_party = 0) {
+    EVector secret_share_a_internal(const Vector &data, const PartyID &data_party = 0) {
         auto size = data.size();
         if (this->partyID == data_party) {
             // Generate shares
             auto boolean_shares = get_shares_a(data);
             // Send first shared vector to the successor
-            this->communicator->sendShares(boolean_shares[1](0), this->partyID + 1, size);
-            this->communicator->sendShares(boolean_shares[1](1), this->partyID + 1, size);
-            this->communicator->sendShares(boolean_shares[1](2), this->partyID + 1, size);
+            this->communicator->sendShares(boolean_shares[1](0), this->partyID + 1);
+            this->communicator->sendShares(boolean_shares[1](1), this->partyID + 1);
+            this->communicator->sendShares(boolean_shares[1](2), this->partyID + 1);
             // Send second shared vector to the successor + 1
-            this->communicator->sendShares(boolean_shares[2](0), this->partyID + 2, size);
-            this->communicator->sendShares(boolean_shares[2](1), this->partyID + 2, size);
-            this->communicator->sendShares(boolean_shares[2](2), this->partyID + 2, size);
+            this->communicator->sendShares(boolean_shares[2](0), this->partyID + 2);
+            this->communicator->sendShares(boolean_shares[2](1), this->partyID + 2);
+            this->communicator->sendShares(boolean_shares[2](2), this->partyID + 2);
             // Send second shared vector to the successor + 2
-            this->communicator->sendShares(boolean_shares[3](0), this->partyID + 3, size);
-            this->communicator->sendShares(boolean_shares[3](1), this->partyID + 3, size);
-            this->communicator->sendShares(boolean_shares[3](2), this->partyID + 3, size);
+            this->communicator->sendShares(boolean_shares[3](0), this->partyID + 3);
+            this->communicator->sendShares(boolean_shares[3](1), this->partyID + 3);
+            this->communicator->sendShares(boolean_shares[3](2), this->partyID + 3);
             return boolean_shares[0];
         } else {
             EVector s(size);
             // Receive second shared vector from the predecessor
-            this->communicator->receiveShares(s(0), data_party - this->partyID, size);
-            this->communicator->receiveShares(s(1), data_party - this->partyID, size);
-            this->communicator->receiveShares(s(2), data_party - this->partyID, size);
+            this->communicator->receiveShares(s(0), data_party - this->partyID);
+            this->communicator->receiveShares(s(1), data_party - this->partyID);
+            this->communicator->receiveShares(s(2), data_party - this->partyID);
             return s;
         }
     }
@@ -770,31 +773,33 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
     /**
      * @brief Public sharing of a vector x.
      *
-     * P0 gets: (0, 0, 0   )
-     * P1 gets: (   0, 0, x)
-     * P2 gets: (0,    0, x)
-     * P3 gets: (0, 0,    x)
-     *
      * @param x Input data vector.
+     * @param who_knows set of parties who know the value
      * @return EVector
      */
-    EVector public_share(const Vector &x) {
+    EVector public_share(const Vector &x, const std::set<PartyID> &who_knows) {
+        auto me = this->partyID;
         auto size = x.size();
-        auto zero1 = Vector(size);
-        auto zero2 = Vector(size);
-        auto zero3 = Vector(size);
-        switch (this->partyID) {
-            case 0:
-                return std::vector<Vector>({zero1, zero2, zero3});
-            case 1:
-                return std::vector<Vector>({zero2, zero3, x});
-            case 2:
-                return std::vector<Vector>({zero3, x, zero1});
-            case 3:
-                return std::vector<Vector>({x, zero1, zero2});
-            default:
-                throw std::runtime_error("Invalid party ID");
+
+        // zero initialized
+        EVector r(size);
+
+        // I hold shares x_{me+1}, x_{me+2}, x_{me+3} mod 4
+
+        int k = 0;
+        if (!who_knows.empty()) {
+            // the share will be whichever party is not in the group
+            assert(who_knows.size() == 3);
+
+            // Use subtraction trick from excluded_party above
+            k = (0 + 1 + 2 + 3) - std::accumulate(who_knows.begin(), who_knows.end(), 0);
         }
+
+        if (me != k) {
+            r(abs2sh(k)) = x;
+        }
+
+        return r;
     }
 
     /**
@@ -856,16 +861,16 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         // the three sending parties each send two shares to the receiving party
         if (receiver_rel_rank == 3) {  // rank -3
             // send shares at indices 0 and 1
-            this->communicator->sendShares(v(0), receiver_rel_rank, v.size());  // share i+1
-            this->communicator->sendShares(v(1), receiver_rel_rank, v.size());  // share i+2
-        } else if (receiver_rel_rank == 2) {                                    // rank -2
+            this->communicator->sendShares(v(0), receiver_rel_rank);  // share i+1
+            this->communicator->sendShares(v(1), receiver_rel_rank);  // share i+2
+        } else if (receiver_rel_rank == 2) {                          // rank -2
             // send shares at indices 0 and 2
-            this->communicator->sendShares(v(0), receiver_rel_rank, v.size());  // share i+2
-            this->communicator->sendShares(v(2), receiver_rel_rank, v.size());  // share i
-        } else if (receiver_rel_rank == 1) {                                    // rank -1
+            this->communicator->sendShares(v(0), receiver_rel_rank);  // share i+2
+            this->communicator->sendShares(v(2), receiver_rel_rank);  // share i
+        } else if (receiver_rel_rank == 1) {                          // rank -1
             // send shares at indices 1 and 2
-            this->communicator->sendShares(v(1), receiver_rel_rank, v.size());  // share i
-            this->communicator->sendShares(v(2), receiver_rel_rank, v.size());  // share i+1
+            this->communicator->sendShares(v(1), receiver_rel_rank);  // share i
+            this->communicator->sendShares(v(2), receiver_rel_rank);  // share i+1
         } else if (receiver_rel_rank == 0) {
             // this party is the receiver
             std::vector<Vector> received_shares = {v(0), Vector(v.size()), v(2), Vector(v.size()),
@@ -886,9 +891,6 @@ class Fantastic_4PC : public Protocol<Data, Share, Vector, EVector> {
         }
     }
 };
-
-template <typename Data, typename Share, typename Vector, typename EVector>
-int Fantastic_4PC<Data, Share, Vector, EVector>::parties_num = 4;
 
 /**
  * @brief Factory type alias for Fantastic_4PC protocol.

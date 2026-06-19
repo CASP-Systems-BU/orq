@@ -55,14 +55,11 @@ using T = int64_t;
 
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     const int NATION = 7;
     const int COLOR = 11;
@@ -75,7 +72,7 @@ int main(int argc, char **argv) {
     ////////////////////////////////////////////////////////////////
     // Database Initialization
 
-    sqlite3 *sqlite_db = nullptr;
+    sqlite3* sqlite_db = nullptr;
 #ifndef QUERY_PROFILE
     if (pid == 0) {
         int err = sqlite3_open(NULL, &sqlite_db);
@@ -184,7 +181,7 @@ int main(int argc, char **argv) {
     print_table(result, pid);
 
     if (pid == 0) {
-        const char *query = R"sql(
+        const char* query = R"sql(
         select
             s.name,
             s.address
@@ -223,7 +220,7 @@ int main(int argc, char **argv) {
             s.name;
         )sql";
 
-        sqlite3_stmt *stmt;
+        sqlite3_stmt* stmt;
         if (sqlite3_prepare_v2(sqlite_db, query, -1, &stmt, NULL)) {
             std::cerr << "sqlite error: " << sqlite3_errmsg(sqlite_db) << "\n";
         }

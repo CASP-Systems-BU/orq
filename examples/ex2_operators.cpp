@@ -5,7 +5,7 @@
  * To run this example, use the `run_experiment` script as detailed in the README.
  *
  * ```
- * ../scripts/run_experiment.sh ... ex2_operators
+ * ../scripts/run_experiment.py ... ex2_operators
  * ```
  *
  * This example demonstrates ORQ's vectorized primitives for secret-shared computation.

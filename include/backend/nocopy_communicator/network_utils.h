@@ -33,11 +33,11 @@ int socket_create(int port) {
 
     // Attempt to bind; on failure, try again after 1 minute
     // This may help recover from intermittent socket issues.
-    if (bind(server_sock, (struct sockaddr *)&address, sizeof(address)) == -1) {
+    if (bind(server_sock, (struct sockaddr*)&address, sizeof(address)) == -1) {
         auto m = "bind failed on port " + std::to_string(port) + ": trying again after 60 sec";
         perror(m.c_str());
         sleep(60);
-        if (bind(server_sock, (struct sockaddr *)&address, sizeof(address)) == -1) {
+        if (bind(server_sock, (struct sockaddr*)&address, sizeof(address)) == -1) {
             close(server_sock);
             throw std::runtime_error("Bind failed twice, exiting!");
             return -1;
@@ -46,7 +46,7 @@ int socket_create(int port) {
     }
 
     socklen_t addrlen = sizeof(address);
-    if (getsockname(server_sock, (struct sockaddr *)&address, &addrlen) == -1) {
+    if (getsockname(server_sock, (struct sockaddr*)&address, &addrlen) == -1) {
         perror("getsockname failed");
         close(server_sock);
         throw std::runtime_error("getsockname failed");
@@ -64,7 +64,7 @@ int socket_create(int port) {
     return server_sock;
 }
 
-int socket_connect(const std::string &hostname, int port) {
+int socket_connect(const std::string& hostname, int port) {
     struct addrinfo hints{}, *res;
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -122,7 +122,7 @@ int recv_meta(int sockfd) {
     return byte_count;
 }
 
-int send_message(int sockfd, const RingEntry &entry) {
+int send_message(int sockfd, const RingEntry& entry) {
     int result = send(sockfd, entry.buffer, entry.used, 0);
 
     if (result == -1) {
@@ -132,7 +132,7 @@ int send_message(int sockfd, const RingEntry &entry) {
     return 1;
 }
 
-size_t send_wrapper(int sockfd, const char *buf, ssize_t buf_size) {
+size_t send_wrapper(int sockfd, const char* buf, ssize_t buf_size) {
     ssize_t bytes_sent = 0;
 
     while (bytes_sent < buf_size) {
@@ -150,7 +150,7 @@ size_t send_wrapper(int sockfd, const char *buf, ssize_t buf_size) {
     return bytes_sent;
 }
 
-int recv_message(int sockfd, char *buf, ssize_t buf_size) {
+int recv_message(int sockfd, char* buf, ssize_t buf_size) {
     ssize_t bytes_received = 0;
 
     while (bytes_received < buf_size) {

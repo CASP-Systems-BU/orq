@@ -2,10 +2,15 @@
 
 #include <typeindex>
 
-#include "correlation/ole_generator.h"
+#include "correlation/correlation_generator.h"
+#include "correlation/libsecjoin.h"
 #include "correlation/zero_sharing_generator.h"
+#include "permutations/sharded_permutation_generator.h"
 #include "prg/common_prg.h"
 #include "prg/prg_algorithm.h"
+
+// include this last
+#include "correlation/registry.h"
 
 #ifdef __APPLE__
 // Apple clang doesn't have full 128-bit integer support. Mostly this doesn't
@@ -28,6 +33,9 @@ namespace orq::random {
  * Coordinates local PRGs, common PRGs, zero sharing generators, and correlation generators.
  */
 class RandomnessManager {
+    // Sharded permutation generator (used by PermutationManager)
+    std::shared_ptr<ShardedPermutationGenerator> sharded_perm_generator;
+
    public:
     // private PRG that is exclusive to the current party
     std::shared_ptr<CommonPRG> localPRG;
@@ -38,25 +46,41 @@ class RandomnessManager {
     // zero sharing generator
     std::shared_ptr<ZeroSharingGenerator> zeroSharingGenerator;
 
+    std::unique_ptr<CommittedSeedsQueue<>> csq;
+
     // A collection of correlations
-    using typed_correlation = std::tuple<std::type_index, Correlation>;
-    std::map<typed_correlation, CorrelationGenerator *> correlationGenerators;
+    CorrRegistry_t corr_registry;
 
     /**
      *  Constructor for the randomness manager.
      * @param _localPRG The local PRG for this party.
      * @param _commonPRGManager The manager for common PRGs.
      * @param _zeroSharingGenerator The zero sharing generator.
-     * @param _corrGen Map of correlation generators.
+     * @param _corrGen Registry of correlation generators.
      */
-    RandomnessManager(std::shared_ptr<CommonPRG> _localPRG,
-                      std::shared_ptr<CommonPRGManager> _commonPRGManager,
+    RandomnessManager(std::shared_ptr<CommonPRGManager> _commonPRGManager,
                       std::shared_ptr<ZeroSharingGenerator> _zeroSharingGenerator,
-                      std::map<typed_correlation, CorrelationGenerator *> _corrGen = {})
-        : localPRG(_localPRG),
+                      CorrRegistry_t&& _corrGen, std::unique_ptr<CommittedSeedsQueue<>> csq)
+        : localPRG(_commonPRGManager->get({})),
           commonPRGManager(_commonPRGManager),
           zeroSharingGenerator(_zeroSharingGenerator),
-          correlationGenerators(_corrGen) {}
+          corr_registry(std::move(_corrGen)),
+          csq(std::move(csq)),
+          sharded_perm_generator(nullptr) {}
+
+    /**
+     * Overload that accepts a sharded permutation generator.
+     */
+    RandomnessManager(std::shared_ptr<CommonPRGManager> _commonPRGManager,
+                      std::shared_ptr<ZeroSharingGenerator> _zeroSharingGenerator,
+                      CorrRegistry_t&& _corrGen, std::unique_ptr<CommittedSeedsQueue<>> csq,
+                      std::shared_ptr<ShardedPermutationGenerator> _sharded)
+        : localPRG(_commonPRGManager->get({})),
+          commonPRGManager(_commonPRGManager),
+          zeroSharingGenerator(_zeroSharingGenerator),
+          corr_registry(std::move(_corrGen)),
+          csq(std::move(csq)),
+          sharded_perm_generator(std::move(_sharded)) {}
 
     /**
      * Fills a vector with local randomness.
@@ -64,7 +88,7 @@ class RandomnessManager {
      * @param nums The vector to fill.
      */
     template <typename T>
-    void generate_local(Vector<T> &nums) {
+    void generate_local(Vector<T>& nums) {
         localPRG->getNext(nums);
     };
 
@@ -75,7 +99,7 @@ class RandomnessManager {
      * @param group The group that shares the CommonPRG seed.
      */
     template <typename T>
-    void generate_common(Vector<T> &nums, std::set<int> group) {
+    void generate_common(Vector<T>& nums, std::set<int> group) {
         commonPRGManager->get(group)->getNext(nums);
     };
 
@@ -86,7 +110,9 @@ class RandomnessManager {
      */
     template <typename T>
     void reserve_mul_triples(size_t n) {
-        getCorrelation<T, Correlation::BeaverMulTriple>()->reserve(n);
+#ifdef MPC_PROTOCOL_BEAVER_TWO
+        getCorrelation<T, BeaverMulGenerator<T>>()->reserve(n);
+#endif
     }
 
     /**
@@ -96,20 +122,27 @@ class RandomnessManager {
      */
     template <typename T>
     void reserve_and_triples(size_t n) {
-        getCorrelation<T, Correlation::BeaverAndTriple>()->reserve(n);
+#ifdef MPC_PROTOCOL_BEAVER_TWO
+        getCorrelation<T, BeaverAndGenerator<T>>()->reserve(n);
+#endif
     }
 
     /**
      * Get a correlation generator for the specified type and correlation.
      * @tparam T The data type for the correlation elements.
      * @tparam C The correlation type.
-     * @return A pointer to the correlation generator.
+     * @return A shared pointer to the correlation generator.
      */
-    template <typename T, Correlation C>
-    typename CorrelationEnumType<T, C>::type *getCorrelation() {
-        using ret_t = random::CorrelationEnumType<T, C>::type;
-
-        return reinterpret_cast<ret_t *>(correlationGenerators[{__typeid(T), C}]);
+    template <typename T, typename Corr>
+    auto& getCorrelation() {
+        // Specialization for perm gen, which is not currently templated on T
+        if constexpr (std::is_same_v<Corr, ShardedPermutationGenerator>) {
+            return sharded_perm_generator;
+        } else {
+            auto& typed = std::get<TypedCorrelations_t<T>>(corr_registry);
+            return std::get<std::shared_ptr<Corr>>(typed);
+        }
     }
 };
+
 }  // namespace orq::random

@@ -6,36 +6,33 @@ using namespace orq::service;
 using namespace orq::random;
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
-// command
-// mpirun -np 3 ./micro_oprf 1 1 8192 $ROWS
-
 int main(int argc, char** argv) {
+#ifdef USE_LIBOTE
     orq_init(argc, argv);
     auto pID = runTime->getPartyID();
-    int test_size = 1 << 20;
-    if (argc >= 5) {
-        test_size = atoi(argv[4]);
-    }
+    auto test_size = runTime->getArg<size_t>("test-size", "r", 1 << 20);
+    auto num_threads = runTime->get_num_threads();
 
-    auto manager = PermutationManager::get();
+    // Create input vector for OPRF evaluation
+    orq::Vector<__int128_t> input(test_size * num_threads);
+    for (int i = 0; i < test_size; i++) {
+        input[i] = i;
+    }
+    orq::Vector<__int128_t> output(test_size * num_threads);
 
     // start timer
     stopwatch::timepoint("Start");
 
-    // orq::random::OPRF oprf(runTime->getPartyID(), 0);
-    // oprf.evaluate<int>(test_size);
+    // Parallel OPRF evaluation using the new runtime function
+    bool is_sender = (pID == 0);
+    runTime->evaluate_oprf(input, output, is_sender);
 
-    stopwatch::timepoint("OPRF Evaluation");
+    stopwatch::timepoint("OPRF (Role 0)");
 
-    // manager->reserve<int32_t>(8, test_size);
+    runTime->evaluate_oprf(input, output, !is_sender);
 
-    // stopwatch::timepoint("Parallel OPRF Evaluation");
-
-    auto generator =
-        runTime->rand0()->getCorrelation<int64_t, orq::random::Correlation::ShardedPermutation>();
-    auto result = generator->getNext(test_size);
-
-    stopwatch::timepoint("PermCorr");
+    stopwatch::timepoint("OPRF (Role 1)");
 
     return 0;
+#endif
 }

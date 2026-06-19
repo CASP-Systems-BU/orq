@@ -67,7 +67,7 @@ run_threading_test() {
     echo
 }
 
-EXEC="./thread_test \$T 1 $BATCH_SIZE \$OP"
+EXEC="./thread_test -t \$T -b $BATCH_SIZE -o \$OP"
 
 run_threading_test lan 3 MPI "mpirun -np 3 --host node0,node1,node2 $EXEC"
 

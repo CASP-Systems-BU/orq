@@ -56,10 +56,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     sqlite3* sqlite_db = nullptr;
 #ifndef QUERY_PROFILE
@@ -98,7 +95,7 @@ int main(int argc, char** argv) {
     stopwatch::profile_init();
 
     std::vector<std::string> extra_columns = {"Count"};
-    O.addColumns(extra_columns, O.size());
+    O.addColumns(extra_columns);
 
     // [SQL] o_comment not like ‘%[WORD1]%[WORD2]%’
     O.filter(O["[Comment]"] != 0);
@@ -123,12 +120,11 @@ int main(int argc, char** argv) {
 
     stopwatch::timepoint("outer join");
 
-    T.addColumns(std::vector<std::string>{"[Count]", "CustDist"}, T.size());
+    T.addColumns(std::vector<std::string>{"[Count]", "CustDist"});
     T.convert_a2b("Count", "[Count]");
 
     // [SQL] select c_count, count(*) as custdist ... group by c_count
-    auto F =
-        T.aggregate({"[Count]"}, {{"CustDist", "CustDist", count<A>}});  // don't reverse, do sort
+    auto F = T.aggregate({"[Count]"}, {{"CustDist", "CustDist", count<A>}}, {.reverse = true});
 
     // TODO: subsume this functionality into aggregate
     F.addColumns({ENC_TABLE_UNIQ, "[CustDist]"});

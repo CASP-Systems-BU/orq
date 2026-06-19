@@ -1,7 +1,7 @@
 #pragma once
 
+#include "interface.h"
 #include "profiling/stopwatch.h"
-#include "protocol_factory.h"
 
 using namespace orq::benchmarking;
 
@@ -20,10 +20,10 @@ template <typename Data, typename Share, typename Vector, typename EVector>
 class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
    public:
     // Configuration Parameters
-    static int parties_num;
+    static constexpr int parties_num = 2;
 
-    random::BeaverTripleGenerator<Data, orq::Encoding::AShared> *BTgen;
-    random::BeaverTripleGenerator<Data, orq::Encoding::BShared> *BTANDgen;
+    std::shared_ptr<random::BeaverTripleGenerator<Data, orq::Encoding::AShared>> BTgen;
+    std::shared_ptr<random::BeaverTripleGenerator<Data, orq::Encoding::BShared>> BTANDgen;
 
     /**
      * @brief Constructor for Beaver_2PC protocol.
@@ -32,12 +32,12 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param _communicator Pointer to communicator.
      * @param _randomnessManager Pointer to randomness manager.
      */
-    Beaver_2PC(PartyID _partyID, Communicator *_communicator,
-               random::RandomnessManager *_randomnessManager)
+    Beaver_2PC(PartyID _partyID, WorkerConfig wc, Communicator* _communicator,
+               random::RandomnessManager* _randomnessManager)
         : Protocol<Data, Share, Vector, EVector>(_communicator, _randomnessManager, _partyID, 2,
                                                  1) {
-        BTgen = _randomnessManager->getCorrelation<Data, random::Correlation::BeaverMulTriple>();
-        BTANDgen = _randomnessManager->getCorrelation<Data, random::Correlation::BeaverAndTriple>();
+        BTgen = _randomnessManager->getCorrelation<Data, random::BeaverMulGenerator<Data>>();
+        BTANDgen = _randomnessManager->getCorrelation<Data, random::BeaverAndGenerator<Data>>();
     }
 
     /**
@@ -47,14 +47,23 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param y Second input vector.
      * @param z Output vector.
      */
-    void multiply_a(const EVector &x, const EVector &y, EVector &z) {
+    void multiply_a(const EVector& x, const EVector& y, EVector& z) {
         auto [a, b, c] = BTgen->getNext(x.size());
 
-        auto A = open_shares_a(x + a);
-        auto B = open_shares_a(y + b);
-
-        z = y * A - a * B + c;
-
+        if ((this->communicator->getSetting() == orq::service::Setting::WAN) &&
+            USE_STACKED_MULTIPLY_A) {
+            EVector combined = (x + a);
+            combined.concatenate(y + b);
+            Vector opened = internal_open_a(combined);
+            auto n = x.size();
+            auto A = opened.slice(0, n);
+            auto B = opened.slice(n, 2 * n);
+            z = y * A - a * B + c;
+        } else {
+            auto A = internal_open_a(x + a);
+            auto B = internal_open_a(y + b);
+            z = y * A - a * B + c;
+        }
         this->handle_precision(x, y, z);
         this->truncate(z);
     }
@@ -66,7 +75,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param c Constant divisor.
      * @return Pair of vectors (quotient and error correction).
      */
-    std::pair<EVector, EVector> div_const_a(const EVector &x, const Data &c) {
+    std::pair<EVector, EVector> div_const_a(const EVector& x, const Data c) {
         auto size = x.size();
         EVector res(size), err(size);
 
@@ -105,14 +114,22 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param y Binary shared input.
      * @param z Binary shared output.
      */
-    void and_b(const EVector &x, const EVector &y, EVector &z) {
+    void and_b(const EVector& x, const EVector& y, EVector& z) {
         auto [a, b, c] = BTANDgen->getNext(x.size());
 
-        auto A = open_shares_b(x ^ a);
-        auto B = open_shares_b(y ^ b);
-
-        z = (y & A) ^ (a & B) ^ c;
-
+        if ((this->communicator->getSetting() == orq::service::Setting::WAN) && USE_STACKED_AND_B) {
+            EVector combined = (x ^ a);
+            combined.concatenate(y ^ b);
+            Vector opened = internal_open_b(combined);
+            auto n = x.size();
+            auto A = opened.slice(0, n);
+            auto B = opened.slice(n, 2 * n);
+            z = (y & A) ^ (a & B) ^ c;
+        } else {
+            auto A = internal_open_b(x ^ a);
+            auto B = internal_open_b(y ^ b);
+            z = (y & A) ^ (a & B) ^ c;
+        }
         this->handle_precision(x, y, z);
     }
 
@@ -122,7 +139,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @param y Output vector.
      */
-    void not_b(const EVector &x, EVector &y) {
+    void not_b(const EVector& x, EVector& y) {
         if (this->partyID == 0) {
             y = ~x;
         } else {
@@ -136,7 +153,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @param y Output vector.
      */
-    void not_b_1(const EVector &x, EVector &y) {
+    void not_b_1(const EVector& x, EVector& y) {
         if (this->partyID == 0) {
             y = !x;
         } else {
@@ -165,7 +182,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input boolean shared vector.
      * @param y Output arithmetic shared vector.
      */
-    void b2a_bit(const EVector &x, EVector &y) {
+    void b2a_bit(const EVector& x, EVector& y) {
         // Enforce LSB only
         EVector xm = x & 1;
         xm.setPrecision(0);
@@ -184,8 +201,8 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param x Input vector.
      * @return Pair of redistributed shared vectors.
      */
-    std::pair<EVector, EVector> redistribute_shares_b(const EVector &x) {
-        return {secret_share_b(x(0), 0), secret_share_b(x(0), 1)};
+    std::pair<EVector, EVector> redistribute_shares_b(const EVector& x) {
+        return {secret_share_b_internal(x(0), 0), secret_share_b_internal(x(0), 1)};
     }
 
     /**
@@ -194,7 +211,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shares from both parties.
      * @return Reconstructed plaintext value.
      */
-    Data reconstruct_from_a(const std::vector<Share> &shares) {
+    Data reconstruct_from_a(const std::vector<Share>& shares) {
         return shares[0][0] + shares[1][0];
     }
 
@@ -204,7 +221,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vectors from both parties.
      * @return Reconstructed plaintext vector.
      */
-    Vector reconstruct_from_a(const std::vector<EVector> &shares) {
+    Vector reconstruct_from_a(const std::vector<EVector>& shares) {
         return shares[0](0) + shares[1](0);
     }
 
@@ -214,7 +231,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shares from both parties.
      * @return Reconstructed plaintext value.
      */
-    Data reconstruct_from_b(const std::vector<Share> &shares) {
+    Data reconstruct_from_b(const std::vector<Share>& shares) {
         return shares[0][0] ^ shares[1][0];
     }
 
@@ -224,7 +241,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vectors from both parties.
      * @return Reconstructed plaintext vector.
      */
-    Vector reconstruct_from_b(const std::vector<EVector> &shares) {
+    Vector reconstruct_from_b(const std::vector<EVector>& shares) {
         return shares[0](0) ^ shares[1](0);
     }
 
@@ -234,9 +251,9 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vector.
      * @return Opened plaintext vector.
      */
-    Vector open_shares_a(const EVector &shares) {
+    Vector internal_open_a(const EVector& shares) {
         Vector shares_2(shares(0).size());
-        this->communicator->exchangeShares(shares(0), shares_2, 1, shares.size());
+        this->communicator->exchangeShares(shares(0), shares_2, 1);
         return shares(0) + shares_2;
     }
 
@@ -246,9 +263,9 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param shares Input shared vector.
      * @return Opened plaintext vector.
      */
-    Vector open_shares_b(const EVector &shares) {
+    Vector internal_open_b(const EVector& shares) {
         Vector shares_2(shares(0).size());
-        this->communicator->exchangeShares(shares(0), shares_2, 1, shares.size());
+        this->communicator->exchangeShares(shares(0), shares_2, 1);
         return shares(0) ^ shares_2;
     }
 
@@ -258,7 +275,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input plaintext value.
      * @return Vector of arithmetic shares for both parties.
      */
-    std::vector<Share> get_share_a(const Data &data) {
+    std::vector<Share> get_share_a(const Data& data) {
         Data share_1;
         // this->randomGenerator->getNext(share_1);
         Data share_2 = data - share_1;
@@ -271,7 +288,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input plaintext vector.
      * @return Vector of arithmetic shared vectors for both parties.
      */
-    std::vector<EVector> get_shares_a(const Vector &data) {
+    std::vector<EVector> get_shares_a(const Vector& data) {
         Vector share_1(data.size());
         this->randomnessManager->localPRG->getNext(share_1);
         auto share_2 = data - share_1;
@@ -284,7 +301,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input plaintext value.
      * @return Vector of boolean shares for both parties.
      */
-    std::vector<Share> get_share_b(const Data &data) {
+    std::vector<Share> get_share_b(const Data& data) {
         Data share_1;
         // this->randomGenerator->getNext(share_1);
         Data share_2 = data ^ share_1;
@@ -297,7 +314,7 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input plaintext vector.
      * @return Vector of boolean shared vectors for both parties.
      */
-    std::vector<EVector> get_shares_b(const Vector &data) {
+    std::vector<EVector> get_shares_b(const Vector& data) {
         Vector share_1(data.size());
         this->randomnessManager->localPRG->getNext(share_1);
         auto share_2 = data ^ share_1;
@@ -311,16 +328,16 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data_party Party that owns the data.
      * @return This party's boolean shared vector.
      */
-    EVector secret_share_b(const Vector &data, const PartyID &data_party = 0) {
+    EVector secret_share_b_internal(const Vector& data, const PartyID& data_party = 0) {
         auto size = data.size();
         if (this->partyID == data_party) {
             auto boolean_shares = get_shares_b(data);
 
-            this->communicator->sendShares(boolean_shares[1](0), 1, size);
+            this->communicator->sendShares(boolean_shares[1](0), 1);
             return boolean_shares[0];
         } else {
             EVector s(size);
-            this->communicator->receiveShares(s(0), -1, size);
+            this->communicator->receiveShares(s(0), -1);
             return s;
         }
     }
@@ -332,16 +349,16 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data_party Party that owns the data.
      * @return This party's arithmetic shared vector.
      */
-    EVector secret_share_a(const Vector &data, const PartyID &data_party = 0) {
+    EVector secret_share_a_internal(const Vector& data, const PartyID& data_party = 0) {
         auto size = data.size();
         if (this->partyID == data_party) {
             auto arith_shares = get_shares_a(data);
 
-            this->communicator->sendShares(arith_shares[1](0), 1, size);
+            this->communicator->sendShares(arith_shares[1](0), 1);
             return arith_shares[0];
         } else {
             EVector s(size);
-            this->communicator->receiveShares(s(0), -1, size);
+            this->communicator->receiveShares(s(0), -1);
             return s;
         }
     }
@@ -352,8 +369,9 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
      * @param data Input plaintext vector.
      * @return Public shared vector.
      */
-    EVector public_share(const Vector &data) {
-        if (this->partyID == 0) {
+    EVector public_share(const Vector& data, const std::set<PartyID>& who_knows) {
+        bool all_zero_recv = who_knows.empty() && this->partyID == 0;
+        if (all_zero_recv || who_knows.contains(this->partyID)) {
             // The public data
             return std::vector<Vector>({data});
         } else {
@@ -362,9 +380,6 @@ class Beaver_2PC : public Protocol<Data, Share, Vector, EVector> {
         }
     }
 };
-
-template <typename Data, typename Share, typename Vector, typename EVector>
-int Beaver_2PC<Data, Share, Vector, EVector>::parties_num = 2;
 
 /**
  * @brief Factory type alias for Beaver_2PC protocol.

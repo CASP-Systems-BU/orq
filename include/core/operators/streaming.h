@@ -48,11 +48,10 @@ void mark_gap_session(ASharedVector<Share, EVector>& timestamp,
     Vector<Share> one({1});
     session_start.slice(0, 1) =
         orq::service::runTime->public_share<EVector::replicationNumber>(one);
-    ;
 
     Vector<Share> gap_vec(1, gap);
     ASharedVector<Share, EVector> shared_gap_vec =
-        orq::service::runTime->secret_share_a<EVector::replicationNumber>(gap_vec, 0);
+        orq::service::runTime->public_share<EVector::replicationNumber>(gap_vec);
     auto shared_gap_vec_extended = shared_gap_vec.repeated_subset_reference(timestamp.size() - 1);
 
     ASharedVector<Share, EVector> pair_wise_gap =
@@ -87,14 +86,14 @@ void gap_session_window(std::vector<BSharedVector<Share, EVector>>& keys,
     mark_gap_session(timestamp_a, window_id, gap);
 
     Vector<Share> neg_one({-1});
-    BSharedVector<Share, EVector> shared__one =
-        orq::service::runTime->secret_share_b<EVector::replicationNumber>(neg_one, 0);
+    BSharedVector<Share, EVector> shared_one =
+        orq::service::runTime->public_share<EVector::replicationNumber>(neg_one);
 
     window_id =
-        multiplex(window_id, shared__one.repeated_subset_reference(window_id.size()), timestamp_b);
+        multiplex(window_id, shared_one.repeated_subset_reference(window_id.size()), timestamp_b);
 
     orq::aggregators::aggregate(keys, {{window_id, window_id, orq::aggregators::max}}, {},
-                                orq::aggregators::Direction::Reverse);
+                                orq::aggregators::Direction::Forward);
 }
 
 /**
@@ -120,7 +119,7 @@ void mark_threshold_session(BSharedVector<Share, EVector>& function_res,
                             const Share& threshold) {
     Vector<Share> threshold_vec({threshold});
     BSharedVector<Share, EVector> shared_threshold_vec =
-        orq::service::runTime->secret_share_b<EVector::replicationNumber>(threshold_vec, 0);
+        orq::service::runTime->public_share<EVector::replicationNumber>(threshold_vec);
 
     potential_window =
         function_res > shared_threshold_vec.repeated_subset_reference(function_res.size());

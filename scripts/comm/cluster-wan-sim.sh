@@ -19,10 +19,3 @@ do
     scp ./wan-sim.py $n:~/
     ssh $n ./wan-sim.py $CONTROL -H $me
 done
-
-# sanity check
-for n in $NODES
-do
-    ping -qc 3 $n
-    echo
-done

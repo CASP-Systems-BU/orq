@@ -63,7 +63,7 @@ run_threading_test() {
 }
 
 PERF_BASE="perf record -F 100 -g --"
-EXEC="./thread_test \$T 1 $BATCH_SIZE \$OP"
+EXEC="./thread_test -t \$T -b $BATCH_SIZE -o \$OP"
 
 # run_threading_test local 1 "mpirun -n 1 $PERF_BASE $EXEC"
 # run_threading_test local 2 "mpirun -n 1 $PERF_BASE $EXEC : -n 1 $EXEC"

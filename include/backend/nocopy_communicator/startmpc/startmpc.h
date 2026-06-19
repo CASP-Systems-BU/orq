@@ -74,20 +74,27 @@ void listen_connections(int host_rank, int from_rank, int thread_num, int listen
     }
 }
 
-void startmpc_init(int* rank, int protocol_count, int thread_num,
-                   std::vector<std::vector<int>>& socket_maps) {
+std::pair<int, int> startmpc_init(int thread_num, std::vector<std::vector<int>>& socket_maps) {
     const char* startmpc_exec_env = std::getenv("STARTMPC_EXEC_MODE");
     const char* host_count_env = std::getenv("STARTMPC_HOST_COUNT");
     const char* host_rank_env = std::getenv("STARTMPC_HOST_RANK");
     const char* base_port_env = std::getenv("STARTMPC_BASE_PORT");
 
     int startmpc_exec_mode = startmpc_exec_env ? std::atoi(startmpc_exec_env) : -1;
-    int host_count = host_count_env ? std::atoi(host_count_env) : -1;
     int host_rank = host_rank_env ? std::atoi(host_rank_env) : -1;
+    int host_count = host_count_env ? std::atoi(host_count_env) : -1;
+
+    if (host_rank < 0 || host_count < 0) {
+        throw std::runtime_error("startmpc_init: invalid environment variables!");
+    }
 
     // Arbitrary start port
     // Range of ports used: base_port -> (base_port + host_count * host_count)
     int base_port = base_port_env ? std::atoi(base_port_env) : -1;
+
+    for (auto& m : socket_maps) {
+        m.resize(host_count);
+    }
 
     // Fill in IP address list
     std::vector<std::string> ip_addr_list;
@@ -104,12 +111,6 @@ void startmpc_init(int* rank, int protocol_count, int thread_num,
     }
     if (ip_addr_list.size() != host_count)
         throw std::runtime_error("startmpc_init: Invalid ip_addr_list created");
-
-    if (protocol_count != host_count) {
-        std::string msg =
-            "Invalid host count provided for " + std::to_string(protocol_count) + "pc";
-        throw std::runtime_error(msg);
-    }
 
     startmpc_print("Rank: ", host_rank, " Count: ", host_count);
 
@@ -139,9 +140,7 @@ void startmpc_init(int* rank, int protocol_count, int thread_num,
         if (thread.joinable()) thread.join();
     }
 
-    if (rank != nullptr) {
-        *rank = host_rank;
-    }
+    orq::benchmarking::stopwatch::partyID = host_rank;
 
-    orq::benchmarking::stopwatch::partyID = *rank;
+    return {host_rank, host_count};
 }

@@ -11,7 +11,7 @@ namespace orq::random {
  *
  * Creates sharings of zero for arithmetic and binary operations.
  */
-class ZeroSharingGenerator : public CorrelationGenerator {
+class ZeroSharingGenerator {
     // the number of parties
     int num_parties;
 
@@ -46,10 +46,7 @@ class ZeroSharingGenerator : public CorrelationGenerator {
     ZeroSharingGenerator(const int _num_parties,
                          std::shared_ptr<orq::random::CommonPRGManager> _commonPRGManager,
                          int _rank = 0, std::optional<Communicator *> _comm = std::nullopt)
-        : num_parties(_num_parties),
-          commonPRGManager(_commonPRGManager),
-          rank(_rank),
-          CorrelationGenerator(_rank) {}
+        : num_parties(_num_parties), commonPRGManager(_commonPRGManager), rank(_rank) {}
 
     /**
      * Generate the next pseudorandom arithmetic zero sharing.

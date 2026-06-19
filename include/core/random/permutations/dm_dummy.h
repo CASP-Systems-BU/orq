@@ -38,7 +38,7 @@ class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
     DMDummyGenerator(int _rank, int thread, std::shared_ptr<CommonPRGManager> common,
                      std::optional<Communicator*> _comm = std::nullopt)
         : DMBase(_rank, _comm) {
-        all_prg = common->get({0, 1});
+        all_prg = common->get();
     }
 
     /**
@@ -49,7 +49,7 @@ class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
      * @param n The size of the permutation.
      * @return A shared pointer to the generated DMShardedPermutation.
      */
-    std::shared_ptr<ShardedPermutation> getNext(size_t n) {
+    std::shared_ptr<ShardedPermutation> getNext(const size_t n) {
         auto dm_perm = std::make_shared<DMShardedPermutation<T>>(n);
         getNext(dm_perm);
         return dm_perm;
@@ -91,16 +91,16 @@ class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
                 throw std::runtime_error("Communicator is not set");
             }
 
-            if (DMBase::getRank() == 0) {
+            if (DMBase::rank == 0) {
                 std::vector<int> random_perm_0(n);
                 gen_perm(random_perm_0, prg);
                 pi_0 = random_perm_0;
-                comm->exchangeShares(pi_0, pi_1, 1, n);
+                comm->exchangeShares(pi_0, pi_1, 1);
             } else {
                 std::vector<int> random_perm_1(n);
                 gen_perm(random_perm_1, prg);
                 pi_1 = random_perm_1;
-                comm->exchangeShares(pi_1, pi_0, 1, n);
+                comm->exchangeShares(pi_1, pi_0, 1);
             }
         } else {
             // use the all_prg to generate without communication
@@ -161,7 +161,7 @@ class DMDummyGenerator : public DMShardedPermutationGenerator<T> {
         // assign to the underlying tuple
         // this modified the input in place
         auto& perm_tuple = *(dm_perm->getTuple());
-        if (DMBase::getRank() == 0) {
+        if (DMBase::rank == 0) {
             perm_tuple =
                 std::make_tuple(std::move(pi_0), std::move(A_1), std::move(B_1), std::move(C_0));
         } else {

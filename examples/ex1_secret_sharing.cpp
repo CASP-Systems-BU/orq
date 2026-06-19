@@ -5,7 +5,7 @@
  * To run this example, use the `run_experiment` script as detailed in the README.
  *
  * ```
- * ../scripts/run_experiment.sh ... ex1_secret_sharing
+ * ../scripts/run_experiment.py ... ex1_secret_sharing
  * ```
  *
  * This example also shows the bare minimum required to run an ORQ program. It works with any

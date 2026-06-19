@@ -54,6 +54,9 @@ done
 mkdir -p build
 cd build
 
+sudo apt update
+sudo apt upgrade -y
+
 # setup on the host
 ../scripts/setup.sh
 

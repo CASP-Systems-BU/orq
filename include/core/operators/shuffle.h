@@ -1,11 +1,17 @@
 #pragma once
 
+#include <optional>
+
 #include "core/random/permutations/dm_dummy.h"
 #include "profiling/stopwatch.h"
-#ifdef USE_LIBOTE
+#if defined(USE_LIBOTE) && defined(USE_SECURE_JOIN)
 #include "core/random/permutations/dm_permcorr.h"
 #endif
 #include "core/random/permutations/permutation_manager.h"
+
+#if defined(MPC_PROTOCOL_PLAINTEXT_ONE) || defined(MPC_PROTOCOL_DUMMY_ZERO)
+#include "core/protocols/plaintext_1pc.h"
+#endif
 using namespace orq::benchmarking;
 
 using namespace orq::random;
@@ -32,7 +38,7 @@ using BElementwisePermutation = BSharedVector<int, orq::EVector<int, E::replicat
  */
 template <typename T>
 void count_oblivious_apply_perm(uint64_t size) {
-    using P = orq::Plaintext_1PC<T, T, orq::Vector<T>, EVector<T, 1>>;
+    using P = orq::Plaintext_1PC<T, std::vector<T>, orq::Vector<T>, EVector<T, 1>>;
     P *proto;
     if constexpr (std::is_same_v<T, int8_t>) {
         proto = (P *)runTime->worker0->proto_8.get();
@@ -435,7 +441,8 @@ void hm_oblivious_apply_inverse_sharded_perm(ElementwisePermutation<EVector> &x,
  */
 template <typename Share, typename EVector>
 void permute_and_share(SharedVector<Share, EVector> &x,
-                       std::shared_ptr<DMShardedPermutation<Share>> &perm, int send_party) {
+                       std::shared_ptr<DMShardedPermutation<Share>> &perm, int send_party,
+                       std::optional<size_t> thread_id = std::nullopt) {
     size_t n = x.size();
     int rank = runTime->getPartyID();
     bool sender = (rank == send_party);
@@ -443,6 +450,9 @@ void permute_and_share(SharedVector<Share, EVector> &x,
     orq::Encoding encoding = perm->getEncoding();
 
     auto [pi, A, B, C] = *(perm->getTuple());
+
+    // get the communicator
+    auto comm = runTime->workers[thread_id.value_or(0)].getCommunicator();
 
     if (receiver) {
         // receiver blinds their share
@@ -457,7 +467,7 @@ void permute_and_share(SharedVector<Share, EVector> &x,
         x.vector.materialize_inplace();
 
         // receiver sends delta to sender
-        runTime->comm0()->sendShares(x.vector(0), 1, n);
+        runTime->comm0()->sendShares(x.vector(0), 1);
 
         // receiver sets share equal to B
         // [x]_r = B
@@ -467,10 +477,14 @@ void permute_and_share(SharedVector<Share, EVector> &x,
     if (sender) {
         // sender receives delta from receiver
         Vector<Share> delta(n);
-        runTime->comm0()->receiveShares(delta, 1, n);
+        runTime->comm0()->receiveShares(delta, 1);
 
         // sender permutes delta under pi
-        local_apply_perm(delta, pi);
+        if (!thread_id) {
+            local_apply_perm(delta, pi);
+        } else {
+            local_apply_perm_single_threaded(delta, pi);
+        }
 
         // C' = pi(delta) + C
         if (encoding == orq::Encoding::BShared) {
@@ -481,7 +495,14 @@ void permute_and_share(SharedVector<Share, EVector> &x,
 
         // output C'
         // [x]_s = pi([x]_s) + C'
-        local_apply_perm(x, pi);
+        if (!thread_id) {
+            local_apply_perm(x, pi);
+        } else {
+            // Single-threaded overload exists for Vector<T>, not SharedVector.
+            // In 2PC we have replicationNumber == 1, so permute the underlying vector.
+            local_apply_perm_single_threaded(x.vector(0), pi);
+        }
+
         if (encoding == orq::Encoding::BShared) {
             x.vector(0) ^= delta;
         } else {
@@ -523,7 +544,7 @@ void permute_and_share_inverse(SharedVector<Share, EVector> &x,
         x.vector.materialize_inplace();
 
         // receiver sends delta to sender
-        runTime->comm0()->sendShares(x.vector(0), 1, n);
+        runTime->comm0()->sendShares(x.vector(0), 1);
 
         // receiver sets share equal to A
         // [x]_r = A
@@ -533,7 +554,7 @@ void permute_and_share_inverse(SharedVector<Share, EVector> &x,
     if (sender) {
         // sender receives delta from receiver
         Vector<Share> delta(n);
-        runTime->comm0()->receiveShares(delta, 1, n);
+        runTime->comm0()->receiveShares(delta, 1);
 
         // delta' = delta - C
         if (encoding == orq::Encoding::BShared) {
@@ -751,9 +772,17 @@ ElementwisePermutation<EVector> compose_permutations(ElementwisePermutation<EVec
  */
 template <typename Share, typename EVector>
 static void shuffle(SharedVector<Share, EVector> &x) {
+    if constexpr (CONFIDENTIAL_1PC) {
+        // Technically, we shouldn't need this, since we delete the ShardedPerm constructor.
+        // However, there's some dynamic pointer casting funny business inside of
+        // PermutationManager, so it just segfaults instead.
+        throw std::logic_error("Shuffle not allowed in CONFIDENTIAL_1PC mode");
+    }
+
     std::shared_ptr<ShardedPermutation> sharded_perm =
         PermutationManager::get()->getNext<Share>(x.size(), x.encoding);
     oblivious_apply_sharded_perm(x, sharded_perm);
+    runTime->malicious_check();
 }
 
 /**
@@ -768,6 +797,10 @@ static void shuffle(SharedVector<Share, EVector> &x) {
 template <typename Share, typename EVector>
 static void shuffle(std::vector<ASharedVector<Share, EVector> *> _data_a,
                     std::vector<BSharedVector<Share, EVector> *> _data_b, size_t size) {
+    if constexpr (CONFIDENTIAL_1PC) {
+        throw std::logic_error("Shuffle not allowed in CONFIDENTIAL_1PC mode");
+    }
+
     // generate a random sharded permutation and use it to generate a random
     // elementwise permutation
     std::shared_ptr<ShardedPermutation> sharded_perm =
@@ -783,5 +816,33 @@ static void shuffle(std::vector<ASharedVector<Share, EVector> *> _data_a,
     for (BSharedVector<Share, EVector> *b_column : _data_b) {
         oblivious_apply_elementwise_perm(*b_column, permutation);
     }
+
+    runTime->malicious_check();
 }
+
+/**
+ * @brief Obliviously shuffle an arithmetic shared vector with a single thread. This is called by
+ * the same_shuffle function in 2PC.
+ *
+ * Note: This is a rough version of the functionality, and should be cleaned up through the runtime.
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ * @param x The vector to shuffle.
+ * @param permutation The permutation to apply.
+ * @param thread_id The thread ID.
+ */
+template <typename Share, typename EVector>
+void vector_same_shuffle_2pc(ASharedVector<Share, EVector> &x,
+                             std::shared_ptr<ShardedPermutation> &permutation, size_t thread_id) {
+    // cast the sharded permutation to a DMShardedPermutation
+    auto dm_perm = std::dynamic_pointer_cast<DMShardedPermutation<Share>>(permutation);
+    if (!dm_perm) {
+        throw std::runtime_error("Sharded permutation is not a DMShardedPermutation");
+    }
+
+    permute_and_share(x, dm_perm, 0, thread_id);
+    permute_and_share(x, dm_perm, 1, thread_id);
+}
+
 }  // namespace orq::operators

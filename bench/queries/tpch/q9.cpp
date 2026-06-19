@@ -68,11 +68,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
-
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
     // TPCH Q9 query parameters
     const int P_NAME_COLOR = 1;  // Substitution for p_name like '%[COLOR]%'
 
@@ -145,7 +141,7 @@ int main(int argc, char** argv) {
 
     stopwatch::timepoint("Part Filter");
 
-    Supplier.addColumns({"[NationName]"}, Supplier.size());
+    Supplier.addColumns({"[NationName]"});
     auto SuppliersJoin =
         Nation.inner_join(Supplier, {"[NationKey]"}, {{"[Name]", "[NationName]", copy<B>}});
 
@@ -185,7 +181,7 @@ int main(int argc, char** argv) {
     FinalJoin.project(
         {"[NationName]", "[OrderDate]", "ExtendedPrice", "Discount", "Quantity", "SupplyCost"});
 
-    FinalJoin.addColumns({"Amount", "SumProfit"}, FinalJoin.size());
+    FinalJoin.addColumns({"Amount", "SumProfit"});
 
     // Using a version without the PartSupp table
     FinalJoin["Amount"] = (FinalJoin["ExtendedPrice"] * (-FinalJoin["Discount"] + 100) / 100) -

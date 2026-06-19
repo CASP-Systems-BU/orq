@@ -62,19 +62,16 @@ using T = int64_t;
 using A = ASharedVector<T>;
 using B = BSharedVector<T>;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     const int BRAND1 = 5, BRAND2 = 12, BRAND3 = 24;
     const int QUANTITY1 = 8, QUANTITY2 = 19, QUANTITY3 = 22;
 
-    sqlite3 *sqlite_db = nullptr;
+    sqlite3* sqlite_db = nullptr;
 #ifndef QUERY_PROFILE
     if (pid == 0) {
         int err = sqlite3_open(NULL, &sqlite_db);
@@ -127,7 +124,7 @@ int main(int argc, char **argv) {
 
     // Containers filtered on 4 each, mask down to 2 LSB. Change propagates to
     // original table since we operate on the underlying vector storage.
-    auto cntr_mask = ((BSharedVector<T> *)PL["[Container]"].contents.get());
+    auto cntr_mask = ((BSharedVector<T>*)PL["[Container]"].contents.get());
     cntr_mask->mask(0x3);
 
     // NOTE: these SIZE checks can be implemented with binary subtraction and
@@ -173,7 +170,7 @@ int main(int argc, char **argv) {
         print_table(result, pid);
         auto rev = PL.get_column(result, "SumRevenue")[0];
 
-        const char *query = R"sql(
+        const char* query = R"sql(
         select
             sum(L.extendedprice * (100 - L.discount) / 100) as revenue
         from
@@ -206,7 +203,7 @@ int main(int argc, char **argv) {
             ));
         )sql";
 
-        sqlite3_stmt *stmt;
+        sqlite3_stmt* stmt;
         auto err = sqlite3_prepare_v2(sqlite_db, query, -1, &stmt, NULL);
 
         if (err) {

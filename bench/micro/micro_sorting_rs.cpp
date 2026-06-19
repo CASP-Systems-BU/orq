@@ -16,14 +16,9 @@ using T = int32_t;
 #endif
 
 int main(int argc, char** argv) {
-     [executable - threads_num - p_factor -
-    // batch_size]
     orq_init(argc, argv);
     auto pID = runTime->getPartyID();
-    int test_size = 1 << 20;
-    if (argc >= 5) {
-        test_size = atoi(argv[4]);
-    }
+    auto test_size = runTime->getArg<size_t>("test-size", "r", 1 << 20);
 
     single_cout("Using bitwidth: " << sizeof(T) * 8 << " bits");
 
@@ -44,8 +39,5 @@ int main(int argc, char** argv) {
 
     runTime->print_statistics();
 
-#if defined(MPC_USE_MPI_COMMUNICATOR)
-    MPI_Finalize();
-#endif
     return 0;
 }

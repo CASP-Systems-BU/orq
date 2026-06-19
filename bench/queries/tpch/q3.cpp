@@ -61,10 +61,7 @@ int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // TPCH Q3 query parameters
     const int DATE = 100;
@@ -132,7 +129,7 @@ int main(int argc, char** argv) {
 
     stopwatch::timepoint("Filters");
 
-    LineItem.addColumns({"Revenue"}, LineItem.size());
+    LineItem.addColumns({"Revenue"});
     LineItem["Revenue"] = LineItem["ExtendedPrice"] * (-LineItem["Discount"] + 100) / 100;
     LineItem.deleteColumns({"ExtendedPrice", "Discount"});
 
@@ -143,7 +140,7 @@ int main(int argc, char** argv) {
 
     stopwatch::timepoint("Customers + Orders join");
 
-    CO.addColumns({"GroupRevenue"}, CO.size());
+    CO.addColumns({"GroupRevenue"});
     // TODO: doesn't group by [OrderDate] but [OrderKey] should be unique anyways so I'm not sure it
     // matters
     auto COL = CO.inner_join(LineItem, {"[OrderKey]"},
@@ -155,7 +152,7 @@ int main(int argc, char** argv) {
 
     stopwatch::timepoint("Customers/Orders + LineItem join");
 
-    COL.addColumns({"[GroupRevenue]"}, COL.size());
+    COL.addColumns({"[GroupRevenue]"});
     COL.convert_a2b("GroupRevenue", "[GroupRevenue]");
     COL.deleteColumns({"GroupRevenue"});
 

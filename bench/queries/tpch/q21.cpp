@@ -62,14 +62,11 @@ using T = int64_t;
 
 using namespace COMPILED_MPC_PROTOCOL_NAMESPACE;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pid = runTime->getPartyID();
 
-    float sf = 0.01;
-    if (argc >= 5) {
-        sf = strtod(argv[4], NULL);
-    }
+    auto sf = runTime->getArg<float>("test-size", "r", 0.1);
 
     // arbitrary nation. this needs to be odd lol
     const int NATION = 9;
@@ -77,7 +74,7 @@ int main(int argc, char **argv) {
     ////////////////////////////////////////////////////////////////
     // Database Initialization
 
-    sqlite3 *sqlite_db = nullptr;
+    sqlite3* sqlite_db = nullptr;
 #ifndef QUERY_PROFILE
     if (pid == 0) {
         int err = sqlite3_open(NULL, &sqlite_db);
@@ -244,7 +241,7 @@ int main(int argc, char **argv) {
     print_table(result, pid);
 
     if (pid == 0) {
-        const char *query = R"sql(
+        const char* query = R"sql(
         select
             supplier.name,
             count(*) as numwait
@@ -286,7 +283,7 @@ int main(int argc, char **argv) {
             supplier.name;  
         )sql";
 
-        sqlite3_stmt *stmt;
+        sqlite3_stmt* stmt;
         auto err = sqlite3_prepare_v2(sqlite_db, query, -1, &stmt, NULL);
 
         if (err) {

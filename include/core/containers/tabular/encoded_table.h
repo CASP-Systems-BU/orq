@@ -1,22 +1,33 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
 #include <set>
+#include <type_traits>
 #include <unordered_map>
 
 #include "backend/common/runtime.h"
 #include "core/operators/aggregation_selector.h"
 #include "core/operators/distinct.h"
 #include "core/operators/merge.h"
+#include "core/operators/radixsort.h"
 #include "core/operators/sorting.h"
+#include "core/operators/sorting_network.h"
 #include "core/operators/streaming.h"
+#include "debug/orq_debug.h"
 #include "encoded_column.h"
 #include "profiling/stopwatch.h"
 #include "profiling/utils.h"
 #include "shared_column.h"
+
+/**
+ * @brief Internal name for the padding column.
+ *
+ */
+#define ENC_TABLE_PAD "[##PAD]"
 
 /**
  * @brief Internal name for the Table ID column during joins
@@ -35,7 +46,15 @@
  *
  */
 #define ENC_TABLE_UNIQ "[##UNIQ]"
-#define RESERVED_COLUMNS {ENC_TABLE_JOIN_ID, ENC_TABLE_VALID, ENC_TABLE_UNIQ}
+
+/**
+ * @brief Internal name for the Label column. Used for classification datasets.
+ *
+ */
+#define ENC_TABLE_LABEL "##LABEL"
+
+#define RESERVED_COLUMNS \
+    {ENC_TABLE_PAD, ENC_TABLE_JOIN_ID, ENC_TABLE_VALID, ENC_TABLE_UNIQ, ENC_TABLE_LABEL}
 
 #ifdef INSTRUMENT_TABLES
 #define PRINT_TABLE_INSTRUMENT(...) single_cout(__VA_ARGS__)
@@ -68,6 +87,7 @@ using namespace orq::benchmarking::utils;
 using namespace orq::operators;
 using namespace orq::aggregators;
 using namespace orq::benchmarking;
+using namespace orq::math;
 
 namespace orq::relational {
 
@@ -118,6 +138,27 @@ struct AggregationOptions {
     std::optional<std::string> table_id = {};
 };
 
+/**
+ * @brief Sorting input struct.
+ *
+ * Used to separate the conversion from table.sort() inputs to table_sort() inputs from
+ * the actual sorting. Allows us to calculate the permutation counts separately from the sorting.
+ *
+ * @tparam Share Share data type.
+ * @tparam EVector Share container type.
+ */
+template <typename Share, typename EVector>
+struct SortInput {
+    std::vector<BSharedVector<Share, EVector>*> columns;
+    std::vector<ASharedVector<Share, EVector>*> data_a;
+    std::vector<BSharedVector<Share, EVector>*> data_b;
+    std::vector<SortOrder> order;
+    std::vector<bool> single_bit;
+    SortingProtocol protocol;
+    bool can_unpad;
+    bool unpad_from_top;
+};
+
 // TODO (john): Support columns with different share types.
 /**
  * An EncodedTable is a relational table that contains encoded data organized in columns.
@@ -159,6 +200,11 @@ class EncodedTable {
     using uniqA = std::unique_ptr<A>;
     using uniqB = std::unique_ptr<B>;
 
+    // prevent shadowing
+    using __EVector = EVector<Share, SharedColumn::replicationNumber>;
+
+    using SortInput_t = SortInput<Share, __EVector>;
+
     bool deleted = false;
 
     /**
@@ -175,8 +221,8 @@ class EncodedTable {
      * @param keys which other columns to mask
      * @return EncodedTable&
      */
-    EncodedTable &mask(const std::string &mask_column_name, const std::vector<std::string> &keys) {
-        B mask_col_b = *(B *)(*this)[mask_column_name].contents.get();
+    EncodedTable& mask(const std::string& mask_column_name, const std::vector<std::string>& keys) {
+        B mask_col_b = *(B*)(*this)[mask_column_name].contents.get();
         auto _size = mask_col_b.size();
 
         A mask_col_a = mask_col_b.b2a_bit();
@@ -184,17 +230,11 @@ class EncodedTable {
         // TODO: why isn't repeated_subset_reference working here?
         Vector<Share> _mask_vec(1, MASK_VALUE);
 
-        A shared_single_mask_a(1);
-        B shared_single_mask_b(1);
+        A shared_single_mask_a = runTime->public_share<SharedColumn::replicationNumber>(_mask_vec);
+        B shared_single_mask_b = runTime->public_share<SharedColumn::replicationNumber>(_mask_vec);
 
-        secret_share_vec(_mask_vec, shared_single_mask_a);
-        secret_share_vec(_mask_vec, shared_single_mask_b);
-
-        A full_mask_a(_size);
-        full_mask_a = shared_single_mask_a.repeated_subset_reference(_size);
-
-        B full_mask_b(_size);
-        full_mask_b = shared_single_mask_b.repeated_subset_reference(_size);
+        auto full_mask_a = shared_single_mask_a.repeated_subset_reference(_size);
+        auto full_mask_b = shared_single_mask_b.repeated_subset_reference(_size);
 
         for (auto k : keys) {
             if (k == mask_column_name) {
@@ -203,9 +243,9 @@ class EncodedTable {
 
             auto c = (*this)[k].contents.get();
             if (isBShared(k)) {
-                *(B *)c = multiplex(mask_col_b, full_mask_b, *(B *)c);
+                *(B*)c = multiplex(mask_col_b, full_mask_b, *(B*)c);
             } else {
-                *(A *)c = multiplex(mask_col_a, full_mask_a, *(A *)c);
+                *(A*)c = multiplex(mask_col_a, full_mask_a, *(A*)c);
             }
         }
         return *this;
@@ -217,14 +257,14 @@ class EncodedTable {
      * @param mask_column_name
      * @return EncodedTable&
      */
-    EncodedTable &mask(const std::string &mask_column_name) {
+    EncodedTable& mask(const std::string& mask_column_name) {
         return mask(mask_column_name, getColumnNames());
     }
 
     /**
      * @brief Internal join implementation.
      */
-    EncodedTable _join(EncodedTable &right, std::vector<std::string> keys, AggregationSpec agg_spec,
+    EncodedTable _join(EncodedTable& right, std::vector<std::string> keys, AggregationSpec agg_spec,
                        JoinOptions opt);
 
    public:
@@ -241,10 +281,10 @@ class EncodedTable {
      * @param _columns The column names.
      * @param _rows The number of rows to allocate.
      */
-    EncodedTable(const std::string &_tableName, const std::vector<std::string> &_columns,
-                 const int &_rows)
+    EncodedTable(const std::string& _tableName, const std::vector<std::string>& _columns,
+                 const int _rows)
         : tableName(_tableName), rows(_rows) {
-        addColumns(_columns, _rows);  // Allocate columns
+        addColumns(_columns);  // Allocate columns
         configureValid();
     }
 
@@ -252,18 +292,56 @@ class EncodedTable {
      * Constructs a table from encoded columns.
      * @param contents The table columns.
      */
-    EncodedTable(std::vector<std::shared_ptr<EncodedColumn>> &&contents) {
+    EncodedTable(std::vector<std::shared_ptr<EncodedColumn>>&& contents) {
         // Set table cardinality and metadata
         assert(contents.size() > 0);
         rows = contents[0]->size();
         schema.clear();
-        for (auto &c : contents) {
+        for (auto& c : contents) {
             assert(rows == c->size());
             auto p = std::pair<std::string, std::shared_ptr<EncodedColumn>>(c->name, c);
             auto r = schema.insert(p);
             assert(r.second);
         }
         configureValid();
+    }
+
+    /**
+     * @brief Copy constructor
+     */
+    EncodedTable(const EncodedTable& other)
+        : schema(other.schema),
+          rows(other.rows),
+          MASK_VALUE(other.MASK_VALUE),
+          deleted(other.deleted),
+          tableName(other.tableName) {}
+
+    /**
+     * @brief Copy assignment operator
+     */
+    EncodedTable& operator=(const EncodedTable& other) {
+        if (this != &other) {
+            schema = other.schema;
+            rows = other.rows;
+            MASK_VALUE = other.MASK_VALUE;
+            deleted = other.deleted;
+            tableName = other.tableName;
+        }
+        return *this;
+    }
+
+    /**
+     * @brief Move assignment operator
+     */
+    EncodedTable& operator=(EncodedTable&& other) noexcept {
+        if (this != &other) {
+            schema = std::move(other.schema);
+            rows = other.rows;
+            MASK_VALUE = other.MASK_VALUE;
+            deleted = other.deleted;
+            tableName = std::move(other.tableName);
+        }
+        return *this;
     }
 
     /**
@@ -296,7 +374,7 @@ class EncodedTable {
      * `false` will be marked invalid.
      */
     template <typename T>
-    void filter(T &&e) {
+    void filter(T&& e) {
         (*this)[ENC_TABLE_VALID] &= std::forward<T>(e);
     }
 
@@ -318,21 +396,21 @@ class EncodedTable {
      *
      * @return BSharedVector *
      */
-    B *getValidVector() { return (B *)(*this)[ENC_TABLE_VALID].contents.get(); }
+    B* getValidVector() { return (B*)(*this)[ENC_TABLE_VALID].contents.get(); }
 
     /**
      * Returns a mutable reference to the column with the given name.
      * @param name The name of the column.
      * @return A reference to the column (throws an error if the column is not found).
      */
-    inline EncodedColumn &operator[](const std::string &name) {
+    inline EncodedColumn& operator[](const std::string& name) {
         if (deleted) {
             std::cerr << "ERROR: trying to access deleted table\n";
             abort();
         }
 
         if (auto c = schema.find(name); c != schema.end()) {
-            return *((EncodedColumn *)c->second.get());
+            return *((EncodedColumn*)c->second.get());
         } else {
             std::cerr << "ERROR: column '" << name << "' not found\n";
             abort();
@@ -345,9 +423,9 @@ class EncodedTable {
      * @param name
      * @return B
      */
-    B asBSharedVector(const std::string &name) {
+    B asBSharedVector(const std::string& name) {
         assert((*this)[name].encoding == Encoding::BShared);
-        return *(B *)(*this)[name].contents.get();
+        return *(B*)(*this)[name].contents.get();
     }
 
     /**
@@ -356,9 +434,9 @@ class EncodedTable {
      * @param name
      * @return A
      */
-    A asASharedVector(const std::string &name) {
+    A asASharedVector(const std::string& name) {
         assert((*this)[name].encoding == Encoding::AShared);
-        return *(A *)(*this)[name].contents.get();
+        return *(A*)(*this)[name].contents.get();
     }
 
     /**
@@ -367,8 +445,8 @@ class EncodedTable {
      * @param name
      * @return B::SharedVector_t
      */
-    B::SharedVector_t asSharedVector(const std::string &name) {
-        return *static_cast<typename B::SharedVector_t *>((*this)[name].contents.get());
+    B::SharedVector_t asSharedVector(const std::string& name) {
+        return *static_cast<typename B::SharedVector_t*>((*this)[name].contents.get());
     }
 
     /**
@@ -379,11 +457,11 @@ class EncodedTable {
      * @param columnName The name of the column.
      * @param inputFile The file containing the secret shares.
      */
-    inline void inputSecretShares(const std::string &columnName, const std::string &inputFile) {
+    inline void inputSecretShares(const std::string& columnName, const std::string& inputFile) {
         if ((*this)[columnName].encoding == Encoding::BShared) {
-            *(B *)((*this)[columnName].contents.get()) = B(rows, inputFile);
+            *(B*)((*this)[columnName].contents.get()) = B(rows, inputFile);
         } else {
-            *(A *)((*this)[columnName].contents.get()) = A(rows, inputFile);
+            *(A*)((*this)[columnName].contents.get()) = A(rows, inputFile);
         }
     }
 
@@ -393,14 +471,14 @@ class EncodedTable {
      * @param _file_path The file containing the table data.
      * @param _input_party The party that has the file.
      */
-    inline void inputCSVTableData(const std::string &_file_path, const int &_input_party) {
+    inline void inputCSVTableData(const std::string& _file_path, int _input_party) {
         // get the table size
         int current_rows = this->size();
 
         // All parties gerenate initial data vectors for all columns
         std::vector<std::string> available_column_names;
         std::vector<Vector<Share>> read_column_data;
-        for (auto const &imap : schema) {
+        for (auto const& imap : schema) {
             available_column_names.push_back(imap.first);
             read_column_data.push_back(Vector<Share>(current_rows, 0));
         }
@@ -474,11 +552,11 @@ class EncodedTable {
         for (int i = 0; i < available_column_names.size(); ++i) {
             if (isBShared(available_column_names[i])) {
                 secret_share_vec(read_column_data[i],
-                                 *(B *)((*this)[available_column_names[i]].contents.get()),
+                                 *(B*)((*this)[available_column_names[i]].contents.get()),
                                  _input_party);
             } else {
                 secret_share_vec(read_column_data[i],
-                                 *(A *)((*this)[available_column_names[i]].contents.get()),
+                                 *(A*)((*this)[available_column_names[i]].contents.get()),
                                  _input_party);
             }
         }
@@ -492,7 +570,7 @@ class EncodedTable {
      * Note: this function updates the valid bit so that unread rows are assigned zero.
      * @param _file_path The file containing the table secret shares.
      */
-    inline void inputCSVTableSecretShares(const std::string &_file_path) {
+    inline void inputCSVTableSecretShares(const std::string& _file_path) {
         // First read each column in a separate vector
         std::set<std::string> column_names_set;
         std::vector<std::pair<std::string, int>> column_mapping;
@@ -533,7 +611,7 @@ class EncodedTable {
                 int token_index = 0;
                 while (std::getline(ss, token, ',') && token_index < column_mapping.size()) {
                     // TODO: Does it have to split into A/B?
-                    (*((B *)((*this)[column_mapping[token_index].first].contents.get())))
+                    (*((B*)((*this)[column_mapping[token_index].first].contents.get())))
                         .vector(column_mapping[token_index].second)[row_index] =
                         (Share)std::stoll(token);
 
@@ -553,8 +631,7 @@ class EncodedTable {
         if (this->schema.find(ENC_TABLE_VALID) != this->schema.end() &&
             column_names_set.find(ENC_TABLE_VALID) == column_names_set.end()) {
             Vector<Share> sel_plain(row_index, 1);
-            B sel_secret =
-                (*(B *)((*this)[ENC_TABLE_VALID].contents.get())).slice(0, row_index + 1);
+            B sel_secret = (*(B*)((*this)[ENC_TABLE_VALID].contents.get())).slice(0, row_index + 1);
 
             secret_share_vec(sel_plain, sel_secret);
         }
@@ -570,18 +647,18 @@ class EncodedTable {
      *
      * @param _file_path The file to write the table secret shares to.
      */
-    inline void outputCSVTableSecretShares(const std::string &_file_path) {
+    inline void outputCSVTableSecretShares(const std::string& _file_path) {
         std::ofstream file(_file_path, std::ios::out | std::ios::trunc);
         if (file.is_open()) {
             // Write the column names
-            for (auto const &imap : schema) {
+            for (auto const& imap : schema) {
                 for (int i = 0;
                      i <
-                     ((B *)(imap.second.get())->contents.get())->asEVector().getReplicationNumber();
+                     ((B*)(imap.second.get())->contents.get())->asEVector().getReplicationNumber();
                      ++i) {
                     file << imap.first << "_" << i;
                     if (imap.first != schema.rbegin()->first ||
-                        i < ((B *)(imap.second.get())->contents.get())
+                        i < ((B*)(imap.second.get())->contents.get())
                                     ->asEVector()
                                     .getReplicationNumber() -
                                 1) {
@@ -593,14 +670,14 @@ class EncodedTable {
 
             // Write the column values
             for (int i = 0; i < rows; ++i) {
-                for (auto const &imap : schema) {
-                    for (int j = 0; j < ((B *)(imap.second.get())->contents.get())
+                for (auto const& imap : schema) {
+                    for (int j = 0; j < ((B*)(imap.second.get())->contents.get())
                                             ->asEVector()
                                             .getReplicationNumber();
                          ++j) {
-                        file << ((B *)(imap.second.get())->contents.get())->vector(j)[i];
+                        file << ((B*)(imap.second.get())->contents.get())->vector(j)[i];
                         if (imap.first != schema.rbegin()->first ||
-                            j < ((B *)(imap.second.get())->contents.get())
+                            j < ((B*)(imap.second.get())->contents.get())
                                         ->asEVector()
                                         .getReplicationNumber() -
                                     1) {
@@ -625,11 +702,11 @@ class EncodedTable {
      * @param columnName The name of the column.
      * @param outputFile The file to write the secret shares to.
      */
-    inline void outputSecretShares(const std::string &columnName, const std::string &outputFile) {
+    inline void outputSecretShares(const std::string& columnName, const std::string& outputFile) {
         if ((*this)[columnName].encoding == Encoding::BShared) {
-            ((B *)((*this)[columnName].contents.get()))->outputSecretShares(outputFile);
+            ((B*)((*this)[columnName].contents.get()))->outputSecretShares(outputFile);
         } else {
-            ((A *)((*this)[columnName].contents.get()))->outputSecretShares(outputFile);
+            ((A*)((*this)[columnName].contents.get()))->outputSecretShares(outputFile);
         }
     }
 
@@ -657,15 +734,15 @@ class EncodedTable {
      */
     DataTable open() {
         DataTable res;
-        for (auto &[k, v] : schema) {
+        for (auto& [k, v] : schema) {
             if (k == ENC_TABLE_VALID) {
                 continue;
             }
 
             if (v->encoding == Encoding::BShared) {
-                res.push_back(((B *)(v.get())->contents.get())->open());
+                res.push_back(((B*)(v.get())->contents.get())->open());
             } else if (v->encoding == Encoding::AShared) {
-                res.push_back(((A *)(v.get())->contents.get())->open());
+                res.push_back(((A*)(v.get())->contents.get())->open());
             }
         }
         return res;
@@ -683,12 +760,12 @@ class EncodedTable {
         DataTable full_res;
         std::vector<std::string> names;
         Vector<Share> valid(rows);
-        for (auto &c : schema) {
+        for (auto& c : schema) {
             Vector<Share> v(rows);
             if (c.second->encoding == Encoding::BShared) {
-                v = ((B *)(c.second.get())->contents.get())->open();
+                v = ((B*)(c.second.get())->contents.get())->open();
             } else if (c.second->encoding == Encoding::AShared) {
-                v = ((A *)(c.second.get())->contents.get())->open();
+                v = ((A*)(c.second.get())->contents.get())->open();
             } else {
                 std::cerr << "Unidentified Encoding Type: " << c.second->encoding << std::endl;
                 exit(-1);
@@ -709,7 +786,7 @@ class EncodedTable {
         DataTable res;
 
         // clear out invalid
-        for (auto &r : full_res) {
+        for (auto& r : full_res) {
             res.push_back(r.extract_valid(valid));
         }
 
@@ -721,19 +798,11 @@ class EncodedTable {
      * @param columns_ The schema.
      * @param rows_ The column length.
      */
-    void addColumns(const std::vector<std::string> &columns_, const int &rows_) {
-        for (auto &column : columns_) {
-            addColumn(column, rows_);
+    void addColumns(const std::vector<std::string>& columns_) {
+        for (auto& column : columns_) {
+            addColumn(column, rows);
         }
     }
-
-    /**
-     * @brief Create table columns given a list of names. All rows will have the same length as the
-     * current table
-     *
-     * @param columns_
-     */
-    void addColumns(const std::vector<std::string> &columns_) { addColumns(columns_, rows); }
 
     /**
      * Allocates a column of a given size and initializes it with zeros.
@@ -744,14 +813,18 @@ class EncodedTable {
      *
      * @param column The name of the column to allocate.
      * @param rows_ The column size in number of elements.
-     *
+     * @param precision Fixed-point precision (default 0).
      */
-    void addColumn(const std::string &column, const int rows_) {
+    void addColumn(const std::string& column, const int rows_,
+                   std::optional<int> precision = std::nullopt) {
         std::unique_ptr<EncodedVector> v;
         if (isBShared(column)) {
             v = std::make_unique<B>(rows_);
         } else {
             v = std::make_unique<A>(rows_);
+        }
+        if (precision) {
+            v->setPrecision(*precision);
         }
         // Create a column from the allocated vector
         auto c = std::make_shared<SharedColumn>(std::move(v), column);
@@ -768,7 +841,7 @@ class EncodedTable {
      *
      * @param column
      */
-    void addColumn(const std::string &column) { addColumn(column, rows); }
+    void addColumn(const std::string& column) { addColumn(column, rows); }
 
     /**
      * @brief Remove provided columns from the table.
@@ -795,7 +868,7 @@ class EncodedTable {
         cols_set.insert(RESERVED_COLUMNS);
 
         std::vector<std::string> delete_columns;
-        for (const auto &[key, _] : schema) {
+        for (const auto& [key, _] : schema) {
             if (!cols_set.count(key)) delete_columns.push_back(key);
         }
 
@@ -826,90 +899,27 @@ class EncodedTable {
      */
     std::vector<std::string> getColumnNames() {
         std::vector<std::string> _schema;
-        for (auto const &imap : schema) {
+        for (auto const& imap : schema) {
             _schema.push_back(imap.first);
         }
         return _schema;
     }
 
     /**
-     * Sorts `this` table in place given a specification of columns and sorting directions using
-     * the default sorting protocol.
-     * @param spec The names of the columns to sort by along with a sorting direction.
-     * @return EncodedTable&
-     */
-    EncodedTable &sort(const std::vector<std::pair<std::string, SortOrder>> spec) {
-        return sort(spec, getColumnNames());
-    }
-
-    /**
-     * Sorts `this` table in place given a specification of columns and sorting directions.
-     * @param spec The names of the columns to sort by along with a sorting direction.
-     * @param protocol The sorting protocol to use.
-     * @return EncodedTable&
-     */
-    EncodedTable &sort(const std::vector<std::pair<std::string, SortOrder>> spec,
-                       const SortingProtocol protocol) {
-        return sort(spec, getColumnNames(), protocol);
-    }
-
-    /**
-     * @brief Sort all given columns in the same direction using the default sorting protocol.
-     * @param columns The list of BSharedVColumns to sort on.
-     * @param allOrder The direction to sort all sort columns.
-     * @return EncodedTable&
-     */
-    EncodedTable &sort(const std::vector<std::string> columns, SortOrder allOrder = ASC) {
-        std::vector<std::pair<std::string, SortOrder>> spec;
-
-        for (auto c : columns) {
-            spec.push_back({c, allOrder});
-        }
-
-        return sort(spec, getColumnNames());
-    }
-
-    /**
-     * @brief Sort all given columns in the same direction.
-     * @param columns The list of BSharedVColumns to sort on.
-     * @param allOrder The direction to sort all sort columns.
-     * @param protocol The sorting protocol to use.
-     * @return EncodedTable&
-     */
-    EncodedTable &sort(const std::vector<std::string> columns, SortOrder allOrder,
-                       const SortingProtocol protocol) {
-        std::vector<std::pair<std::string, SortOrder>> spec;
-
-        for (auto c : columns) {
-            spec.push_back({c, allOrder});
-        }
-
-        return sort(spec, getColumnNames(), protocol);
-    }
-
-    /**
-     * @brief Sort the table given a specification.
+     * @brief Prepare the sorting input for the given specification.
      * @param spec The names of the columns to sort by along with a
      * sorting direction.
      * @param to_be_sorted_columns The non-sort columns to be sorted
      * according to the sort columns.
-     * @param protocol The sorting protocol to use. Default is bitonic
-     * sort for 2PC, and quicksort otherwise.
-     * @return EncodedTable&
+     * @param protocol The sorting protocol to use.
+     * @return SortInput_t The sorting input to be passed to table_sort.
      */
-    EncodedTable &sort(const std::vector<std::pair<std::string, SortOrder>> spec,
-                       const std::vector<std::string> &to_be_sorted_columns,
-                       const SortingProtocol protocol = SortingProtocol::DEFAULT) {
-        BEGIN_TABLE_PROFILING();
-
+    SortInput_t prepare_sort_input(const std::vector<std::pair<std::string, SortOrder>>& spec,
+                                   const std::vector<std::string>& to_be_sorted_columns,
+                                   const SortingProtocol protocol = DEFAULT_SORT_PROTO) {
         size_t original_size = size();
         bool can_unpad = false;
         bool unpad_from_top = true;
-
-        if (protocol == SortingProtocol::BITONICSORT) {
-            // bitonic sort only - table size must be a power of two
-            pad_power_of_two();
-        }
 
         // Build the sorting input vectors
         std::vector<std::string> _keys;
@@ -939,49 +949,124 @@ class EncodedTable {
         }
 
         // Sorting keys must be B-shared columns
-        std::vector<B *> keys_vec;
+        std::vector<B*> keys_vec;
         for (int i = 0; i < _keys.size(); ++i) {
             assert((*this)[_keys[i]].encoding == Encoding::BShared);
-            keys_vec.push_back((B *)((*this)[_keys[i]].contents.get()));
+            keys_vec.push_back((B*)((*this)[_keys[i]].contents.get()));
         }
 
         // Now, let's get remaining data in the table
-        std::vector<A *> data_a;
-        std::vector<B *> data_b;
+        std::vector<A*> data_a;
+        std::vector<B*> data_b;
         for (auto it = schema.begin(); it != schema.end(); ++it) {
             if (std::find(_keys.begin(), _keys.end(), it->first) == _keys.end() &&
                 std::find(to_be_sorted_columns.begin(), to_be_sorted_columns.end(), it->first) !=
                     to_be_sorted_columns.end()) {
-                // std::cout << it->first << std::endl;
                 if (it->second->encoding == Encoding::AShared) {
-                    data_a.push_back((A *)(it->second->contents.get()));
+                    data_a.push_back((A*)(it->second->contents.get()));
                 } else if (it->second->encoding == Encoding::BShared) {
-                    data_b.push_back((B *)(it->second->contents.get()));
+                    data_b.push_back((B*)(it->second->contents.get()));
                 }
             }
         }
+
+        return SortInput_t(keys_vec, data_a, data_b, order, single_bit_cols, protocol, can_unpad,
+                           unpad_from_top);
+    }
+
+    /**
+     * Sorts `this` table in place given a specification of columns and sorting directions using
+     * the default sorting protocol.
+     * @param spec The names of the columns to sort by along with a sorting direction.
+     * @return EncodedTable&
+     */
+    EncodedTable& sort(const std::vector<std::pair<std::string, SortOrder>> spec) {
+        return sort(spec, getColumnNames(), DEFAULT_SORT_PROTO);
+    }
+
+    /**
+     * Sorts `this` table in place given a specification of columns and sorting directions.
+     * @param spec The names of the columns to sort by along with a sorting direction.
+     * @param protocol The sorting protocol to use.
+     * @return EncodedTable&
+     */
+    EncodedTable& sort(const std::vector<std::pair<std::string, SortOrder>> spec,
+                       const SortingProtocol protocol) {
+        return sort(spec, getColumnNames(), protocol);
+    }
+
+    /**
+     * @brief Sort all given columns in the same direction using the default sorting protocol.
+     * @param columns The list of BSharedVColumns to sort on.
+     * @param allOrder The direction to sort all sort columns.
+     * @return EncodedTable&
+     */
+    EncodedTable& sort(const std::vector<std::string> columns, SortOrder allOrder = ASC) {
+        std::vector<std::pair<std::string, SortOrder>> spec;
+
+        for (auto c : columns) {
+            spec.push_back({c, allOrder});
+        }
+
+        return sort(spec, getColumnNames());
+    }
+
+    /**
+     * @brief Sort all given columns in the same direction.
+     * @param columns The list of BSharedVColumns to sort on.
+     * @param allOrder The direction to sort all sort columns.
+     * @param protocol The sorting protocol to use.
+     * @return EncodedTable&
+     */
+    EncodedTable& sort(const std::vector<std::string> columns, SortOrder allOrder,
+                       const SortingProtocol protocol) {
+        std::vector<std::pair<std::string, SortOrder>> spec;
+
+        for (auto c : columns) {
+            spec.push_back({c, allOrder});
+        }
+
+        return sort(spec, getColumnNames(), protocol);
+    }
+
+    /**
+     * @brief Sort the table given a specification.
+     * @param spec The names of the columns to sort by along with a
+     * sorting direction.
+     * @param to_be_sorted_columns The non-sort columns to be sorted
+     * according to the sort columns.
+     * @param protocol The sorting protocol to use.
+     * @return EncodedTable&
+     */
+    EncodedTable& sort(const std::vector<std::pair<std::string, SortOrder>> spec,
+                       const std::vector<std::string>& to_be_sorted_columns,
+                       const SortingProtocol protocol = DEFAULT_SORT_PROTO) {
+        BEGIN_TABLE_PROFILING();
+
+        size_t original_size = size();
+
+        SortInput_t sort_input = prepare_sort_input(spec, to_be_sorted_columns, protocol);
+        auto [keys_vec, data_a, data_b, order, single_bit_cols, _, can_unpad, unpad_from_top] =
+            sort_input;
 
         PRINT_TABLE_INSTRUMENT("[TABLE_SORT] "
                                << (protocol == SortingProtocol::RADIXSORT ? "RS" : "QS")
                                << " k=" << keys_vec.size() << " n=" << keys_vec[0]->size());
 
-        if (protocol == SortingProtocol::BITONICSORT) {
+        if (protocol == SortingProtocol::NETWORK) {
 #ifndef DEBUG_SKIP_EXPENSIVE_TABLE_OPERATIONS
-            operators::bitonic_sort(keys_vec, data_a, data_b, order);
+            // Add id column for stability (becomes last sorting key)
+            Vector<Share> id_vec(keys_vec[0]->size());
+            std::iota(id_vec.begin(), id_vec.end(), 0);
+            B id_col = runTime->public_share<SharedColumn::replicationNumber>(id_vec);
+            keys_vec.push_back(&id_col);
+            order.push_back(ASC);
+
+            operators::pairwise_sort(keys_vec, data_a, data_b, order);
+
 #else
             single_cout("...skipped");
 #endif
-            // We can only shrink back if we sorted on valid, since all
-            // padded rows are invalid.
-            if (can_unpad) {
-                if (unpad_from_top) {
-                    // chop the top padded rows
-                    tail(original_size);
-                } else {
-                    // chop the bottom padded rows
-                    resize(original_size);
-                }
-            }
         } else if (protocol == SortingProtocol::BITONICMERGE) {
             operators::bitonic_merge(keys_vec, data_a, data_b, order);
         } else {
@@ -998,17 +1083,32 @@ class EncodedTable {
     }
 
     /**
+     * @brief Get the permutation counts for the given specification.
+     * @param spec The specification of the columns to sort by along with a sorting direction.
+     * @return The number of permutations and pairs required.
+     */
+    std::pair<int, int> get_perm_counts(const std::vector<std::pair<std::string, SortOrder>> spec,
+                                        const SortingProtocol protocol = DEFAULT_SORT_PROTO) {
+        // prepare sort inputs
+        SortInput_t sort_input = prepare_sort_input(spec, getColumnNames(), protocol);
+        auto [keys_vec, data_a, data_b, order, single_bit_cols, _1, _2, _3] = sort_input;
+
+        return operators::get_perm_counts(keys_vec, data_a, data_b, order, single_bit_cols,
+                                          protocol);
+    }
+
+    /**
      * Shuffles each column according to the same permutation.
      */
-    EncodedTable &shuffle() {
+    EncodedTable& shuffle() {
         // split the columns into AShared and BShared
-        std::vector<A *> data_a;
-        std::vector<B *> data_b;
+        std::vector<A*> data_a;
+        std::vector<B*> data_b;
         for (auto it = schema.begin(); it != schema.end(); ++it) {
             if (it->second->encoding == Encoding::AShared) {
-                data_a.push_back((A *)(it->second->contents.get()));
+                data_a.push_back((A*)(it->second->contents.get()));
             } else if (it->second->encoding == Encoding::BShared) {
-                data_b.push_back((B *)(it->second->contents.get()));
+                data_b.push_back((B*)(it->second->contents.get()));
             }
         }
 
@@ -1024,8 +1124,8 @@ class EncodedTable {
      * @param output_b
      * @return EncodedTable&
      */
-    EncodedTable &convert_a2b(const std::string &input_a, const std::string &output_b) {
-        *((B *)(*this)[output_b].contents.get()) = ((A *)(*this)[input_a].contents.get())->a2b();
+    EncodedTable& convert_a2b(const std::string& input_a, const std::string& output_b) {
+        *((B*)(*this)[output_b].contents.get()) = ((A*)(*this)[input_a].contents.get())->a2b();
         return *this;
     }
 
@@ -1037,9 +1137,8 @@ class EncodedTable {
      * @param output_a
      * @return EncodedTable&
      */
-    EncodedTable &convert_b2a_bit(const std::string &input_b, const std::string &output_a) {
-        *((A *)(*this)[output_a].contents.get()) =
-            ((B *)(*this)[input_b].contents.get())->b2a_bit();
+    EncodedTable& convert_b2a_bit(const std::string& input_b, const std::string& output_a) {
+        *((A*)(*this)[output_a].contents.get()) = ((B*)(*this)[input_b].contents.get())->b2a_bit();
         return *this;
     }
 
@@ -1056,7 +1155,7 @@ class EncodedTable {
      * @param opt See `AggregationOptions`
      * @return EncodedTable&
      */
-    EncodedTable &aggregate(const std::vector<std::string> &_keys, AggregationSpec agg_spec,
+    EncodedTable& aggregate(const std::vector<std::string>& _keys, AggregationSpec agg_spec,
                             AggregationOptions opt = {}) {
         // If sorting requested, prepend valid.
         // Otherwise, we assume user has manually sorted and specified all columns explicitly.
@@ -1077,11 +1176,11 @@ class EncodedTable {
         std::vector<B> keys_vec;
         for (int i = 0; i < keys.size(); ++i) {
             assert((*this)[keys[i]].encoding == Encoding::BShared);
-            keys_vec.push_back(*(B *)((*this)[keys[i]].contents.get()));
+            keys_vec.push_back(*(B*)((*this)[keys[i]].contents.get()));
         }
 
-        std::vector<std::tuple<B, B, void (*)(const B &, B &, const B &)>> b_agg;
-        std::vector<std::tuple<A, A, void (*)(const A &, A &, const A &)>> a_agg;
+        std::vector<std::tuple<B, B, void (*)(const B&, B&, const B&)>> b_agg;
+        std::vector<std::tuple<A, A, void (*)(const A&, A&, const A&)>> a_agg;
 
         bool has_any_aggregation = false;
 
@@ -1100,16 +1199,16 @@ class EncodedTable {
             }
 
             if (d_encoding == Encoding::AShared) {
-                void (*f)(const A &, A &, const A &) = func.getA();
+                void (*f)(const A&, A&, const A&) = func.getA();
 
-                auto d = *(A *)(*this)[_data].contents.get();
-                auto r = *(A *)(*this)[_result].contents.get();
+                auto d = *(A*)(*this)[_data].contents.get();
+                auto r = *(A*)(*this)[_result].contents.get();
                 a_agg.push_back({d, r, f});
             } else {  // BShared
-                void (*f)(const B &, B &, const B &) = func.getB();
+                void (*f)(const B&, B&, const B&) = func.getB();
 
-                auto d = *(B *)(*this)[_data].contents.get();
-                auto r = *(B *)(*this)[_result].contents.get();
+                auto d = *(B*)(*this)[_data].contents.get();
+                auto r = *(B*)(*this)[_result].contents.get();
                 b_agg.push_back({d, r, f});
             }
         }
@@ -1121,17 +1220,14 @@ class EncodedTable {
              * table 0 or 1. An additional copy aggregation propagates
              * this value down to all other rows for later masking.
              */
-            this->addColumns(std::vector<std::string>{ENC_TABLE_UNIQ}, this->rows);
+            this->addColumn(ENC_TABLE_UNIQ);
             this->distinct(keys, ENC_TABLE_UNIQ);
 
             if (opt.table_id.has_value()) {
                 // dereference operator on an optional type gives the value
-                table_id_vec = *(B *)(*this)[*opt.table_id].contents.get();
+                table_id_vec = *(B*)(*this)[*opt.table_id].contents.get();
             }
         }
-
-        // single_cout("++++ PRE-AGG");
-        // print_table(this->open_with_schema(), runTime->getPartyID());
 
         auto dir = opt.reverse ? Direction::Reverse : Direction::Forward;
 
@@ -1148,9 +1244,6 @@ class EncodedTable {
             resize(original_size);
         }
 
-        // single_cout("//// POST-AGG");
-        // print_table(this->open_with_schema(), runTime->getPartyID());
-
         ////// Validity post-processing //////
         if (opt.mark_valid) {
             if (has_any_aggregation) {
@@ -1166,16 +1259,16 @@ class EncodedTable {
                  * row valid.
                  */
 
-                auto uniq_col = *((B *)(*this)[ENC_TABLE_UNIQ].contents.get());
+                auto uniq_col = *((B*)(*this)[ENC_TABLE_UNIQ].contents.get());
                 auto valid_col = *getValidVector();
 
                 if (opt.reverse) {
-                    // reverse. bottom row valid
+                    // reverse. select top row only
+                    filter((*this)[ENC_TABLE_UNIQ]);
+                } else {
+                    // non-reverse. bottom row valid
                     auto short_valid = valid_col.slice(0, valid_col.size() - 1);
                     short_valid &= uniq_col.slice(1);
-                } else {
-                    // non-reverse. select top row only
-                    filter((*this)[ENC_TABLE_UNIQ]);
                 }
             }
 
@@ -1195,17 +1288,17 @@ class EncodedTable {
      * @param _res: Column name to mark the result
      * @return EncodedTable&
      */
-    EncodedTable &distinct(const std::vector<std::string> &_keys, const std::string &_res) {
+    EncodedTable& distinct(const std::vector<std::string>& _keys, const std::string& _res) {
         // Create a vector that has the B for keys
-        std::vector<B *> keys_vec;
+        std::vector<B*> keys_vec;
         for (int i = 0; i < _keys.size(); ++i) {
             assert(_keys[i] != _res);
 
             assert((*this)[_keys[i]].encoding == Encoding::BShared);
-            keys_vec.push_back((B *)((*this)[_keys[i]].contents.get()));
+            keys_vec.push_back((B*)((*this)[_keys[i]].contents.get()));
         }
 
-        B *res_ptr = (B *)((*this)[_res].contents.get());
+        B* res_ptr = (B*)((*this)[_res].contents.get());
 
         operators::distinct(keys_vec, res_ptr);
 
@@ -1219,7 +1312,7 @@ class EncodedTable {
      * @param _keys: Column names on which to run distinct
      * @return EncodedTable&
      */
-    EncodedTable &distinct(const std::vector<std::string> &_keys) {
+    EncodedTable& distinct(const std::vector<std::string>& _keys) {
         // Sort according to the valid bit and provided keys
         auto sort_keys = _keys;
         sort_keys.insert(sort_keys.begin(), ENC_TABLE_VALID);
@@ -1244,13 +1337,13 @@ class EncodedTable {
      * @param _res
      * @return EncodedTable&
      */
-    EncodedTable &tumbling_window(const std::string &_time_a, const Share &window_size,
-                                  const std::string &_res) {
+    EncodedTable& tumbling_window(const std::string& _time_a, const Share& window_size,
+                                  const std::string& _res) {
         assert((*this)[_time_a].encoding == Encoding::AShared);
-        A key_ptr = *(A *)((*this)[_time_a].contents.get());
+        A key_ptr = *(A*)((*this)[_time_a].contents.get());
 
         assert((*this)[_res].encoding == Encoding::AShared);
-        A res_ptr = *(A *)((*this)[_res].contents.get());
+        A res_ptr = *(A*)((*this)[_res].contents.get());
 
         operators::tumbling_window(key_ptr, window_size, res_ptr);
 
@@ -1268,10 +1361,10 @@ class EncodedTable {
      * @param _do_sorting
      * @return EncodedTable&
      */
-    EncodedTable &gap_session_window(const std::vector<std::string> &_keys,
-                                     const std::string &_time_a, const std::string &_time_b,
-                                     const std::string &_window_id, const int &_gap,
-                                     const bool &_do_sorting = true) {
+    EncodedTable& gap_session_window(const std::vector<std::string>& _keys,
+                                     const std::string& _time_a, const std::string& _time_b,
+                                     const std::string& _window_id, const Share& _gap,
+                                     const bool& _do_sorting = true) {
         if (_do_sorting) {
             std::vector<std::string> sorting_attrs;
             sorting_attrs.push_back(_time_b);
@@ -1286,17 +1379,17 @@ class EncodedTable {
         std::vector<B> keys_vec;
         for (int i = 0; i < _keys.size(); ++i) {
             assert((*this)[_keys[i]].encoding == Encoding::BShared);
-            keys_vec.push_back(*(B *)((*this)[_keys[i]].contents.get()));
+            keys_vec.push_back(*(B*)((*this)[_keys[i]].contents.get()));
         }
 
         assert((*this)[_time_a].encoding == Encoding::AShared);
-        A time_a = *(A *)((*this)[_time_a].contents.get());
+        A time_a = *(A*)((*this)[_time_a].contents.get());
 
         assert((*this)[_time_b].encoding == Encoding::BShared);
-        B time_b = *(B *)((*this)[_time_b].contents.get());
+        B time_b = *(B*)((*this)[_time_b].contents.get());
 
         assert((*this)[_window_id].encoding == Encoding::BShared);
-        B window_id = *(B *)((*this)[_window_id].contents.get());
+        B window_id = *(B*)((*this)[_window_id].contents.get());
 
         operators::gap_session_window(keys_vec, time_a, time_b, window_id, _gap);
 
@@ -1315,10 +1408,10 @@ class EncodedTable {
      * @param _mark_valid
      * @return EncodedTable&
      */
-    EncodedTable &threshold_session_window(const std::vector<std::string> &_keys,
-                                           const std::string &_function_res,
-                                           const std::string &_time_b,
-                                           const std::string &_window_id, const int &_threshold,
+    EncodedTable& threshold_session_window(const std::vector<std::string>& _keys,
+                                           const std::string& _function_res,
+                                           const std::string& _time_b,
+                                           const std::string& _window_id, const Share& _threshold,
                                            const bool _do_sorting = true,
                                            const bool _mark_valid = true) {
         if (_do_sorting) {
@@ -1336,17 +1429,17 @@ class EncodedTable {
         std::vector<B> keys_vec;
         for (int i = 0; i < _keys.size(); ++i) {
             assert((*this)[_keys[i]].encoding == Encoding::BShared);
-            keys_vec.push_back(*(B *)((*this)[_keys[i]].contents.get()));
+            keys_vec.push_back(*(B*)((*this)[_keys[i]].contents.get()));
         }
 
         assert((*this)[_function_res].encoding == Encoding::BShared);
-        B function_res = *(B *)((*this)[_function_res].contents.get());
+        B function_res = *(B*)((*this)[_function_res].contents.get());
 
         assert((*this)[_time_b].encoding == Encoding::BShared);
-        B time_b = *(B *)((*this)[_time_b].contents.get());
+        B time_b = *(B*)((*this)[_time_b].contents.get());
 
         assert((*this)[_window_id].encoding == Encoding::BShared);
-        B window_id = *(B *)((*this)[_window_id].contents.get());
+        B window_id = *(B*)((*this)[_window_id].contents.get());
 
         operators::threshold_session_window(keys_vec, function_res, time_b, window_id, _threshold);
 
@@ -1372,7 +1465,7 @@ class EncodedTable {
      * @param keys
      * @return EncodedTable&
      */
-    EncodedTable &zero(const std::vector<std::string> &keys) {
+    EncodedTable& zero(const std::vector<std::string>& keys) {
         for (auto k : keys) {
             (*this)[k].zero();
         }
@@ -1389,7 +1482,7 @@ class EncodedTable {
      */
     void head(size_t n) {
         if (n > this->size()) {
-            std::cerr << "warning: taking head(" << n << ") of table of size " << this->size()
+            std::cerr << "WARNING: taking head(" << n << ") of table of size " << this->size()
                       << "\n";
         }
 
@@ -1406,15 +1499,38 @@ class EncodedTable {
      */
     void tail(const size_t n) {
         if (n > this->size()) {
-            std::cerr << "warning: taking tail(" << n << ") of table of size " << this->size()
+            std::cerr << "WARNING: taking tail(" << n << ") of table of size " << this->size()
                       << "\n";
         }
 
-        for (auto &c : this->getColumnNames()) {
+        for (auto& c : this->getColumnNames()) {
             (*this)[c].tail(n);
         }
 
         rows = n;
+    }
+
+    /**
+     * @brief Destructively resize this table to only have rows in the range [start, end).
+     *
+     * NOTE: this modifies the table in place. For a non-destructive version,
+     * use `deepcopy` first.
+     *
+     * @param start Start index (inclusive)
+     * @param end   End index (exclusive)
+     */
+    void cut(size_t start, size_t end) {
+        if (end > this->size()) {
+            std::cerr << "WARNING: cut end (" << end << ") exceeds table size " << this->size()
+                      << "\n";
+            end = this->size();
+        }
+        if (start >= end) {
+            resize(0);
+            return;
+        }
+        tail(this->size() - start);
+        head(end - start);
     }
 
     /**
@@ -1437,7 +1553,7 @@ class EncodedTable {
 
     /**
      * @brief Resize this table to the next power-of-two size. Required for
-     * aggregation, bitonic sort, and bitonic merge.
+     * aggregation, bitonic sort / merge
      *
      * By default, just resize the table, setting all padded values to 0.
      * However, can optionally pad with a specified value; this is necessary for
@@ -1545,13 +1661,13 @@ class EncodedTable {
      * power of two
      * @return EncodedTable&
      */
-    EncodedTable concatenate(EncodedTable &other, bool power_of_two = false) {
+    EncodedTable concatenate(EncodedTable& other, bool power_of_two = false) {
         using TableType = EncodedTable<Share, SharedColumn, A, B, EncodedVector, DataTable>;
 
         std::vector<std::string> new_schema = {ENC_TABLE_JOIN_ID};
 
         // add columns from this table
-        for (auto &c : this->schema) {
+        for (auto& c : this->schema) {
             if (c.first == ENC_TABLE_JOIN_ID) {
                 continue;
             }
@@ -1560,7 +1676,7 @@ class EncodedTable {
         }
 
         // add columns from other table, skipping duplicates
-        for (auto &c : other.schema) {
+        for (auto& c : other.schema) {
             if (this->schema.count(c.first)) {
                 continue;
             }
@@ -1584,28 +1700,28 @@ class EncodedTable {
 
         // copy data from this table to the new table, at the beginning
         // table id here is zero, so ignore
-        for (auto &c : this->schema) {
+        for (auto& c : this->schema) {
             new_table.copy_column(*this, c.first);
         }
 
         // copy data from other table to the new table, *after* current
         // table's rows (pass optional start_index)
         auto other_start = this->size();
-        for (auto &c : other.schema) {
+        for (auto& c : other.schema) {
             new_table.copy_column(other, c.first, other_start);
         }
 
         // Table ID = 0 for this table; = 1 for the other table.
         // Vector default value is zero, so only need to update other table
         // rows
-        auto id_col = (B *)(new_table[ENC_TABLE_JOIN_ID].contents.get());
+        auto id_col = (B*)(new_table[ENC_TABLE_JOIN_ID].contents.get());
         // Subset reference to the rows corresponding to other table
         B other_table_id = id_col->slice(other_start, other_start + other.size());
         Vector<Share> one(1, 1);
-        B secretSharedOne(1);
-        orq::operators::secret_share_vec(one, secretSharedOne);
+        auto ssOne = runTime->public_share<SharedColumn::replicationNumber>(one);
+
         // Set them all to 1
-        other_table_id = secretSharedOne.repeated_subset_reference(other_table_id.size());
+        other_table_id = ssOne.repeated_subset_reference(other_table_id.size());
 
         if (power_of_two) {
             // invalidate padded rows
@@ -1615,25 +1731,27 @@ class EncodedTable {
         return new_table;
     }
 
-    EncodedTable inner_join(EncodedTable &right, std::vector<std::string> keys,
+    EncodedTable inner_join(EncodedTable& right, std::vector<std::string> keys,
                             AggregationSpec agg_spec = {}, JoinOptions opt = {});
 
-    EncodedTable left_outer_join(EncodedTable &right, std::vector<std::string> keys,
+    EncodedTable left_outer_join(EncodedTable& right, std::vector<std::string> keys,
                                  AggregationSpec agg_spec = {}, JoinOptions opt = {});
 
-    EncodedTable right_outer_join(EncodedTable &right, std::vector<std::string> keys,
+    EncodedTable right_outer_join(EncodedTable& right, std::vector<std::string> keys,
                                   AggregationSpec agg_spec = {}, JoinOptions opt = {});
 
-    EncodedTable full_outer_join(EncodedTable &right, std::vector<std::string> keys,
+    EncodedTable full_outer_join(EncodedTable& right, std::vector<std::string> keys,
                                  AggregationSpec agg_spec = {}, JoinOptions opt = {});
 
-    EncodedTable semi_join(EncodedTable &right, std::vector<std::string> keys);
+    EncodedTable semi_join(EncodedTable& right, std::vector<std::string> keys);
 
-    EncodedTable anti_join(EncodedTable &right, std::vector<std::string> keys);
+    EncodedTable anti_join(EncodedTable& right, std::vector<std::string> keys);
 
-    EncodedTable uu_join(EncodedTable &right, std::vector<std::string> keys,
+    EncodedTable uu_join(EncodedTable& right, std::vector<std::string> keys,
                          AggregationSpec agg_spec = {}, JoinOptions opt = {},
-                         const SortingProtocol protocol = SortingProtocol::DEFAULT);
+                         const SortingProtocol protocol = DEFAULT_SORT_PROTO);
+
+    EncodedTable cartesian_join(EncodedTable& right, std::string key);
 
     /**
      * @brief Extend the LSB of a column. All other bits are ignored. A
@@ -1648,8 +1766,8 @@ class EncodedTable {
      * @param _b_col Column name to extend LSB for.
      * @return EncodedTable&
      */
-    EncodedTable &extend_lsb(const std::string &_b_col) {
-        B *v = (B *)(*this)[_b_col].contents.get();
+    EncodedTable& extend_lsb(const std::string& _b_col) {
+        B* v = (B*)(*this)[_b_col].contents.get();
         v->extend_lsb(*v);
         return *this;
     }
@@ -1659,7 +1777,16 @@ class EncodedTable {
      *
      * @return EncodedTable&
      */
-    EncodedTable &mask() { return mask(ENC_TABLE_VALID, getColumnNames()); }
+    EncodedTable& mask() { return mask(ENC_TABLE_VALID, getColumnNames()); }
+
+    /**
+     * @brief Checks if a column is reserved/internal or not.
+     * @return bool
+     */
+    static bool isReserved(const std::string name) {
+        static const std::set<std::string> reserved_columns = RESERVED_COLUMNS;
+        return reserved_columns.contains(name);
+    }
 
     /**
      * Checks if a column with name `name` contains boolean shares.
@@ -1685,17 +1812,17 @@ class EncodedTable {
      */
     template <typename T, int R>
     static std::vector<std::shared_ptr<EncodedColumn>> secret_share(
-        const std::vector<orq::Vector<T>> &columns, const std::vector<std::string> &schema,
-        const int &_party_id = 0) {
+        const std::vector<orq::Vector<T>>& columns, const std::vector<std::string>& schema,
+        const int _party_id = 0) {
         assert(columns.size() == schema.size());
         using namespace service;
         std::vector<std::shared_ptr<EncodedColumn>> cols;
         for (int i = 0; i < columns.size(); i++) {
             std::unique_ptr<EncodedVector> v;
             if (isBShared(schema[i])) {
-                v = std::make_unique<B>(runTime->secret_share_b<R>(columns[i], _party_id));
+                v = std::make_unique<B>(runTime->secret_share_b_internal<R>(columns[i], _party_id));
             } else {
-                v = std::make_unique<A>(runTime->secret_share_a<R>(columns[i], _party_id));
+                v = std::make_unique<A>(runTime->secret_share_a_internal<R>(columns[i], _party_id));
             }
             cols.push_back(std::make_shared<SharedColumn>(std::move(v), schema[i]));
         }
@@ -1733,6 +1860,45 @@ class EncodedTable {
         return data[idx - labels.begin()];
     }
 
+    /**
+     * @brief Overwrite the row at the given index with the new row.
+     * @param new_row The new row to overwrite the row at the given index with.
+     * @param index The index of the row to overwrite.
+     */
+    void overwriteRowAtIndex(const EncodedTable& new_row, size_t index) {
+        if (new_row.size() != 1) {
+            std::cerr << "ERROR: overwriteRowAtIndex expects a single-row table\n";
+            abort();
+        }
+        if (index >= this->size()) {
+            std::cerr << "ERROR: overwriteRowAtIndex: index out of bounds\n";
+            abort();
+        }
+
+        // Ensure schemas are compatible and overwrite each non-reserved column at the given index.
+        auto other_schema = new_row.getSchema();
+
+        for (auto& [name, col_ptr] : schema) {
+            if (isReserved(name)) {
+                continue;
+            }
+
+            auto it_other = other_schema.find(name);
+            if (it_other == other_schema.end()) {
+                std::cerr << "ERROR: overwriteRowAtIndex: column '" << name
+                          << "' not found in source table\n";
+                abort();
+            }
+            if (it_other->second->encoding != col_ptr->encoding) {
+                std::cerr << "ERROR: overwriteRowAtIndex: encoding mismatch for column '" << name
+                          << "'\n";
+                abort();
+            }
+
+            copy_column(const_cast<EncodedTable&>(new_row), name, index);
+        }
+    }
+
    private:
     /**
      * @brief Copy column from table `t` into this table. This table's
@@ -1746,10 +1912,10 @@ class EncodedTable {
      * should be placed (default 0)
      */
     template <typename T>
-    void copy_column_typed(EncodedTable &t, std::string from, std::string to,
+    void copy_column_typed(EncodedTable& t, std::string from, std::string to,
                            VectorSizeType start_index = 0) {
-        T *src = (T *)(t[from].contents.get());
-        T *dst = (T *)((*this)[to].contents.get());
+        T* src = (T*)(t[from].contents.get());
+        T* dst = (T*)((*this)[to].contents.get());
         dst->slice(start_index, start_index + src->size()) = *src;
     }
 
@@ -1761,7 +1927,7 @@ class EncodedTable {
      * @param to
      * @param start_index
      */
-    void copy_column(EncodedTable &t, std::string from, std::string to,
+    void copy_column(EncodedTable& t, std::string from, std::string to,
                      VectorSizeType start_index = 0) {
         auto enc = t[from].encoding;
 
@@ -1785,7 +1951,7 @@ class EncodedTable {
      * @param name
      * @param start_index
      */
-    void copy_column(EncodedTable &t, std::string name, VectorSizeType start_index = 0) {
+    void copy_column(EncodedTable& t, std::string name, VectorSizeType start_index = 0) {
         copy_column(t, name, name, start_index);
     }
 };

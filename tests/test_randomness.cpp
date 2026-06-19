@@ -1,6 +1,7 @@
 #include <iostream>
 #include <set>
 
+#include "core/random/prg/committed_seeds_queue.h"
 #include "orq.h"
 
 using namespace orq::debug;
@@ -153,7 +154,7 @@ void test_3pc_common_prg_correctness() {
     Vector<T> shared_with_next = *common_randomness[1];
 
     Vector<T> remote(test_size);
-    runTime->comm0()->exchangeShares(shared_with_next, remote, +1, -1, test_size);
+    runTime->comm0()->exchangeShares(shared_with_next, remote, +1, -1);
 
     // check correctness
     for (int i = 0; i < test_size; i++) {
@@ -202,14 +203,14 @@ void test_4pc_common_prg_correctness() {
         Vector<T> remote2(test_size);
 
         if (relative_rank == 1) {
-            runTime->comm0()->exchangeShares(common_vec, remote1, -1, -1, test_size);
-            runTime->comm0()->exchangeShares(common_vec, remote2, -2, -2, test_size);
+            runTime->comm0()->exchangeShares(common_vec, remote1, -1, -1);
+            runTime->comm0()->exchangeShares(common_vec, remote2, -2, -2);
         } else if (relative_rank == 2) {
-            runTime->comm0()->exchangeShares(common_vec, remote1, -1, -1, test_size);
-            runTime->comm0()->exchangeShares(common_vec, remote2, +1, +1, test_size);
+            runTime->comm0()->exchangeShares(common_vec, remote1, -1, -1);
+            runTime->comm0()->exchangeShares(common_vec, remote2, +1, +1);
         } else if (relative_rank == 3) {
-            runTime->comm0()->exchangeShares(common_vec, remote1, +1, +1, test_size);
-            runTime->comm0()->exchangeShares(common_vec, remote2, +2, +2, test_size);
+            runTime->comm0()->exchangeShares(common_vec, remote1, +1, +1);
+            runTime->comm0()->exchangeShares(common_vec, remote2, +2, +2);
         }
 
         // check correctness
@@ -244,8 +245,7 @@ void test_common_prg_correctness_groups() {
                 if (rank == otherRank) continue;
                 int relative_rank = otherRank - rank;
                 Vector<T> remote(test_size);
-                runTime->comm0()->exchangeShares(randomness, remote, relative_rank, relative_rank,
-                                                 test_size);
+                runTime->comm0()->exchangeShares(randomness, remote, relative_rank, relative_rank);
 
                 // check correctness
                 bool all_zero = true;
@@ -261,8 +261,7 @@ void test_common_prg_correctness_groups() {
             // just exchange with lowest rank, check equality
             int relative_rank = lowestRank - rank;
             Vector<T> remote(test_size);
-            runTime->comm0()->exchangeShares(randomness, remote, relative_rank, relative_rank,
-                                             test_size);
+            runTime->comm0()->exchangeShares(randomness, remote, relative_rank, relative_rank);
 
             // check correctness
             bool all_zero = true;
@@ -314,9 +313,8 @@ void test_zero_sharing_generator_correctness() {
         int send_party = i;
         int recv_party = num_parties - i;
         runTime->comm0()->exchangeShares(my_shares_arithmetic, other_shares_a, send_party,
-                                         recv_party, test_size);
-        runTime->comm0()->exchangeShares(my_shares_binary, other_shares_b, send_party, recv_party,
-                                         test_size);
+                                         recv_party);
+        runTime->comm0()->exchangeShares(my_shares_binary, other_shares_b, send_party, recv_party);
         other_shares_arithmetic.push_back(other_shares_a);
         other_shares_binary.push_back(other_shares_b);
     }
@@ -388,6 +386,82 @@ void test_zero_sharing_generator_groups() {
     }
 }
 
+// ********************************************** //
+//      Test CommittedSeedsQueue Correctness      //
+// ********************************************** //
+void test_committed_seeds_queue() {
+    if (num_parties < 2) {
+        return;
+    }
+
+    auto pid = runTime->getPartyID();
+
+    // Use insecure testing mode, which does not abort on error
+    CommittedSeedsQueue<INSECURE_TEST_MODE> csq(runTime->comm0(), runTime->rand0()->localPRG, pid,
+                                                num_parties);
+
+    // Repopulate fills queues without error
+    csq.repopulateQueue();
+    assert(!csq.verificationHasFailed());
+
+    // All parties agree on the same PRG seed (full group)
+    auto prg = csq.nextPRG();
+    assert(prg != nullptr);
+    assert(!csq.verificationHasFailed());
+
+    const int test_size = 256;
+    Vector<uint8_t> myRandomness(test_size);
+    prg->getNext(myRandomness);
+
+    // Exchange with next party and verify byte-for-byte agreement (same seed)
+    Vector<uint8_t> theirRandomness(test_size);
+    runTime->comm0()->exchangeShares(myRandomness, theirRandomness, +1, -1);
+    assert(myRandomness.same_as(theirRandomness));
+
+    // Getting a new PRG gives different values
+    auto prg2 = csq.nextPRG();
+    assert(prg2 != nullptr);
+    Vector<uint8_t> myRandomness2(test_size);
+    prg2->getNext(myRandomness2);
+    assert(!myRandomness.same_as(myRandomness2, false));
+
+    for (auto g : runTime->getGroups()) {
+        // Test group: non members get nullptr
+        auto subPRG = csq.nextPRGforGroup(g);
+        if (g.contains(pid)) {
+            assert(subPRG != nullptr);
+        } else {
+            assert(subPRG == nullptr);
+        }
+        assert(!csq.verificationHasFailed());
+    }
+
+    // Another repopulate still works
+    csq.repopulateQueue();
+    assert(!csq.verificationHasFailed());
+
+    // Bad opening: simulate P1 sending a bad commitment to P0
+    // The opening exchange completes before verification, so this does not deadlock:
+    // party 0 detects the mismatch locally; all other parties succeed normally.
+
+    single_cout("  Testing bad commitments... (will display error)");
+
+    if (pid == 0) {
+        csq.corruptCommitmentFrom(1);
+    }
+    auto failPRG = csq.nextPRG();
+
+    if (pid == 0) {
+        // P0's check of the opened commitment failed
+        assert(csq.verificationHasFailed());
+        assert(failPRG == nullptr);
+    } else {
+        // Everyone else thinks its fine
+        assert(!csq.verificationHasFailed());
+        assert(failPRG != nullptr);
+    }
+}
+
 int main(int argc, char** argv) {
     orq_init(argc, argv);
     auto pID = runTime->getPartyID();
@@ -424,6 +498,11 @@ int main(int argc, char** argv) {
     }
     if (pID == 0) std::cout << "Common Randomness...OK" << std::endl;
 
+    // TODO: randomeness managers should be protocol independent
+    // test committed seeds queue
+    test_committed_seeds_queue();
+    if (pID == 0) std::cout << "CommittedSeedsQueue...OK" << std::endl;
+
     // test common group randomness
     test_common_prg_correctness_groups<int32_t>();
     test_common_prg_correctness_groups<int64_t>();
@@ -438,8 +517,6 @@ int main(int argc, char** argv) {
     test_zero_sharing_generator_groups<int32_t>();
     test_zero_sharing_generator_groups<int64_t>();
     if (pID == 0) std::cout << "Group Zero Sharings...OK" << std::endl;
-
-    // Tear down communication
 
     return 0;
 }

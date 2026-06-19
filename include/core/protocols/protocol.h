@@ -1,14 +1,13 @@
 #pragma once
 
+#include <numeric>
+#include <set>
+#include <vector>
+
 #include "core/communication/communicator.h"
 #include "core/random/manager.h"
 #include "debug/orq_debug.h"
 #include "profiling/stopwatch.h"
-using namespace orq::benchmarking;
-
-#include <numeric>
-#include <set>
-#include <vector>
 
 // Temporary workaround until we make protocol classes templated.
 #define TYPE_BITS_int8_t 8
@@ -25,7 +24,13 @@ using namespace orq::benchmarking;
 // Eventually, this should be something like worker.proto<int32_t>
 #define PROTO_OBJ_NAME(T) GLUE(proto_, TYPE_BITS(T))
 
+using namespace orq::benchmarking;
+
 namespace orq {
+
+namespace service {
+    class Worker;
+}
 
 /**
  * @brief Actions for resharing operations.
@@ -48,6 +53,10 @@ struct ReshareAssignment {
     // if sending, which shares to send
     std::vector<int> shareIdx;
 };
+
+#ifdef MAL_TEST_MODE
+#warning Running in malicious test mode - will not provide malicious security!
+#endif
 
 /**
  * @brief Base class for all secure multi-party computation protocols.
@@ -208,6 +217,26 @@ class ProtocolBase {
         return ra;
     }
 
+    /**
+     * @brief Internal code to check for malicious behavior. Semihonest protocols should not
+     * implement. Malicious protocols should implement their checks here.
+     *
+     * @return true no malicious behavior occurred
+     * @return false malicious behavior occurred
+     */
+    virtual bool start_malicious_check_internal() { return true; }
+
+    virtual bool finalize_malicious_check_internal() { return true; }
+
+    /**
+     * @brief Reset the internal malicious-detection state
+     *
+     */
+    virtual void reset_malicious_state() {}
+
+    // This allows us to call reset_malicious_state, which is a private method
+    friend class service::Worker;
+
    protected:
     // The unique id of the party that created the Protocol instance
     PartyID partyID;
@@ -258,8 +287,6 @@ class ProtocolBase {
         }
     };
 
-    virtual ~ProtocolBase() {}
-
     /**
      * Generates all combinations of a given size of an input size
      * (recursively).
@@ -272,7 +299,7 @@ class ProtocolBase {
      * the algorithm.
      */
     static void generateAllCombinations(std::set<int> set, std::set<int> partial_set, int size,
-                                        std::vector<std::set<int>> &combinations) {
+                                        std::vector<std::set<int>>& combinations) {
         // base case
         if (size == 0) {
             combinations.push_back(partial_set);
@@ -313,18 +340,6 @@ class ProtocolBase {
             return {{0}};
         }
 
-        if ((num_parties >= 4) && (num_adversaries == 1)) {
-            // the one adversary optimization
-            std::vector<std::set<int>> groups;
-            for (int i = 0; i < 2; i++) {
-                std::set<int> group;
-                for (int j = 0; j < parties_to_reconstruct; j++) {
-                    group.insert(i * parties_to_reconstruct + j);
-                }
-                groups.push_back(group);
-            }
-            return groups;
-        }
         int group_size = num_parties - num_adversaries;
 
         // Don't return singleton groups.
@@ -431,12 +446,52 @@ class ProtocolBase {
     virtual void mark_statistics() {}
 
     /**
-     * @brief Check for malicious behavior (4PC only).
+     * @brief Clear all accumulated statistics (counters, marks, etc.).
      *
-     * @param should_abort Whether to abort the protocol if malicious behavior is detected.
-     * @return True if no malicious behavior is detected, false otherwise.
      */
-    virtual bool malicious_check(const bool should_abort = true) { return true; }
+    virtual void clear_statistics() {}
+
+    /**
+     * @brief Start a check for malicious behavior. Aborts if malicious behavior occurred.
+     *
+     * In MAL_TEST_MODE, does not abort, and resets internal state. MAL_TEST_MODE should
+     * only be used for explicitly testing malicious behavior, and never on benchmarks or real
+     * queries.
+     */
+    virtual bool start_malicious_check() {
+        auto ok = start_malicious_check_internal();
+
+#ifndef MAL_TEST_MODE
+        // Normal programs will abort on a failed test.
+        if (!ok) {
+            abort();
+        }
+#endif
+
+        return ok;
+    }
+
+    /**
+     * @brief Complete a check for malicious behavior. By contract, may assume that all threads have
+     * run the corresponding start_*() method before any finalize_*() method runs.
+     *
+     * In MAL_TEST_MODE, does not abort, and resets the internal state.
+     *
+     * @return true
+     * @return false
+     */
+    virtual bool finalize_malicious_check() {
+        auto ok = finalize_malicious_check_internal();
+
+#ifndef MAL_TEST_MODE
+        // Normal programs will abort on a failed test.
+        if (!ok) {
+            abort();
+        }
+#endif
+
+        return ok;
+    }
 };
 
 /**
@@ -460,9 +515,9 @@ template <typename Data, typename Share, typename Vector, typename EVector>
 class Protocol : public ProtocolBase {
    public:
     // The communicator
-    Communicator *communicator;
+    Communicator* communicator;
     // The randomness manager, in place of the old random generator
-    random::RandomnessManager *randomnessManager;
+    random::RandomnessManager* randomnessManager;
 
     /**
      * @brief Protocol constructor.
@@ -473,8 +528,8 @@ class Protocol : public ProtocolBase {
      * @param _numParties The total number of computing parties participating in the protocol.
      * @param _replicationNumber The protocol's replication factor.
      */
-    Protocol(Communicator *_communicator, random::RandomnessManager *_randomnessManager,
-             PartyID _partyID, const int &_numParties, const int &_replicationNumber)
+    Protocol(Communicator* _communicator, random::RandomnessManager* _randomnessManager,
+             PartyID _partyID, int _numParties, int _replicationNumber)
         : ProtocolBase(_partyID, _numParties, _replicationNumber) {
         this->communicator = _communicator;
         this->randomnessManager = _randomnessManager;
@@ -497,7 +552,7 @@ class Protocol : public ProtocolBase {
      * @param binary whether this is a binary (true) or arithmetic (false) resharing
      * reshared.
      */
-    virtual void reshare(EVector &v, const std::set<int> group, bool binary) {
+    virtual void reshare(EVector& v, const std::set<int> group, bool binary) {
         auto ra = reshareMap[group];
 
         if (ra.action == ReshareAction::Send) {
@@ -531,7 +586,7 @@ class Protocol : public ProtocolBase {
             }
 
             for (int i = 0; i < ra.ranks.size(); i++) {
-                this->communicator->sendShares(v(ra.shareIdx[i]), ra.ranks[i], v.size());
+                this->communicator->sendShares(v(ra.shareIdx[i]), ra.ranks[i]);
             }
         } else if (ra.action == ReshareAction::Receive) {
             this->communicator->receiveBroadcast(v.contents, ra.ranks);
@@ -540,7 +595,7 @@ class Protocol : public ProtocolBase {
         }
     }
 
-    virtual void handle_precision(const EVector &x, const EVector &y, EVector &z) {
+    virtual void handle_precision(const EVector& x, const EVector& y, EVector& z) {
         if (x.getPrecision() != y.getPrecision()) {
             throw std::runtime_error("Precision mismatch between multiplication inputs");
         }
@@ -558,7 +613,7 @@ class Protocol : public ProtocolBase {
      * @param y The second shared vector of size S.
      * @param z The output shared vector of size S.
      */
-    virtual void add_a(const EVector &x, const EVector &y, EVector &z) { z = x + y; }
+    virtual void add_a(const EVector& x, const EVector& y, EVector& z) { z = x + y; }
 
     /**
      * @brief Defines vectorized arithmetic subtraction.
@@ -567,7 +622,7 @@ class Protocol : public ProtocolBase {
      * @param y The second shared vector of size S.
      * @param z The output shared vector of size S.
      */
-    virtual void sub_a(const EVector &x, const EVector &y, EVector &z) { z = x - y; }
+    virtual void sub_a(const EVector& x, const EVector& y, EVector& z) { z = x - y; }
 
     /**
      * @brief Defines vectorized arithmetic multiplication.
@@ -576,7 +631,7 @@ class Protocol : public ProtocolBase {
      * @param second The second shared vector of size S.
      * @param result The output shared vector of size S.
      */
-    virtual void multiply_a(const EVector &first, const EVector &second, EVector &result) = 0;
+    virtual void multiply_a(const EVector& first, const EVector& second, EVector& result) = 0;
 
     /**
      * @brief Defines vectorized arithmetic negation.
@@ -584,7 +639,7 @@ class Protocol : public ProtocolBase {
      * @param in The input shared vector of size S.
      * @param out The output shared vector of size S.
      */
-    virtual void neg_a(const EVector &in, EVector &out) { out = -in; }
+    virtual void neg_a(const EVector& in, EVector& out) { out = -in; }
 
     /**
      * @brief Defines vectorized arithmetic division by constant.
@@ -593,7 +648,7 @@ class Protocol : public ProtocolBase {
      * @param c The constant divisor.
      * @return Pair of shared vectors representing the division result.
      */
-    virtual std::pair<EVector, EVector> div_const_a(const EVector &input, const Data &c) = 0;
+    virtual std::pair<EVector, EVector> div_const_a(const EVector& input, const Data c) = 0;
 
     /**
      * @brief Defines the vectorized dot product operation for consecutive elements.
@@ -601,10 +656,11 @@ class Protocol : public ProtocolBase {
      * @param x The first shared vector of size S.
      * @param y The second shared vector of size S.
      * @param z The output shared vector.
-     * @param aggSize The number of consecutive pairs of elements to aggregate.
+     * @param aggSize The number of consecutive pairs of elements to aggregate. `0` means the full
+     * vector.
      */
-    virtual void dot_product_a(const EVector &x, const EVector &y, EVector &z,
-                               const size_t &aggSize) {
+    virtual void dot_product_a(const EVector& x, const EVector& y, EVector& z,
+                               const size_t aggSize = 0) {
         EVector res(x.size());
         multiply_a(x, y, res);
         z = res.chunkedSum(aggSize);
@@ -617,22 +673,29 @@ class Protocol : public ProtocolBase {
      * The default implementation invokes the protocol's public division protocol.
      * @param x - The shared vector to truncate.
      */
-    virtual void truncate(EVector &x) {
-        // compute the public divisor
-        int precision = x.getPrecision();
-        if (precision == 0) {
+    virtual void truncate(EVector& x) {
+        if constexpr (!std::integral<Data>) {
+            // Only integral types support fixed point (no NTL types)
             return;
+        } else {
+            int precision = x.getPrecision();
+            if (precision == 0) {
+                return;
+            }
+
+            // compute the public divisor
+            Data divisor = 1 << precision;
+
+            // run public division and discard the error
+            // by discarding the error, we avoid incurring the a2b cost
+            //   at the expense of one bit of error
+            // ignoring error correction is thus a good default for truncation
+            std::pair<EVector, EVector> ret = this->div_const_a(x, divisor);
+            x = ret.first;
+
+            // preserve precision
+            x.setPrecision(precision);
         }
-
-        Data divisor = 1 << precision;
-
-        // run public division and discard the error
-        // TODO: the default should use the error, not discard it
-        std::pair<EVector, EVector> ret = this->div_const_a(x, divisor);
-        x = ret.first;
-
-        // preserve precision
-        x.setPrecision(precision);
     }
 
     // **************************************** //
@@ -646,7 +709,7 @@ class Protocol : public ProtocolBase {
      * @param y The second shared vector of size S.
      * @param z The output shared vector of size S.
      */
-    virtual void xor_b(const EVector &x, const EVector &y, EVector &z) { z = x ^ y; }
+    virtual void xor_b(const EVector& x, const EVector& y, EVector& z) { z = x ^ y; }
 
     /**
      * @brief Defines vectorized bitwise AND (&).
@@ -655,7 +718,7 @@ class Protocol : public ProtocolBase {
      * @param second The second shared vector of size S.
      * @param result The output shared vector of size S.
      */
-    virtual void and_b(const EVector &first, const EVector &second, EVector &result) = 0;
+    virtual void and_b(const EVector& first, const EVector& second, EVector& result) = 0;
 
     /**
      * @brief Defines vectorized boolean complement (~).
@@ -663,7 +726,7 @@ class Protocol : public ProtocolBase {
      * @param in The input shared vector of size S.
      * @param out The output shared vector of size S.
      */
-    virtual void not_b(const EVector &in, EVector &out) = 0;
+    virtual void not_b(const EVector& in, EVector& out) = 0;
 
     /**
      * @brief Defines vectorized boolean NOT (!).
@@ -671,7 +734,7 @@ class Protocol : public ProtocolBase {
      * @param in The input shared vector of size S.
      * @param out The output shared vector of size S.
      */
-    virtual void not_b_1(const EVector &in, EVector &out) = 0;
+    virtual void not_b_1(const EVector& in, EVector& out) = 0;
 
     /**
      * @brief Defines vectorized less-than-zero comparison.
@@ -679,7 +742,7 @@ class Protocol : public ProtocolBase {
      * @param in The input shared vector of size S.
      * @param out The output shared vector of size S.
      */
-    virtual void ltz(const EVector &in, EVector &out) { out = in.ltz(); }
+    virtual void ltz(const EVector& in, EVector& out) { out = in.ltz(); }
 
     // **************************************** //
     //          Conversion operations           //
@@ -691,7 +754,7 @@ class Protocol : public ProtocolBase {
      * @param in A B-shared vector of S single-bit elements.
      * @param out The output A-shared vector of size S.
      */
-    virtual void b2a_bit(const EVector &in, EVector &out) = 0;
+    virtual void b2a_bit(const EVector& in, EVector& out) = 0;
 
     /**
      * @brief Defines a redistribution of arithmetic secret shares into boolean secret shares.
@@ -699,7 +762,7 @@ class Protocol : public ProtocolBase {
      * @param x The input arithmetic shared vector.
      * @return Pair of boolean shared vectors representing the redistribution.
      */
-    virtual std::pair<EVector, EVector> redistribute_shares_b(const EVector &x) = 0;
+    virtual std::pair<EVector, EVector> redistribute_shares_b(const EVector& x) = 0;
 
     // **************************************** //
     //          Reconstruction operations       //
@@ -714,7 +777,7 @@ class Protocol : public ProtocolBase {
      * NOTE: This method is useful when a computing party also acts as learner that receives
      * arithmetic shares from other parties and needs to reconstruct a true value.
      */
-    virtual Data reconstruct_from_a(const std::vector<Share> &shares) = 0;
+    virtual Data reconstruct_from_a(const std::vector<Share>& shares) = 0;
 
     /**
      * @brief Vectorized version of the reconstruct_from_a() method.
@@ -726,7 +789,7 @@ class Protocol : public ProtocolBase {
      * NOTE: This method is useful when a computing party also acts as learner that receives
      * arithmetic shared vectors from other parties and needs to reconstruct the original vector.
      */
-    virtual Vector reconstruct_from_a(const std::vector<EVector> &shares) = 0;
+    virtual Vector reconstruct_from_a(const std::vector<EVector>& shares) = 0;
 
     /**
      * @brief Defines how to reconstruct a single data value by XORing its boolean shares.
@@ -737,7 +800,7 @@ class Protocol : public ProtocolBase {
      * NOTE: This method is useful when a computing party also acts as learner that receives
      * boolean shares from other parties and needs to reconstruct a true value.
      */
-    virtual Data reconstruct_from_b(const std::vector<Share> &shares) = 0;
+    virtual Data reconstruct_from_b(const std::vector<Share>& shares) = 0;
 
     /**
      * @brief Vectorized version of the reconstruct_from_b() method.
@@ -748,32 +811,13 @@ class Protocol : public ProtocolBase {
      * NOTE: This method is useful when a computing party also acts as learner that receives
      * boolean shared vectors from other parties and needs to reconstruct the original vector.
      */
-    virtual Vector reconstruct_from_b(const std::vector<EVector> &shares) = 0;
+    virtual Vector reconstruct_from_b(const std::vector<EVector>& shares) = 0;
 
     // **************************************** //
     //            Opening operations            //
     // **************************************** //
-    /**
-     * @brief Opens arithmetic shares to reveal plaintext values.
-     *
-     * @param shares A shared vector that contains arithmetic shares of the secret values.
-     * @return A new vector that contains the plaintext values of type Data.
-     *
-     * NOTE: This method is useful when computing parties need to reveal a secret-shared vector
-     * to each other.
-     */
-    virtual Vector open_shares_a(const EVector &shares) = 0;
-
-    /**
-     * @brief Opens boolean shares to reveal plaintext values.
-     *
-     * @param shares A shared vector that contains boolean shares of the secret values.
-     * @return A new vector that contains the plaintext values of type Data.
-     *
-     * NOTE: This method is useful when computing parties need to reveal a secret-shared vector
-     * to each other.
-     */
-    virtual Vector open_shares_b(const EVector &shares) = 0;
+    virtual Vector internal_open_a(const EVector& shares) = 0;
+    virtual Vector internal_open_b(const EVector& shares) = 0;
 
     // **************************************** //
     //        Share generation operations       //
@@ -785,7 +829,7 @@ class Protocol : public ProtocolBase {
      * @param data A vector of input values of type Data.
      * @return A vector of shared vectors containing arithmetic shares.
      */
-    virtual std::vector<EVector> get_shares_a(const Vector &data) = 0;
+    virtual std::vector<EVector> get_shares_a(const Vector& data) = 0;
 
     /**
      * @brief Compute secret shares for a vector of plaintext values.
@@ -793,7 +837,7 @@ class Protocol : public ProtocolBase {
      * @param data A vector of input values of type Data.
      * @return A vector of shared vectors containing boolean shares.
      */
-    virtual std::vector<EVector> get_shares_b(const Vector &data) = 0;
+    virtual std::vector<EVector> get_shares_b(const Vector& data) = 0;
 
     /**
      * @brief Compute secret shares for a vector of plaintext values.
@@ -804,20 +848,20 @@ class Protocol : public ProtocolBase {
      *
      * NOTE: This method is useful for secret-sharing plaintext data in ORQ programs.
      */
-    virtual EVector secret_share_b(const Vector &data, const PartyID &data_party) = 0;
+    virtual EVector secret_share_b_internal(const Vector& data, const PartyID& data_party) = 0;
 
     /**
-     * @brief Compute secret shares for a vector of plaintext values. Overloaded secret_share_b
-     * function that establishes a non-zero fixed-point precision.
+     * @brief Compute secret shares for a vector of plaintext values. Overloaded
+     * secret_share_b_internal function that establishes a non-zero fixed-point precision.
      *
      * @param data The plaintext vector that must be secret-shared among computing parties.
      * @param data_party The party that owns the data.
      * @param fixed_point_precision precision of the input values
      * @return The boolean shared fixed-point vector
      */
-    virtual EVector secret_share_b(const Vector &data, const PartyID &data_party,
-                                   const int &fixed_point_precision) {
-        EVector ret = secret_share_b(data, data_party);
+    virtual EVector secret_share_b_internal(const Vector& data, const PartyID& data_party,
+                                            const int& fixed_point_precision) {
+        EVector ret = secret_share_b_internal(data, data_party);
         ret.setPrecision(fixed_point_precision);
         return ret;
     }
@@ -831,20 +875,20 @@ class Protocol : public ProtocolBase {
      *
      * NOTE: This method is useful for secret-sharing plaintext data in ORQ programs.
      */
-    virtual EVector secret_share_a(const Vector &data, const PartyID &data_party) = 0;
+    virtual EVector secret_share_a_internal(const Vector& data, const PartyID& data_party) = 0;
 
     /**
-     * @brief Compute secret shares for a vector of plaintext values. Overloaded secret_share_a
-     * function that establishes a non-zero fixed-point precision.
+     * @brief Compute secret shares for a vector of plaintext values. Overloaded
+     * secret_share_a_internal function that establishes a non-zero fixed-point precision.
      *
      * @param data The plaintext vector that must be secret-shared among computing parties.
      * @param data_party The party that owns the data.
      * @param fixed_point_precision precision of the input values
      * @return The arithmetic shared fixed-point vector
      */
-    virtual EVector secret_share_a(const Vector &data, const PartyID &data_party,
-                                   const int &fixed_point_precision) {
-        EVector ret = secret_share_a(data, data_party);
+    virtual EVector secret_share_a_internal(const Vector& data, const PartyID& data_party,
+                                            const int& fixed_point_precision) {
+        EVector ret = secret_share_a_internal(data, data_party);
         ret.setPrecision(fixed_point_precision);
         return ret;
     }
@@ -855,9 +899,15 @@ class Protocol : public ProtocolBase {
      * this gives a valid sharing under both arithmetic and boolean.
      *
      * @param x The public vector to share.
+     * @param who_knows a party who knows the value
      * @return The shared vector.
      */
-    virtual EVector public_share(const Vector &x) = 0;
+    virtual EVector public_share(const Vector& x, const std::set<PartyID>& who_knows) = 0;
+
+    /**
+     * @brief Convenience overload that defaults to an empty `who_knows` set.
+     */
+    virtual EVector public_share(const Vector& x) { return public_share(x, std::set<PartyID>{}); }
 
     /**
      * An overloaded public_share function that establishes a non-zero
@@ -866,8 +916,9 @@ class Protocol : public ProtocolBase {
      * @param fixed_point_precision
      * @return EVector
      */
-    virtual EVector public_share(const Vector &x, const int fixed_point_precision) {
-        EVector ret = public_share(x);
+    virtual EVector public_share(const Vector& x, const std::set<PartyID>& who_knows,
+                                 const int fixed_point_precision) {
+        EVector ret = public_share(x, who_knows);
         ret.setPrecision(fixed_point_precision);
         return ret;
     }
