@@ -207,7 +207,6 @@ endfunction()
 file(GLOB EXE_EXAMPLES examples/*.cpp)
 file(GLOB EXE_BENCH bench/*.cpp)
 file(GLOB EXE_MICRO bench/micro/*.cpp)
-file(GLOB EXE_TVA bench/tva/*.cpp)
 file(GLOB EXE_TESTS tests/*.cpp)
 
 file(GLOB TPCH_QUERIES bench/queries/tpch/q*.cpp)
@@ -215,7 +214,7 @@ file(GLOB SECRETFLOW_QUERIES bench/queries/secretflow/*.cpp)
 file(GLOB OTHER_QUERIES bench/queries/other/*.cpp)
 
 foreach (_target
-            ${EXE_EXAMPLES} ${EXE_MICRO} ${EXE_TVA} ${EXE_TESTS} ${EXE_BENCH})
+            ${EXE_EXAMPLES} ${EXE_MICRO} ${EXE_TESTS} ${EXE_BENCH})
     configure_target(${_target})
 endforeach ()
 
