@@ -10,6 +10,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <span>
 #include <typeindex>
 #include <vector>
 
@@ -109,58 +110,203 @@ class Verifier_4PC : public VerifierBase {
     const int num_threads;
 
     /**
-     * @brief Party Pi shares GF2E element x with two other parties, who then gossip to confirm
-     * consistency. Fourth party only uses a common PRG to set its shares, and does not communicate.
-     * Share xi (not held by the sending party) is kept at zero.
+     * @brief Batched F_ConsistentShare for many (Pi, x) pairs.
      *
-     * @param Pi
-     * @param x
-     * @return EVector
+     * Public schedule: slot k is dealt by dealers[k]. The plaintext values[k] is
+     * consumed only if me == dealers[k]; otherwise it is ignored (never sent).
+     *
+     * Round structure (2 network rounds):
+     *   R1: every dealer sends share[Pg] to {Pj, Ph}  (multi-exchange)
+     *   R2: Pj <-> Ph gossip share[Pg] and compare     (multi-exchange)
+     *
+     * PRG advance order matches the old per-call loop (lockstep over slots).
      */
-    EVector consistent_input_from(PartyID Pi, NTL::GF2E& x) {
-        Vector shares(4);
+    EVector consistent_input_batch(const std::vector<PartyID>& dealers, const Vector& values) {
+        const size_t n = dealers.size();
+        assert(values.size() == n);
 
-        // arbitrary
-        PartyID Pj = (Pi + 1) % 4;
-        PartyID Pg = (Pi + 2) % 4;
-        PartyID Ph = (Pi + 3) % 4;
-
-        // Let share Pi be zero: everyone knows it, so no use generating.
-
-        if (me != Pj) {
-            this->randomnessManager->commonPRGManager->get({Pi, Pg, Ph})->getNext(shares[Pj]);
+        // Per-slot absolute shares; share[Pi] stays 0 by public convention.
+        // IMPORTANT: Vector's copy ctor is shallow — do not use vector(n, Vector(4)).
+        std::vector<Vector> shares;
+        shares.reserve(n);
+        for (size_t k = 0; k < n; k++) {
+            shares.emplace_back(4);
         }
 
-        if (me != Ph) {
-            this->randomnessManager->commonPRGManager->get({Pi, Pj, Pg})->getNext(shares[Ph]);
-        }
+        // Outbound distribute buffers keyed by absolute peer.
+        std::vector<std::vector<NTL::GF2E>> dist_send(4);
 
-        if (me == Pi) {
-            shares[Pg] = x - shares[Pi] - shares[Pj] - shares[Ph];
-            // These could happen in parallel... maybe using multi-send?
+        // Expected receive: for slots where we are Pj/Ph, one share from Pi.
+        std::vector<PartyID> dist_from(n, -1);
 
-            this->communicator->sendShare(shares[Pg], abs2rel(Pj));
-            this->communicator->sendShare(shares[Pg], abs2rel(Ph));
-        } else if (me == Pj || me == Ph) {
-            // Pj or Ph receive x_g from Pi
-            this->communicator->receiveShare(shares[Pg], abs2rel(Pi));
+        for (size_t k = 0; k < n; k++) {
+            PartyID Pi = dealers[k];
+            PartyID Pj = (Pi + 1) % 4;
+            PartyID Pg = (Pi + 2) % 4;
+            PartyID Ph = (Pi + 3) % 4;
 
-            PartyID other = (me == Pj) ? Ph : Pj;
+            // Same PRG calls / groups as consistent_input_from — all parties
+            // advance in public slot order (roles decide who calls which PRG).
+            if (me != Pj) {
+                this->randomnessManager->commonPRGManager->get({Pi, Pg, Ph})
+                    ->getNext(shares[k][Pj]);
+            }
+            if (me != Ph) {
+                this->randomnessManager->commonPRGManager->get({Pi, Pj, Pg})
+                    ->getNext(shares[k][Ph]);
+            }
 
-            this->communicator->sendShare(shares[Pg], abs2rel(other));
-
-            NTL::GF2E check;
-            this->communicator->receiveShare(check, abs2rel(other));
-
-            if (check != shares[Pg]) {
-                std::cout << "P" << me << ": Inconsistent share with P" << other << " via sender P"
-                          << Pi << "\n";
-                malicious_check_ok.clear();
+            if (me == Pi) {
+                shares[k][Pg] = values[k] - shares[k][Pi] - shares[k][Pj] - shares[k][Ph];
+                dist_send[Pj].push_back(shares[k][Pg]);
+                dist_send[Ph].push_back(shares[k][Pg]);
+            } else if (me == Pj || me == Ph) {
+                dist_from[k] = Pi;
             }
         }
 
-        return {shares.singleton((me + 1) % 4), shares.singleton((me + 2) % 4),
-                shares.singleton((me + 3) % 4)};
+        // ---- R1: distribute Pi -> {Pj, Ph} via one multi-exchange ----
+        // Lengths are a function of the public dealer schedule only.
+        std::vector<orq::Vector<uint8_t>> send_bufs, recv_bufs;
+        std::vector<PartyID> to_ids, from_ids;
+        std::vector<PartyID> peer_order;
+
+        for (PartyID p = 0; p < 4; p++) {
+            if (p == me) {
+                continue;
+            }
+            // Always include all 3 peers so the round shape is identical for
+            // every party (empty payload if this edge is unused). Empty ≠ trusted
+            // zero share: we never read recv data on unused edges.
+            peer_order.push_back(p);
+            to_ids.push_back(abs2rel(p));
+            from_ids.push_back(abs2rel(p));
+
+            // Recv element count must match peer's send count — publicly computable:
+            size_t expect = 0;
+            for (size_t k = 0; k < n; k++) {
+                PartyID Pi = dealers[k];
+                if (Pi != p) {
+                    continue;
+                }
+                PartyID Pj = (Pi + 1) % 4;
+                PartyID Ph = (Pi + 3) % 4;
+                if (me == Pj || me == Ph) {
+                    expect++;
+                }
+            }
+
+            // MPI exchangeShares requires equal send/recv sizes on each edge.
+            // Pad both directions to max(...); only the real prefix is used.
+            const size_t nbytes = math::gf2e_num_bytes();
+            const size_t send_elms = dist_send[p].size();
+            const size_t edge_elms = std::max(send_elms, expect);
+
+            orq::Vector<uint8_t> send_buf(edge_elms * nbytes);
+            if (send_elms > 0) {
+                auto packed = serializeGF2E(std::span<const NTL::GF2E>(dist_send[p]));
+                std::copy(packed.begin(), packed.end(), send_buf.begin());
+            }
+            send_bufs.push_back(std::move(send_buf));
+            recv_bufs.push_back(orq::Vector<uint8_t>(edge_elms * nbytes));
+        }
+
+        this->communicator->exchangeShares(send_bufs, recv_bufs, to_ids, from_ids);
+
+        // Unpack only on edges where dist_from[k] == peer (designated Pi).
+        // Recv buffers may be padded; only the real prefix (expect elms) is valid.
+        for (size_t i = 0; i < peer_order.size(); i++) {
+            PartyID p = peer_order[i];
+
+            size_t expect = 0;
+            for (size_t k = 0; k < n; k++) {
+                if (dist_from[k] == p) {
+                    expect++;
+                }
+            }
+            if (expect == 0) {
+                continue;
+            }
+
+            Vector recv = deserializeGF2E(recv_bufs[i].data(), expect);
+            size_t t = 0;
+            for (size_t k = 0; k < n; k++) {
+                if (dist_from[k] != p) {
+                    continue;
+                }
+                PartyID Pg = (dealers[k] + 2) % 4;
+                shares[k][Pg] = recv[t++];
+            }
+            assert(t == recv.size());
+        }
+
+        // ---- R2: Pj <-> Ph gossip + equality check ----
+        std::vector<std::vector<NTL::GF2E>> gossip_send(4);
+        std::vector<PartyID> gossip_peer(n, -1);
+
+        for (size_t k = 0; k < n; k++) {
+            PartyID Pi = dealers[k];
+            PartyID Pj = (Pi + 1) % 4;
+            PartyID Pg = (Pi + 2) % 4;
+            PartyID Ph = (Pi + 3) % 4;
+            if (me == Pj || me == Ph) {
+                PartyID other = (me == Pj) ? Ph : Pj;
+                gossip_peer[k] = other;
+                gossip_send[other].push_back(shares[k][Pg]);
+            }
+        }
+
+        send_bufs.clear();
+        recv_bufs.clear();
+        to_ids.clear();
+        from_ids.clear();
+        peer_order.clear();
+
+        for (PartyID p = 0; p < 4; p++) {
+            if (p == me) {
+                continue;
+            }
+            peer_order.push_back(p);
+            to_ids.push_back(abs2rel(p));
+            from_ids.push_back(abs2rel(p));
+
+            send_bufs.push_back(serializeGF2E(std::span<const NTL::GF2E>(gossip_send[p])));
+            // Symmetric: peer sends us one element per slot where we gossip with them.
+            recv_bufs.push_back(orq::Vector<uint8_t>(send_bufs.back().size()));
+        }
+
+        this->communicator->exchangeShares(send_bufs, recv_bufs, to_ids, from_ids);
+
+        for (size_t i = 0; i < peer_order.size(); i++) {
+            PartyID p = peer_order[i];
+            if (recv_bufs[i].size() == 0) {
+                continue;
+            }
+            size_t elms = recv_bufs[i].size() / math::gf2e_num_bytes();
+            Vector check = deserializeGF2E(recv_bufs[i].data(), elms);
+            size_t t = 0;
+            for (size_t k = 0; k < n; k++) {
+                if (gossip_peer[k] != p) {
+                    continue;
+                }
+                PartyID Pg = (dealers[k] + 2) % 4;
+                if (check[t++] != shares[k][Pg]) {
+                    std::cout << "P" << me << ": Inconsistent share with P" << p << " via sender P"
+                              << dealers[k] << "\n";
+                    malicious_check_ok.clear();
+                }
+            }
+            assert(t == check.size());
+        }
+
+        // Build EVector result: my three held shares per slot.
+        Vector s0(n), s1(n), s2(n);
+        for (size_t k = 0; k < n; k++) {
+            s0[k] = shares[k][(me + 1) % 4];
+            s1[k] = shares[k][(me + 2) % 4];
+            s2[k] = shares[k][(me + 3) % 4];
+        }
+        return EVector({s0, s1, s2});
     }
 
     /**
@@ -210,34 +356,60 @@ class Verifier_4PC : public VerifierBase {
         // Create a length-12 Vector of hashes in canonical order (4 parties * 3 roles)
         EVector hashes(hash_size);
 
-        auto idx = -1;
+        // Public canonical PA order (same as before).
+        std::vector<PartyAssignment> pas;
+        pas.reserve(hash_size);
         for (int i = 0; i < 4; i++) {
             for (int j = i + 1; j < 4; j++) {
                 for (int r = 0; r < 4; r++) {
                     if (i == r || j == r) {
                         continue;
                     }
-
-                    idx++;
-
-                    auto pa = _jmp_assignments(i, j, r);
-                    auto hash = aggregate_hashes_by_pa[pa];
-
-                    // These are each 2 rounds
-                    // TODO: consolidate into one function call?
-                    // Maybe add hashing, then check after the loop
-                    // There really could just be a SINGLE check outside this loop.
-                    auto sr = consistent_input_from(pa.receiver, hash);
-                    auto sh = consistent_input_from(pa.hasher, hash);
-
-                    // Insert both into the hashes vec
-                    hashes.slice(idx, idx + 1) = sh + sr;
+                    pas.push_back(_jmp_assignments(i, j, r));
                 }
             }
         }
-        // 12 * 4 = 48 rounds overall...
-        // Could be two rounds (send, confirm), or one if we combine with next
+        assert(pas.size() == hash_size);
 
+        // Slot layout (public), interleaved like the original loop:
+        // for each PA k: dealers[2k]=receiver, dealers[2k+1]=hasher.
+        // values[i] is only read when me == dealers[i].
+        std::vector<PartyID> dealers(2 * hash_size);
+        Vector values(2 * hash_size);
+        for (size_t k = 0; k < hash_size; k++) {
+            dealers[2 * k] = pas[k].receiver;
+            dealers[2 * k + 1] = pas[k].hasher;
+
+            auto it = aggregate_hashes_by_pa.find(pas[k]);
+            const bool have = (it != aggregate_hashes_by_pa.end());
+
+            // Only the designated dealer may supply a digest for this PA.
+            // Missing digest while being dealer => check fails (do not treat as valid share of 0).
+            if (me == pas[k].receiver) {
+                if (!have) {
+                    malicious_check_ok.clear();
+                } else {
+                    values[2 * k] = it->second;
+                }
+            }
+            if (me == pas[k].hasher) {
+                if (!have) {
+                    malicious_check_ok.clear();
+                } else {
+                    values[2 * k + 1] = it->second;
+                }
+            }
+            // else: values left default; ignored because me != dealers[i]
+        }
+
+        // 2 rounds total (was ~48 sequential send/recv pairs)
+        EVector shared = consistent_input_batch(dealers, values);
+
+        // hashes[k] = share(d^H) + share(d^R) for PA k (char-2 field: equal digests => 0)
+        for (size_t k = 0; k < hash_size; k++) {
+            hashes.slice(k, k + 1) =
+                shared.slice(2 * k + 1, 2 * k + 2) + shared.slice(2 * k, 2 * k + 1);
+        }
         // Can do a single unified hash check at the end (per share)
         if (this->randomnessManager->csq->commitmentsAvailable() < 16) {
             // TODO: this may not be synchronized!
