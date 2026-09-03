@@ -3,7 +3,7 @@
 mkdir json-out
 
 THR=16
-REP=5
+REP=3
 SETTING=lan
 
 # run_4pc_exp <experiment> [size_arg]
