@@ -28,10 +28,10 @@ int main(int argc, char** argv) {
     stopwatch::timepoint("Quicksort");
     stopwatch::profile_done();
 
-    runTime->mark_statistics();
-    orq::operators::bitonic_sort(b);
-    stopwatch::timepoint("Bitonic");
-    runTime->print_statistics();
+    // runTime->mark_statistics();
+    // orq::operators::bitonic_sort(b);
+    // stopwatch::timepoint("Bitonic");
+    // runTime->print_statistics();
 
     runTime->mark_statistics();
     orq::operators::pairwise_sort(b);

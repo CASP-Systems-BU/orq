@@ -5,11 +5,11 @@ import subprocess
 import sys
 
 # Simulated WAN (modeling AWS-GCP interconnect) uses 12Gbps and 13 ms RTT.
-BANDWIDTH_LIMIT = "12Gbit"
+BANDWIDTH_LIMIT = "1Gbit"
 
 # this is the PER LINK latency; actual RTT will be double.
 # e.g. 40ms => 80ms RTT.
-LATENCY = "6.5ms"
+LATENCY = "10ms"
 
 def get_interface_for_host(host):
     try:
