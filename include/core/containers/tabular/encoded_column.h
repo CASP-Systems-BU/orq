@@ -124,7 +124,7 @@
         assert(encoding == Encoding::eType);                                   \
         using T = vType<Share, EVector>;                                       \
         auto v = static_cast<const T*>(contents.get());                        \
-        return std::make_unique<SharedColumn>(std::make_unique<T>(*v _op_ y)); \
+        return std::make_unique<SharedColumn>(*v _op_ y); \
     }
 
 /**
@@ -173,6 +173,10 @@ class EncodedColumn {
      * @return The column's size in number of elements.
      */
     virtual size_t size() const = 0;
+
+    virtual bool owns_storage() const {
+        return contents && contents->owns_storage();
+    }
 
     /**
      * Gets the fixed-point precision. Virtual to let subclasses override.
@@ -369,8 +373,13 @@ shares_define_reference_pointer_operator_no_move(/);
 shares_define_reference_pointer_operator_no_move(&);
 shares_define_reference_pointer_operator_no_move(|);
 shares_define_reference_pointer_operator_no_move(^);
+shares_define_reference_pointer_operator_no_move(==);
+shares_define_reference_pointer_operator_no_move(!=);
+shares_define_reference_pointer_operator_no_move(<);
+shares_define_reference_pointer_operator_no_move(>);
+shares_define_reference_pointer_operator_no_move(<=);
+shares_define_reference_pointer_operator_no_move(>=);
 
-// Binary operators between std::unique_pointer<T> (left) and T (right)
 shares_define_pointer_reference_operator_no_move(+);
 shares_define_pointer_reference_operator_no_move(-);
 shares_define_pointer_reference_operator_no_move(*);
@@ -378,8 +387,13 @@ shares_define_pointer_reference_operator_no_move(/);
 shares_define_pointer_reference_operator_no_move(&);
 shares_define_pointer_reference_operator_no_move(|);
 shares_define_pointer_reference_operator_no_move(^);
+shares_define_pointer_reference_operator_no_move(==);
+shares_define_pointer_reference_operator_no_move(!=);
+shares_define_pointer_reference_operator_no_move(<);
+shares_define_pointer_reference_operator_no_move(>);
+shares_define_pointer_reference_operator_no_move(<=);
+shares_define_pointer_reference_operator_no_move(>=);
 
-// Binary operators between T (left) and std::unique_pointer<T> (right)
 shares_define_reference_pointer_operator(+);
 shares_define_reference_pointer_operator(-);
 shares_define_reference_pointer_operator(*);
@@ -387,25 +401,30 @@ shares_define_reference_pointer_operator(/);
 shares_define_reference_pointer_operator(&);
 shares_define_reference_pointer_operator(|);
 shares_define_reference_pointer_operator(^);
+shares_define_reference_pointer_operator(==);
+shares_define_reference_pointer_operator(!=);
+shares_define_reference_pointer_operator(<);
+shares_define_reference_pointer_operator(>);
+shares_define_reference_pointer_operator(<=);
+shares_define_reference_pointer_operator(>=);
 
-// Binary operators between std::unique_pointer<T> (left) and T (right)
-shares_define_pointer_reference_operator(+);
-shares_define_pointer_reference_operator(-);
-shares_define_pointer_reference_operator(*);
 shares_define_pointer_reference_operator(/);
-shares_define_pointer_reference_operator(&);
-shares_define_pointer_reference_operator(|);
-shares_define_pointer_reference_operator(^);
+shares_define_pointer_reference_operator(==);
+shares_define_pointer_reference_operator(!=);
+shares_define_pointer_reference_operator(<);
+shares_define_pointer_reference_operator(>);
+shares_define_pointer_reference_operator(<=);
+shares_define_pointer_reference_operator(>=);
 
-// Binary operators where both operands are std::unique_pointer<T>&&
-shares_define_pointers_operator(+);
-shares_define_pointers_operator(-);
-shares_define_pointers_operator(*);
 shares_define_pointers_operator(/);
-shares_define_pointers_operator(&);
-shares_define_pointers_operator(|);
-shares_define_pointers_operator(^);
 shares_define_pointers_operator(==);
+shares_define_pointers_operator(!=);
+shares_define_pointers_operator(<);
+shares_define_pointers_operator(>);
+shares_define_pointers_operator(<=);
+shares_define_pointers_operator(>=);
+
+ORQ_INSTANTIATE_UNIQUE_PTR_REUSE();
 
 // Binary operators where both operands are std::unique_pointer<T>
 shares_define_pointers_operator_no_move(+);
@@ -416,6 +435,11 @@ shares_define_pointers_operator_no_move(&);
 shares_define_pointers_operator_no_move(|);
 shares_define_pointers_operator_no_move(^);
 shares_define_pointers_operator_no_move(==);
+shares_define_pointers_operator_no_move(!=);
+shares_define_pointers_operator_no_move(<);
+shares_define_pointers_operator_no_move(>);
+shares_define_pointers_operator_no_move(<=);
+shares_define_pointers_operator_no_move(>=);
 
 define_assignment_ptr_operator(+=);
 define_assignment_ptr_operator(-=);
@@ -424,6 +448,37 @@ define_assignment_ptr_operator(/=);
 define_assignment_ptr_operator(&=);
 define_assignment_ptr_operator(|=);
 define_assignment_ptr_operator(^=);
+define_assignment_ptr_operator_no_move(+=);
+define_assignment_ptr_operator_no_move(-=);
+define_assignment_ptr_operator_no_move(*=);
+define_assignment_ptr_operator_no_move(/=);
+define_assignment_ptr_operator_no_move(&=);
+define_assignment_ptr_operator_no_move(|=);
+define_assignment_ptr_operator_no_move(^=);
+
+shares_define_pointer_scalar_operator(+);
+shares_define_pointer_scalar_operator(-);
+shares_define_pointer_scalar_operator(*);
+shares_define_pointer_scalar_operator(/);
+shares_define_pointer_scalar_operator(&);
+shares_define_pointer_scalar_operator(|);
+shares_define_pointer_scalar_operator(^);
+shares_define_pointer_scalar_operator(<<);
+shares_define_pointer_scalar_operator(>>);
+shares_define_pointer_scalar_operator(==);
+shares_define_pointer_scalar_operator(!=);
+shares_define_pointer_scalar_operator(<);
+shares_define_pointer_scalar_operator(>);
+shares_define_pointer_scalar_operator(<=);
+shares_define_pointer_scalar_operator(>=);
+
+shares_define_pointer_scalar_rvalue(/);
+shares_define_pointer_scalar_rvalue(==);
+shares_define_pointer_scalar_rvalue(!=);
+shares_define_pointer_scalar_rvalue(<);
+shares_define_pointer_scalar_rvalue(>);
+shares_define_pointer_scalar_rvalue(<=);
+shares_define_pointer_scalar_rvalue(>=);
 
 // Unary operators on std::unique_pointer<T>
 shares_define_pointer_operator_no_move(-);

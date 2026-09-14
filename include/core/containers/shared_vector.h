@@ -90,37 +90,26 @@ class SharedVector : public EncodedVector {
      */
     void outputSecretShares(const std::string &_output_file) { vector.output(_output_file); }
 
-    /**
-     * This is a shallow copy constructor from EVector.
-     * @param _shares The EVector whose contents will be pointed by the SharedVector.
-     * @param eType encoding
-     */
     explicit SharedVector(const EVector &_shares, const Encoding &eType)
         : EncodedVector(eType), vector(_shares) {}
 
-    /**
-     * This is a move constructor from SharedVector.
-     * @param secretShares The SharedVector whose contents will be moved to the new SharedVector.
-     */
+    explicit SharedVector(EVector &&_shares, const Encoding &eType)
+        : EncodedVector(eType), vector(std::move(_shares)) {}
+
     SharedVector(SharedVector &&secretShares) noexcept
+        : EncodedVector(secretShares.encoding), vector(std::move(secretShares.vector)) {}
+
+    SharedVector(const SharedVector &secretShares)
         : EncodedVector(secretShares.encoding), vector(secretShares.vector) {}
 
-    SharedVector(SharedVector &secretShares)
-        : EncodedVector(secretShares.encoding), vector(secretShares.vector) {}
-
-    /**
-     * Copy constructor from EncodedVector.
-     * @param _shares The EncodedVector object whose contents will be copied to the new
-     * SharedVector.
-     */
     explicit SharedVector(EncodedVector &_shares) : EncodedVector(_shares.encoding) {
-        auto secretShares_ = reinterpret_cast<SharedVector *>(&_shares);
-        this->encoding = secretShares_.encoding;
+        auto *secretShares_ = static_cast<SharedVector *>(&_shares);
+        this->encoding = secretShares_->encoding;
         this->vector = secretShares_->vector;
     }
 
     // Destructor
-    virtual ~SharedVector() {}
+    virtual ~SharedVector() override {}
 
     /**
      * Opens the shared vector to all computing parties. For malicious protocols, also runs checks.
@@ -146,7 +135,9 @@ class SharedVector : public EncodedVector {
     /**
      * @return The size of the shared vector in number of elements.
      */
-    VectorSizeType size() const { return vector.size(); }
+    VectorSizeType size() const override { return vector.size(); }
+
+    bool owns_storage() const override { return vector.owns_storage(); }
 
     void zero() { service::runTime->modify_parallel(this->vector, &EVector::zero); }
 
@@ -198,9 +189,8 @@ class SharedVector : public EncodedVector {
      */
     std::unique_ptr<SharedVector> deepcopy() {
         EVector ev(size());
-        // Enforce copy
         ev = this->asEVector();
-        return std::make_unique<SharedVector>(ev, encoding);
+        return std::make_unique<SharedVector>(std::move(ev), encoding);
     }
 
     /**
@@ -256,7 +246,9 @@ class SharedVector : public EncodedVector {
      * the SharedVector that are only exposed through the EVector. Use it if you are certain
      * about what you are doing.
      */
-    EVector asEVector() { return EVector(this->vector); }
+    EVector &asEVector() { return vector; }
+
+    const EVector &asEVector() const { return vector; }
 
     /**
      * @brief Compute a prefix sum over this shared vector
@@ -280,13 +272,13 @@ class SharedVector : public EncodedVector {
      * Sets the fixed-point precision.
      * @param fixed_point_precision - the number of fixed-point fractional bits.
      */
-    void setPrecision(const int fixed_point_precision) {
+    void setPrecision(const int fixed_point_precision) override {
         vector.setPrecision(fixed_point_precision);
     }
 
     /**
      * Gets the fixed-point precision.
      */
-    size_t getPrecision() const { return vector.getPrecision(); }
+    size_t getPrecision() const override { return vector.getPrecision(); }
 };
 }  // namespace orq

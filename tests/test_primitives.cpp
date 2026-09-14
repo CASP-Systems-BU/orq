@@ -252,6 +252,26 @@ int main(int argc, char** argv) {
         single_cout("Increment += OK");
     }
 
+    {
+        orq::Vector<int> chained = data_a + data_b + data_a;
+        orq::Vector<int> stepwise = data_a + data_b;
+        stepwise += data_a;
+        assert(chained.same_as(stepwise));
+        assert((data_a + data_b).same_as(sum));
+        single_cout("Chained plaintext + OK");
+    }
+
+    {
+        ASharedVector<int> a_s = secret_share_a(data_a, 0);
+        ASharedVector<int> b_s = secret_share_a(data_b, 0);
+        ASharedVector<int> chained = a_s + b_s + a_s;
+        ASharedVector<int> stepwise = a_s + b_s;
+        stepwise += a_s;
+        assert(chained.open().same_as(stepwise.open()));
+        assert(a_s.open().same_as(data_a));
+        single_cout("Chained arithmetic + OK");
+    }
+
     // Apply elementwise secure addition
     ASharedVector<int> c_sub = a_v1 - a_v2;
     // Open added numbers
@@ -398,6 +418,17 @@ int main(int argc, char** argv) {
 
         assert(a_s.open().same_as(data_a & data_b));
         single_cout("Bitwise &= OK");
+    }
+
+    {
+        BSharedVector<int> a_s = secret_share_b(data_a, 0);
+        BSharedVector<int> b_s = secret_share_b(data_b, 0);
+        BSharedVector<int> chained = a_s & b_s & a_s;
+        BSharedVector<int> stepwise = a_s & b_s;
+        stepwise &= a_s;
+        assert(chained.open().same_as(stepwise.open()));
+        assert(a_s.open().same_as(data_a));
+        single_cout("Chained bitwise & OK");
     }
 
     {

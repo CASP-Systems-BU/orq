@@ -42,7 +42,11 @@ namespace operators {
                                                    const BSharedVector<Share, EVector>& b) {
         BSharedVector<Share, EVector> sel_extended(sel.size());
         sel_extended.extend_lsb(sel);
-        BSharedVector<Share, EVector> res = a ^ (sel_extended & (b ^ a));
+        auto t = b ^ a;
+        *t &= sel_extended;
+        BSharedVector<Share, EVector> res(a.size());
+        res = a;
+        res ^= *t;
         return res;
     }
 
@@ -64,7 +68,11 @@ namespace operators {
     static ASharedVector<Share, EVector> multiplex(const ASharedVector<Share, EVector>& sel,
                                                    const ASharedVector<Share, EVector>& a,
                                                    const ASharedVector<Share, EVector>& b) {
-        ASharedVector<Share, EVector> res = a + sel * (b - a);
+        auto t = b - a;
+        *t *= sel;
+        ASharedVector<Share, EVector> res(a.size());
+        res = a;
+        res += *t;
         return res;
     }
 

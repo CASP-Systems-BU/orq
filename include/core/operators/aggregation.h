@@ -4,7 +4,6 @@
 #include <optional>
 #include <tuple>
 
-#include "../tests/util.h"
 #include "common.h"
 #include "core/containers/a_shared_vector.h"
 #include "core/containers/b_shared_vector.h"
@@ -27,7 +26,7 @@ namespace orq::aggregators {
  */
 template <typename A>
 void sum(const A& group, A& a, const A& b) {
-    a = a + group * b;
+    a += *(group * b);
 }
 
 /**
@@ -43,7 +42,7 @@ template <typename B>
 void bit_or(const B& group, B& a, const B& b) {
     B ext(group.size());
     ext.extend_lsb(group);
-    a = a | (ext & b);
+    a |= *(ext & b);
 }
 
 /**

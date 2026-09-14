@@ -1,10 +1,12 @@
 #pragma once
 
 #include "core/math/util.h"
-#include "core/operators/circuits.h"
 #include "shared_vector.h"
 
 namespace orq {
+
+template <typename Share, typename EVector>
+class BSharedVector;
 
 /**
  * A SharedVector that contains arithmetic shares and supports secure arithmetic operations.
@@ -37,65 +39,23 @@ class ASharedVector : public SharedVector<Share, EVector> {
     explicit ASharedVector(EVector& _shares)
         : SharedVector<Share, EVector>(_shares, Encoding::AShared) {}
 
-    /**
-     * This is a move constructor from EVector contents.
-     * @param _shares The EVector whose contents will be moved to the new ASharedVector.
-     */
-    ASharedVector(EVector&& _shares) : SharedVector<Share, EVector>(_shares, Encoding::AShared) {}
+    ASharedVector(EVector&& _shares)
+        : SharedVector<Share, EVector>(std::move(_shares), Encoding::AShared) {}
 
-    /**
-     * This is a move constructor from another ASharedVector.
-     * @param other The ASharedVector whose contents will be moved to the new ASharedVector.
-     */
     ASharedVector(ASharedVector&& other) noexcept
-        : SharedVector<Share, EVector>(other.vector, other.encoding) {}
+        : SharedVector<Share, EVector>(std::move(other.vector), other.encoding) {}
 
-    /**
-     * This is a copy constructor from another ASharedVector.
-     * @param other The ASharedVector whose contents will be moved to the new ASharedVector.
-     */
     ASharedVector(const ASharedVector& other)
         : SharedVector<Share, EVector>(other.vector, other.encoding) {}
 
-    /**
-     * Copy constructor from SharedVector contents.
-     * @param _shares The SharedVector object whose contents will be copied to the new
-     * ASharedVector.
-     */
     explicit ASharedVector(SharedVector<Share, EVector>& _shares)
-        : EncodedVector(_shares.encoding) {
+        : SharedVector<Share, EVector>(_shares) {
         assert(_shares.encoding == Encoding::AShared);
-        auto secretShares_ = reinterpret_cast<ASharedVector*>(&_shares);
-        this->vector = secretShares_->vector;
     }
 
-    /**
-     * Move constructor that creates an ASharedVector from a unique pointer to an EncodedVector
-     * object.
-     * @param base The pointer to the SharedVector object whose contents will be moved to the new
-     * ASharedVector.
-     */
-    ASharedVector(std::unique_ptr<ASharedVector>&& base)
-        : ASharedVector((ASharedVector*)base.get()) {}
+    ASharedVector(std::unique_ptr<ASharedVector>&& base) : ASharedVector(std::move(*base)) {}
 
-    /**
-     * Shallow copy constructor that creates an ASharedVector from a unique pointer to an
-     * EncodedVector object.
-     * @param base The SharedVector object whose contents will be pointed by the new
-     * ASharedVector.
-     */
-    ASharedVector(std::unique_ptr<ASharedVector>& base)
-        : ASharedVector((ASharedVector*)base.get()) {}
-
-    /**
-     * Move constructor that creates an ASharedVector from a pointer to another ASharedVector
-     * object.
-     * @param _base The ASharedVector that will be moved as a whole (contents + state) to the new
-     * ASharedVector.
-     *
-     * NOTE: This constructor is implicitly called by the two constructors above.
-     */
-    explicit ASharedVector(ASharedVector* _base) : ASharedVector(std::move(*_base)) {}
+    ASharedVector(std::unique_ptr<ASharedVector>& base) : ASharedVector(*base) {}
 
     /**
      * @brief Construct a new ASharedVector object like another ASharedVector but with a different
@@ -115,11 +75,25 @@ class ASharedVector : public SharedVector<Share, EVector> {
      */
     using SharedVector<Share, EVector>::operator=;
 
-    ASharedVector& operator=(const ASharedVector&) = default;
-    ASharedVector& operator=(ASharedVector&&) = default;
+    ASharedVector& operator=(const ASharedVector& other) {
+        SharedVector<Share, EVector>::operator=(other);
+        return *this;
+    }
+
+    ASharedVector& operator=(ASharedVector&& other) {
+        SharedVector<Share, EVector>::operator=(std::move(other));
+        return *this;
+    }
+
+    static constexpr bool inplace_add = true;
+    static constexpr bool inplace_sub = true;
+    static constexpr bool inplace_mul = true;
+    static constexpr bool inplace_and = false;
+    static constexpr bool inplace_or = false;
+    static constexpr bool inplace_xor = false;
 
     // Destructor
-    virtual ~ASharedVector() {}
+    virtual ~ASharedVector() override {}
 
     /**
      * @brief Reuse underlying SharedVector implementation for access patterns.
@@ -187,8 +161,8 @@ class ASharedVector : public SharedVector<Share, EVector> {
     unary_op(-, ASharedVector, neg_a, this);
 
     binary_element_op(+, add_a, ASharedVector, Share);
-    binary_element_op(-, add_a, ASharedVector, Share);
-    binary_element_op(*, add_a, ASharedVector, Share);
+    binary_element_op(-, sub_a, ASharedVector, Share);
+    binary_element_op(*, multiply_a, ASharedVector, Share);
 
     /**
      * @brief Multiply by a public floating-point constant (local, no MPC protocol).
@@ -210,6 +184,10 @@ class ASharedVector : public SharedVector<Share, EVector> {
     compound_assignment_op(+=, add_a, ASharedVector);
     compound_assignment_op(-=, sub_a, ASharedVector);
     compound_assignment_op(*=, multiply_a, ASharedVector);
+
+    compound_assignment_ptr_op(+=, add_a, ASharedVector);
+    compound_assignment_ptr_op(-=, sub_a, ASharedVector);
+    compound_assignment_ptr_op(*=, multiply_a, ASharedVector);
 
     compound_assignment_element_op(+=, add_a, ASharedVector, Share);
     compound_assignment_element_op(-=, sub_a, ASharedVector, Share);
@@ -241,6 +219,11 @@ class ASharedVector : public SharedVector<Share, EVector> {
         // If correct is disabled, ignore the error term.
         return std::make_unique<ASharedVector>(out.first);
 #endif
+    }
+
+    ASharedVector& operator/=(const Share& c) {
+        *this = std::move(*(*this / c));
+        return *this;
     }
 
     /**

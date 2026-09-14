@@ -613,7 +613,17 @@ class Protocol : public ProtocolBase {
      * @param y The second shared vector of size S.
      * @param z The output shared vector of size S.
      */
-    virtual void add_a(const EVector& x, const EVector& y, EVector& z) { z = x + y; }
+    virtual void add_a(const EVector& x, const EVector& y, EVector& z) {
+        if (&z == &x) {
+            z += y;
+            return;
+        }
+        if (&z == &y) {
+            z += x;
+            return;
+        }
+        z.assign_elementwise(x, y, [](const auto& a, const auto& b) { return a + b; });
+    }
 
     /**
      * @brief Defines vectorized arithmetic subtraction.
@@ -622,7 +632,13 @@ class Protocol : public ProtocolBase {
      * @param y The second shared vector of size S.
      * @param z The output shared vector of size S.
      */
-    virtual void sub_a(const EVector& x, const EVector& y, EVector& z) { z = x - y; }
+    virtual void sub_a(const EVector& x, const EVector& y, EVector& z) {
+        if (&z == &x) {
+            z -= y;
+            return;
+        }
+        z.assign_elementwise(x, y, [](const auto& a, const auto& b) { return a - b; });
+    }
 
     /**
      * @brief Defines vectorized arithmetic multiplication.
@@ -639,7 +655,9 @@ class Protocol : public ProtocolBase {
      * @param in The input shared vector of size S.
      * @param out The output shared vector of size S.
      */
-    virtual void neg_a(const EVector& in, EVector& out) { out = -in; }
+    virtual void neg_a(const EVector& in, EVector& out) {
+        out.assign_elementwise(in, [](const auto& a) { return -a; });
+    }
 
     /**
      * @brief Defines vectorized arithmetic division by constant.
@@ -709,7 +727,17 @@ class Protocol : public ProtocolBase {
      * @param y The second shared vector of size S.
      * @param z The output shared vector of size S.
      */
-    virtual void xor_b(const EVector& x, const EVector& y, EVector& z) { z = x ^ y; }
+    virtual void xor_b(const EVector& x, const EVector& y, EVector& z) {
+        if (&z == &x) {
+            z ^= y;
+            return;
+        }
+        if (&z == &y) {
+            z ^= x;
+            return;
+        }
+        z.assign_elementwise(x, y, [](const auto& a, const auto& b) { return a ^ b; });
+    }
 
     /**
      * @brief Defines vectorized bitwise AND (&).

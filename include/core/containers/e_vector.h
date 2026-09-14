@@ -12,11 +12,11 @@
     template <typename... T>                            \
     EVector _func_(T... args) const {                   \
         std::vector<Vector<Share>> res;                 \
+        res.reserve(ReplicationNumber);                 \
         for (int i = 0; i < ReplicationNumber; ++i) {   \
             res.push_back(contents[i]._func_(args...)); \
         }                                               \
-        EVector result(res, this->precision);           \
-        return result;                                  \
+        return EVector(std::move(res), this->precision); \
     }
 
 #define define_apply_to_replicated(_func_)            \
@@ -55,11 +55,11 @@
     template <typename... T>                                               \
     EVector _func_(const EVector& other, T... args) const {                \
         std::vector<Vector<Share>> res;                                    \
+        res.reserve(ReplicationNumber);                                    \
         for (int i = 0; i < ReplicationNumber; ++i) {                      \
             res.push_back(contents[i]._func_(other.contents[i], args...)); \
         }                                                                  \
-        EVector result(res, this->precision);                              \
-        return result;                                                     \
+        return EVector(std::move(res), this->precision);                   \
     }
 
 #define define_apply_input_return_to_replicated_std_vector(_func_) \
@@ -81,35 +81,72 @@
         return res;                                                \
     }
 
-#define define_binary_evector_element_op(_op_)                   \
-    template <typename OtherType>                                \
-    inline EVector operator _op_(const OtherType& other) const { \
+#define define_binary_evector_element_op(_op_)                     \
+    template <typename OtherType>                                  \
+    inline EVector operator _op_(const OtherType& other) const & { \
+        std::vector<Vector<Share>> res;                            \
+        res.reserve(ReplicationNumber);                            \
+        for (int i = 0; i < ReplicationNumber; ++i) {              \
+            res.push_back(contents[i] _op_ other);                 \
+        }                                                          \
+        return EVector(std::move(res), this->precision);           \
+    }                                                              \
+    template <typename OtherType>                                  \
+    inline EVector operator _op_(const OtherType& other) && {      \
+        if (owns_storage()) {                                      \
+            for (int i = 0; i < ReplicationNumber; ++i) {          \
+                auto n = contents[i].size();                       \
+                for (size_t j = 0; j < n; ++j) {                   \
+                    contents[i][j] = contents[i][j] _op_ other;    \
+                }                                                  \
+            }                                                      \
+            return std::move(*this);                               \
+        }                                                          \
+        return static_cast<const EVector&>(*this) _op_ other;      \
+    }
+
+#define define_binary_evector_evector_op(_op_)                   \
+    inline EVector operator _op_(const EVector& other) const & { \
         std::vector<Vector<Share>> res;                          \
+        res.reserve(ReplicationNumber);                          \
         for (int i = 0; i < ReplicationNumber; ++i) {            \
-            res.push_back(contents[i] _op_ other);               \
+            res.push_back(contents[i] _op_ other.contents[i]);   \
         }                                                        \
-        EVector result(res, this->precision);                    \
-        return result;                                           \
+        return EVector(std::move(res), this->precision);         \
+    }                                                            \
+    inline EVector operator _op_(const EVector& other) && {      \
+        if (owns_storage() && size() == other.size()) {          \
+            for (int i = 0; i < ReplicationNumber; ++i) {        \
+                auto n = contents[i].size();                     \
+                for (size_t j = 0; j < n; ++j) {                 \
+                    contents[i][j] = contents[i][j] _op_ other.contents[i][j]; \
+                }                                                \
+            }                                                    \
+            return std::move(*this);                             \
+        }                                                        \
+        return static_cast<const EVector&>(*this) _op_ other;    \
     }
 
-#define define_binary_evector_evector_op(_op_)                 \
-    inline EVector operator _op_(const EVector& other) const { \
-        std::vector<Vector<Share>> res;                        \
-        for (int i = 0; i < ReplicationNumber; ++i) {          \
-            res.push_back(contents[i] _op_ other.contents[i]); \
-        }                                                      \
-        EVector result(res, this->precision);                  \
-        return result;                                         \
-    }
-
-#define define_unary_evector_op(_op_)                 \
-    inline EVector operator _op_() const {            \
-        std::vector<Vector<Share>> res;               \
-        for (int i = 0; i < ReplicationNumber; ++i) { \
-            res.push_back(_op_ contents[i]);          \
-        }                                             \
-        EVector result(res, this->precision);         \
-        return result;                                \
+#define define_unary_evector_op(_op_)                   \
+    inline EVector operator _op_() const & {            \
+        std::vector<Vector<Share>> res;                 \
+        res.reserve(ReplicationNumber);                 \
+        for (int i = 0; i < ReplicationNumber; ++i) {   \
+            res.push_back(_op_ contents[i]);            \
+        }                                               \
+        return EVector(std::move(res), this->precision); \
+    }                                                   \
+    inline EVector operator _op_() && {                 \
+        if (owns_storage()) {                           \
+            for (int i = 0; i < ReplicationNumber; ++i) { \
+                auto n = contents[i].size();            \
+                for (size_t j = 0; j < n; ++j) {        \
+                    contents[i][j] = _op_ contents[i][j]; \
+                }                                       \
+            }                                           \
+            return std::move(*this);                    \
+        }                                               \
+        return _op_ static_cast<const EVector&>(*this); \
     }
 
 #define define_binary_evector_assignment_op(_op_)          \
@@ -174,7 +211,7 @@ class EVector {
      * Vector<T> object, both will point to data in the same memory location.
      */
     EVector(std::vector<Vector<Share>> contents)
-        : contents(contents), precision(contents[0].getPrecision()) {}
+        : precision(contents[0].getPrecision()), contents(std::move(contents)) {}
 
     /**
      * Initializes the EVector with a given vector of vectors and a fixed-point precision.
@@ -205,11 +242,8 @@ class EVector {
      * @param size The size of Vector<T> in this EVector<T,N>.
      */
     explicit EVector(size_t size) : precision(0) {
+        contents.reserve(ReplicationNumber);
         for (int i = 0; i < ReplicationNumber; ++i) {
-            // NOTE: it is important to use the push_back and
-            // not pass the size in the constructor. Otherwise,
-            // std::vector uses the copy constructor and all
-            // `Vector`s will point to the same memory location.
             contents.push_back(Vector<Share>(size));
         }
     }
@@ -224,6 +258,21 @@ class EVector {
      * operator.
      */
     EVector(const EVector& other) : contents(other.contents), precision(other.getPrecision()) {}
+
+    EVector(EVector&& other) noexcept
+        : precision(other.precision), contents(std::move(other.contents)) {}
+
+    EVector& operator=(EVector&& other) noexcept {
+        if (this == &other) {
+            return *this;
+        }
+        if (owns_storage()) {
+            contents = std::move(other.contents);
+            precision = other.precision;
+            return *this;
+        }
+        return *this = static_cast<const EVector&>(other);
+    }
 
     /**
      * This is a deep move assignment.
@@ -326,12 +375,8 @@ class EVector {
      * @param _input_file_path The path to the file containing the contents of the EVector.
      */
     EVector(const size_t size, const std::string& _input_file_path) : precision(0) {
-        // First allocate the memory
+        contents.reserve(ReplicationNumber);
         for (int i = 0; i < ReplicationNumber; ++i) {
-            // NOTE: it is important to use the push_back and
-            // not pass the size in the constructor. Otherwise,
-            // std::vector uses the copy constructor and all
-            // `Vector`s will point to the same memory location.
             contents.push_back(Vector<Share>(size));
         }
 
@@ -447,17 +492,15 @@ class EVector {
      */
     EVector deepcopy() const {
         std::vector<Vector<Share>> new_replicas;
+        new_replicas.reserve(replicationNumber);
 
         for (int i = 0; i < replicationNumber; ++i) {
             Vector<Share> new_vec(this->size());
-            // Assignment operator performs element-by-element copy, creating new storage
             new_vec = this->contents[i];
-            // Reset batch state to full range for the new copy
             new_vec.reset_batch();
-            new_replicas.push_back(new_vec);
+            new_replicas.push_back(std::move(new_vec));
         }
-        EVector result(new_replicas, this->precision);
-        return result;
+        return EVector(std::move(new_replicas), this->precision);
     }
 
     // Functions which take an EVector as input and returns an EVector
@@ -476,6 +519,18 @@ class EVector {
     define_apply_to_replicated(materialize_inplace);
 
     bool has_mapping() const { return contents[0].has_mapping(); }
+
+    bool owns_storage() const {
+        if (contents.empty()) {
+            return false;
+        }
+        for (int i = 0; i < ReplicationNumber; ++i) {
+            if (!contents[i].owns_storage()) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     /**
      * Returns a mutable reference to a column of the EVector.
@@ -510,6 +565,32 @@ class EVector {
      *
      * - \f$\{s^1_3, s^2_3,~...,~s^{n}_3\}\f$
      */
+    template <typename BinOp>
+    EVector& assign_elementwise(const EVector& x, const EVector& y, BinOp&& op) {
+        assert(size() == x.size() && size() == y.size());
+        for (int i = 0; i < ReplicationNumber; ++i) {
+            auto n = size();
+            for (size_t j = 0; j < n; ++j) {
+                (*this)(i)[j] = op(x(i)[j], y(i)[j]);
+            }
+        }
+        matchPrecision(x);
+        return *this;
+    }
+
+    template <typename UnOp>
+    EVector& assign_elementwise(const EVector& x, UnOp&& op) {
+        assert(size() == x.size());
+        for (int i = 0; i < ReplicationNumber; ++i) {
+            auto n = size();
+            for (size_t j = 0; j < n; ++j) {
+                (*this)(i)[j] = op(x(i)[j]);
+            }
+        }
+        matchPrecision(x);
+        return *this;
+    }
+
     inline Vector<Share>& operator()(const int column) { return contents.at(column); }
 
     /**
@@ -555,11 +636,15 @@ class EVector {
 
     define_binary_evector_evector_op(<);
     define_binary_evector_evector_op(>);
+    define_binary_evector_evector_op(>=);
+    define_binary_evector_evector_op(<=);
     define_binary_evector_evector_op(==);
     define_binary_evector_evector_op(!=);
 
     define_binary_evector_assignment_op(+=);
     define_binary_evector_assignment_op(-=);
+    define_binary_evector_assignment_op(*=);
+    define_binary_evector_assignment_op(/=);
     define_binary_evector_assignment_op(&=);
     define_binary_evector_assignment_op(|=);
     define_binary_evector_assignment_op(^=);

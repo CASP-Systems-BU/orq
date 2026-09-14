@@ -39,6 +39,7 @@ namespace {
     }
 }  // namespace
 
+#ifdef MPC_PROTOCOL_PLAINTEXT_ONE
 namespace plaintext_1pc {
     init_mpc_types(int, orq::Vector, std::vector, orq::EVector, 1);
     init_mpc_system(orq::NullCommunicator, orq::Plaintext_1PC, orq::Plaintext_1PC_Factory);
@@ -74,7 +75,9 @@ namespace plaintext_1pc {
         }
     }
 }  // namespace plaintext_1pc
+#endif  // MPC_PROTOCOL_PLAINTEXT_ONE
 
+#ifdef MPC_PROTOCOL_DUMMY_ZERO
 namespace dummy_0pc {
     init_mpc_types(int, orq::Vector, std::vector, orq::EVector, 1);
     init_mpc_system(orq::NullCommunicator, orq::Dummy_0PC, orq::Dummy_0PC_Factory);
@@ -110,5 +113,6 @@ namespace dummy_0pc {
         }
     }
 }  // namespace dummy_0pc
+#endif  // MPC_PROTOCOL_DUMMY_ZERO
 
 }  // namespace orq::service::null_service

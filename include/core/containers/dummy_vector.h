@@ -5,6 +5,7 @@
 #include <memory>
 #include <ranges>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include "debug/orq_debug.h"
@@ -14,24 +15,30 @@
  * @brief Defines a dummy binary operator
  *
  */
-#define define_binary_vector_op(_op_) \
-    inline Vector operator _op_(const Vector& y) const { return *this; }
+#define define_binary_vector_op(_op_)                             \
+    inline Vector operator _op_(const Vector& y) const & {        \
+        return *this;                                             \
+    }                                                             \
+    inline Vector operator _op_(const Vector& y) && {             \
+        return std::move(*this);                                  \
+    }
 
-/**
- * @brief Defines a dummy unary operator
- *
- */
-#define define_unary_vector_op(_op_) \
-    inline Vector operator _op_() const { return *this; }
+#define define_unary_vector_op(_op_)             \
+    inline Vector operator _op_() const & {      \
+        return *this;                            \
+    }                                            \
+    inline Vector operator _op_() && {           \
+        return std::move(*this);                 \
+    }
 
-/**
- * @brief Defines a dummy binary operator between a Vector and some other type.
- *
- */
 #define define_binary_vector_element_op(_op_)                   \
     template <typename OtherType>                               \
-    inline Vector operator _op_(const OtherType& other) const { \
+    inline Vector operator _op_(const OtherType& other) const & { \
         return *this;                                           \
+    }                                                           \
+    template <typename OtherType>                               \
+    inline Vector operator _op_(const OtherType& other) && {    \
+        return std::move(*this);                                \
     }
 
 /**
@@ -40,7 +47,7 @@
  */
 #define define_binary_vector_assignment_op(_op_)          \
     template <typename OtherType>                         \
-    inline Vector operator _op_(const OtherType& other) { \
+    inline Vector& operator _op_(const OtherType& other) { \
         return *this;                                     \
     }
 
@@ -183,6 +190,8 @@ class Vector {
 
     Vector(Vector& other) : length(other.length) {}
 
+    Vector(Vector&& other) noexcept = default;
+
     inline Vector bit_arithmetic_right_shift(int shift_size) const { return *this; }
 
     inline Vector bit_logical_right_shift(int shift_size) const { return *this; }
@@ -238,6 +247,8 @@ class Vector {
     std::span<const T> span() const { return {}; }
 
     bool has_mapping() const { return false; }
+
+    bool owns_storage() const { return true; }
 
     /**
      * @brief Return a dummy vector of the correct size
@@ -416,6 +427,8 @@ class Vector {
 
     void reverse() {}
 
+    Vector& operator=(Vector&& other) { return *this; }
+
     Vector& operator=(const Vector&& other) { return *this; }
 
     Vector& operator=(const Vector& other) { return *this; }
@@ -491,6 +504,8 @@ class Vector {
 
     define_binary_vector_element_op(>);
     define_binary_vector_element_op(<);
+    define_binary_vector_element_op(>=);
+    define_binary_vector_element_op(<=);
     define_binary_vector_element_op(==);
     define_binary_vector_element_op(!=);
 
