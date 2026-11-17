@@ -39,6 +39,9 @@ jobs:
         working-directory: ${{github.workspace}}/build
         run: ../scripts/_setup_required.sh
 
+      - name: Setup cryptotools (cache or build)
+        uses: ./.github/actions/setup-cryptotools
+
       - name: Setup NTL (cache or build)
         uses: ./.github/actions/setup-ntl
 
@@ -76,6 +79,9 @@ jobs:
       - name: Install required dependencies
         working-directory: ${{github.workspace}}/build
         run: ../scripts/_setup_required.sh
+
+      - name: Setup cryptotools (cache or build)
+        uses: ./.github/actions/setup-cryptotools
 
       - name: Setup NTL (cache or build)
         uses: ./.github/actions/setup-ntl
@@ -149,6 +155,9 @@ jobs:
       - name: Install required dependencies
         working-directory: ${{github.workspace}}/build
         run: ../scripts/_setup_required.sh
+
+      - name: Setup cryptotools (cache or build)
+        uses: ./.github/actions/setup-cryptotools
 
       - name: Setup NTL (cache or build)
         uses: ./.github/actions/setup-ntl
