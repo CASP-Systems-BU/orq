@@ -25,7 +25,13 @@ endif (PERF)
 
 if (NOT NO_X86_SSE)
     if (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mbmi -march=native")
+        # ubuntu-latest runners are a mix of AVX2-only and AVX-512 machines, and
+        # x86-64-v3 (common ancestor) is sufficient for our purposes.
+        if(DEFINED ENV{GITHUB_ACTIONS})
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mbmi -march=x86-64-v3")
+        else()
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mbmi -march=native")
+        endif()
     endif()
 endif (NOT NO_X86_SSE)
 
@@ -123,7 +129,9 @@ if (PROTOCOL EQUAL "2" AND LINK_LIBOTE)
 
     find_package(secureJoin REQUIRED HINTS
         secure-join-install/lib/cmake/secureJoin/
-        build/secure-join-install/lib/cmake/secureJoin/)
+        secure-join-install/lib64/cmake/secureJoin/
+        build/secure-join-install/lib/cmake/secureJoin/
+        build/secure-join-install/lib64/cmake/secureJoin/)
     link_directories(${CMAKE_CURRENT_SOURCE_DIR}/build/secure-join-install/lib)
 endif ()
 
