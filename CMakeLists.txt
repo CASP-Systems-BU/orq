@@ -5,7 +5,7 @@ project(Orq VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(OPT_LEVEL "2" CACHE STRING "Optimization level (0-3)")
-set(CMAKE_CXX_FLAGS "-O${OPT_LEVEL} -g -pthread -fwrapv")
+set(CMAKE_CXX_FLAGS "-O${OPT_LEVEL} -pthread -fwrapv")
 
 add_compile_options(-Wno-deprecated-declarations)
 
@@ -141,13 +141,6 @@ function(add_secure_join target_name)
   endif()
 endfunction()
 
-if (PROTOCOL EQUAL "4")
-    add_library(print_4pc_info include/core/protocols/_4pc_selector.cpp)
-else()
-    # nop
-    add_custom_target(print_4pc_info)
-endif (PROTOCOL EQUAL "4")
-
 # Option: switch between custom 4PC and original Dalskov et al. protocol
 option(USE_DALSKOV_FANTASTIC_FOUR
        "Build with the original Dalskov et al. 4-party protocol (default = dalskov)"
@@ -156,6 +149,14 @@ option(USE_DALSKOV_FANTASTIC_FOUR
 if(USE_DALSKOV_FANTASTIC_FOUR)
     add_compile_definitions(USE_DALSKOV_FANTASTIC_FOUR)
 endif()
+
+if (PROTOCOL EQUAL "4")
+    if(USE_DALSKOV_FANTASTIC_FOUR)
+        message(STATUS "Using Dalskov 4PC protocol")
+    else()
+        message(STATUS "Using custom 4PC protocol")
+    endif()
+endif (PROTOCOL EQUAL "4")
 
 function(enable_pch target)
     target_precompile_headers(${target}
@@ -170,7 +171,6 @@ function(configure_target _target)
 
     get_filename_component(fileName ${_target} NAME_WLE)
     add_executable(${fileName} ${_target})
-    add_dependencies(${fileName} print_4pc_info)
 
     enable_pch(${fileName})
     add_secure_join(${fileName})

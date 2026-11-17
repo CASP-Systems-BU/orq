@@ -85,12 +85,6 @@
 
 constexpr bool USE_GILBOA_CRT = true;
 
-/**
- * @brief If defined, Vectors use index mapping to track access patterns instead of VectorData
- *
- */
-#define USE_INDEX_MAPPED_VECTOR
-
 // Print intermediate results of boolean long division
 // #define DEBUG_DIVISION
 // Collect Thread Instrumentation info
@@ -197,6 +191,7 @@ constexpr bool SKIP_MALICIOUS_CHECK_FLAG =
 #include <chrono>
 #include <climits>
 #include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <ios>
@@ -207,6 +202,30 @@ constexpr bool SKIP_MALICIOUS_CHECK_FLAG =
 #include <string>
 #include <string_view>
 #include <vector>
+
+namespace orq {
+inline constexpr bool is_power_of_two(std::uint64_t x) { return x != 0 && (x & (x - 1)) == 0; }
+}  // namespace orq
+
+#define ASSERT_POWER_OF_TWO(x)                                                            \
+    {                                                                                     \
+        auto s = (x);                                                                     \
+        if (!orq::is_power_of_two(s)) {                                                   \
+            std::cerr << "assertion failed: " #x " (= " << (s) << ") not power of two\n"; \
+            assert(false);                                                                \
+        }                                                                                 \
+    }
+
+#define ASSERT_SAME(x, y)                                                                \
+    {                                                                                    \
+        if (!((x) == (y))) {                                                             \
+            if (orq::service::runTime->getPartyID() == 0) {                              \
+                std::cerr << "assertion failed: " #x " != " #y << "\n";                  \
+                std::cerr << "values: (" << (long)(x) << ") != (" << (long)(y) << ")\n"; \
+            }                                                                            \
+            assert((x) == (y));                                                          \
+        }                                                                                \
+    }
 
 /**
  * @brief Print `x` on party zero, only, with a newline

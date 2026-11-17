@@ -7,6 +7,7 @@
  */
 #pragma once
 
+#include "core/containers/a_shared_vector.h"
 #include "core/containers/b_shared_vector.h"
 
 namespace orq::operators {

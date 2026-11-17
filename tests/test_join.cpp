@@ -1,6 +1,7 @@
 #include <ranges>
 
 #include "orq.h"
+#include "util.h"
 
 using namespace orq::debug;
 using namespace orq::service;

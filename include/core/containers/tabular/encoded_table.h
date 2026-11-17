@@ -356,10 +356,10 @@ class EncodedTable {
         }
 
         // plaintext vector of size 1 containing the value 1
-        Vector<Share> one_(size(), 1);
+        Vector<Share> one_(1, 1);
         B one = runTime->public_share<SharedColumn::replicationNumber>(one_);
         auto vv = *getValidVector();
-        vv = one;
+        vv = one.repeated_subset_reference(size());
     }
 
     /**

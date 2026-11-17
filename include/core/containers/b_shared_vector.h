@@ -4,8 +4,6 @@
 #include <cmath>
 #include <limits>
 
-#include "core/operators/aggregation.h"
-// #include "core/operators/common.h"
 #include "debug/orq_debug.h"
 #include "shared_vector.h"
 
@@ -214,9 +212,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return std::unique_ptr<ASharedVector>
      */
     auto count_nonzero() const {
-        // TODO: avoid this alloc
-        auto zero = this->construct_like();
-        auto a = (*this != zero)->b2a_bit();
+        BSharedVector zero(1);
+        auto a = (*this != zero.repeated_subset_reference(this->size()))->b2a_bit();
         a->prefix_sum();
         a->tail(1);
         return a;
@@ -230,15 +227,13 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return A pointer to a new ASharedVector with the popcount of `this`
      */
     auto popcount() const {
-        auto res = std::make_unique<ASharedVector<Share, EVector>>(this->size());
         size_t size = this->size(), bits = this->MAX_BITS_NUMBER;
 
         BSharedVector<Share, EVector> concat(size * bits);
         concat.unpack_from(*this, 0);
         auto conv = concat.b2a_bit();
 
-        *res = conv->chunkedSum(bits);
-        return res;
+        return std::make_unique<ASharedVector<Share, EVector>>(conv->chunkedSum(bits));
     }
 
     /**
@@ -268,14 +263,11 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * This is a move constructor from EVector.
      * @param _shares The EVector whose contents will be moved to the new BSharedVector.
      */
-    BSharedVector(EVector&& _shares) : SharedVector<Share, EVector>(_shares, Encoding::BShared) {}
+    BSharedVector(EVector&& _shares)
+        : SharedVector<Share, EVector>(std::move(_shares), Encoding::BShared) {}
 
-    /**
-     * This is a move constructor from another BSharedVector.
-     * @param other The BSharedVector whose contents will be moved to the new BSharedVector.
-     */
-    BSharedVector(BSharedVector&& other)
-        : SharedVector<Share, EVector>(other.vector, Encoding::BShared) {}
+    BSharedVector(BSharedVector&& other) noexcept
+        : SharedVector<Share, EVector>(std::move(other.vector), Encoding::BShared) {}
 
     /**
      * This is a copy constructor from another BSharedVector.
@@ -290,37 +282,13 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * BSharedVector.
      */
     explicit BSharedVector(SharedVector<Share, EVector>& _shares)
-        : EncodedVector(_shares.encoding) {
+        : SharedVector<Share, EVector>(_shares) {
         assert(_shares.encoding == Encoding::BShared);
-        auto secretShares_ = reinterpret_cast<BSharedVector*>(&_shares);
-        this->vector = secretShares_->vector;
     }
 
-    /**
-     * Move constructor that creates a BSharedVector from a unique pointer to a SharedVector object.
-     * @param base The pointer to the SharedVector object whose contents will be moved to the new
-     * BSharedVector.
-     */
-    BSharedVector(std::unique_ptr<BSharedVector>&& base)
-        : BSharedVector((BSharedVector*)base.get()) {}
+    BSharedVector(std::unique_ptr<BSharedVector>&& base) : BSharedVector(std::move(*base)) {}
 
-    /**
-     * Shallow copy constructor that creates a BSharedVector from a unique pointer to a SharedVector
-     * object.
-     * @param base The SharedVector object whose contents will be pointed by the new
-     * BSharedVector.
-     */
-    BSharedVector(std::unique_ptr<BSharedVector>& base)
-        : BSharedVector((BSharedVector*)base.get()) {}
-
-    /**
-     * Move constructor that creates a BSharedVector from a pointer to another BSharedVector object.
-     * @param _base The BSharedVector that will be moved as a whole (contents + state) to the new
-     * BSharedVector.
-     *
-     * NOTE: This constructor is implicitly called by the two constructors above.
-     */
-    explicit BSharedVector(BSharedVector* _base) : BSharedVector(std::move(*_base)) {}
+    BSharedVector(std::unique_ptr<BSharedVector>& base) : BSharedVector(*base) {}
 
     /**
      * @brief Construct a new BSharedVector object like another BSharedVector but with a different
@@ -340,10 +308,24 @@ class BSharedVector : public SharedVector<Share, EVector> {
      */
     using SharedVector<Share, EVector>::operator=;
 
-    BSharedVector& operator=(const BSharedVector&) = default;
-    BSharedVector& operator=(BSharedVector&&) = default;
+    BSharedVector& operator=(const BSharedVector& other) {
+        SharedVector<Share, EVector>::operator=(other);
+        return *this;
+    }
 
-    virtual ~BSharedVector() {}
+    BSharedVector& operator=(BSharedVector&& other) {
+        SharedVector<Share, EVector>::operator=(std::move(other));
+        return *this;
+    }
+
+    static constexpr bool inplace_add = false;
+    static constexpr bool inplace_sub = false;
+    static constexpr bool inplace_mul = false;
+    static constexpr bool inplace_and = true;
+    static constexpr bool inplace_or = true;
+    static constexpr bool inplace_xor = true;
+
+    virtual ~BSharedVector() override {}
 
     /**
      * @brief Convert the LSB of each element of this BSharedVector to an arithmetic sharing. This
@@ -428,6 +410,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
     binary_op(^, BSharedVector, xor_b, this, other);
     binary_element_op(^, xor_b, BSharedVector, Share);
     compound_assignment_op(^=, xor_b, BSharedVector);
+    compound_assignment_ptr_op(^=, xor_b, BSharedVector);
+    compound_assignment_element_op(^=, xor_b, BSharedVector, Share);
 
     /**
      * Elementwise secure bitwise AND. Returns a unique_ptr.
@@ -435,6 +419,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
     binary_op(&, BSharedVector, and_b, this, other);
     binary_element_op(&, and_b, BSharedVector, Share);
     compound_assignment_op(&=, and_b, BSharedVector);
+    compound_assignment_ptr_op(&=, and_b, BSharedVector);
+    compound_assignment_element_op(&=, and_b, BSharedVector, Share);
 
     /**
      * Elementwise secure boolean complement. Returns a unique_ptr.
@@ -524,12 +510,18 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param other
      * @return BSharedVector
      */
-    BSharedVector operator|=(const BSharedVector& other) {
-        // Break apart the operation so we can prevent copying.
+    BSharedVector& operator|=(const BSharedVector& other) {
         this->inplace_invert();
         *this &= ~other;
         this->inplace_invert();
         return *this;
+    }
+
+    binary_element_op(|, or_b, BSharedVector, Share);
+    compound_assignment_element_op(|=, or_b, BSharedVector, Share);
+
+    BSharedVector& operator|=(const std::unique_ptr<BSharedVector>& other) {
+        return *this |= *other;
     }
 
     /**
@@ -572,15 +564,17 @@ class BSharedVector : public SharedVector<Share, EVector> {
             return std::make_unique<BSharedVector>(this->asEVector() == other.asEVector());
         }
 
-        // Identify same-bits prefix
         auto same_bits = this->bit_same(other);
-
-        // If the LSB is 1, it means that the respective elements from `this` and `other` are the
-        // same
         same_bits->mask((Share)1);
-
         return same_bits;
     }
+
+    binary_element_op(==, eq_b, BSharedVector, Share);
+    binary_element_op(!=, neq_b, BSharedVector, Share);
+    binary_element_op(>, gt_b, BSharedVector, Share);
+    binary_element_op(<, lt_b, BSharedVector, Share);
+    binary_element_op(>=, ge_b, BSharedVector, Share);
+    binary_element_op(<=, le_b, BSharedVector, Share);
 
     /**
      * Elementwise secure inequality. This operator expects both input vectors (`this` and `other`)
@@ -675,7 +669,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return BSharedVector&
      */
     BSharedVector& operator+=(const BSharedVector& other) {
-        *this = *binary_adder(*this, other, false);
+        *this = std::move(*binary_adder(*this, other, false));
         return *this;
     }
 
@@ -685,8 +679,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param other
      * @return BSharedVector&
      */
-    BSharedVector& operator+=(const std::unique_ptr<BSharedVector> other) {
-        *this = *binary_adder(*this, *other, false);
+    BSharedVector& operator+=(const std::unique_ptr<BSharedVector>& other) {
+        *this = std::move(*binary_adder(*this, *other, false));
         return *this;
     }
 
@@ -708,7 +702,7 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return BSharedVector&
      */
     BSharedVector& operator-=(const BSharedVector& other) {
-        *this = *binary_adder(*this, *(~other), true);
+        *this = std::move(*binary_adder(*this, *(~other), true));
         return *this;
     }
 
@@ -718,8 +712,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @param other
      * @return BSharedVector&
      */
-    BSharedVector& operator-=(const std::unique_ptr<BSharedVector> other) {
-        *this = *binary_adder(*this, *(~(*other)), true);
+    BSharedVector& operator-=(const std::unique_ptr<BSharedVector>& other) {
+        *this = std::move(*binary_adder(*this, *(~(*other)), true));
         return *this;
     }
 
@@ -729,8 +723,8 @@ class BSharedVector : public SharedVector<Share, EVector> {
      * @return std::unique_ptr<BSharedVector>
      */
     std::unique_ptr<BSharedVector> operator-() const {
-        auto zero = BSharedVector(this->size());
-        return zero - *this;
+        BSharedVector zero(1);
+        return zero.repeated_subset_reference(this->size()) - *this;
     }
 
     std::unique_ptr<BSharedVector> operator/(const BSharedVector& other) const;

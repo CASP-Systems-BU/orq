@@ -161,6 +161,8 @@ void orq_runtime_init(int argc, char** argv, std::optional<int> partiesNum,
 }  // namespace orq::service
 
 namespace orq::service::mpi_service {
+#ifdef MPC_USE_MPI_COMMUNICATOR
+#ifdef MPC_PROTOCOL_FANTASTIC_FOUR
 namespace fantastic_4pc {
     init_mpc_types(int, orq::Vector, std::vector, orq::EVector, 3);
     init_mpc_system(orq::MPICommunicator, orq::Fantastic_4PC, orq::Fantastic_4PC_Factory);
@@ -175,7 +177,9 @@ namespace fantastic_4pc {
                                                                   Protocol_8::parties_num, groups);
     }
 }  // namespace fantastic_4pc
+#endif
 
+#ifdef MPC_PROTOCOL_REPLICATED_THREE
 namespace replicated_3pc {
     init_mpc_types(int, orq::Vector, std::vector, orq::EVector, 2);
     init_mpc_system(orq::MPICommunicator, orq::Replicated_3PC, orq::Replicated_3PC_Factory);
@@ -187,6 +191,7 @@ namespace replicated_3pc {
                                                                   Protocol_8::parties_num, groups);
     }
 }  // namespace replicated_3pc
+#endif
 
 #ifdef MPC_PROTOCOL_BEAVER_TWO
 namespace beaver_2pc {
@@ -201,10 +206,13 @@ namespace beaver_2pc {
     }
 }  // namespace beaver_2pc
 #endif
+#endif  // MPC_USE_MPI_COMMUNICATOR
 
 }  // namespace orq::service::mpi_service
 
 namespace orq::service::nocopy_service {
+#ifdef MPC_USE_NO_COPY_COMMUNICATOR
+#ifdef MPC_PROTOCOL_FANTASTIC_FOUR
 namespace fantastic_4pc {
     init_mpc_types(int, orq::Vector, std::vector, orq::EVector, 3);
     init_mpc_system(orq::NoCopyCommunicator, orq::Fantastic_4PC, orq::Fantastic_4PC_Factory);
@@ -220,7 +228,9 @@ namespace fantastic_4pc {
             argc, argv, Protocol_8::parties_num, groups);
     }
 }  // namespace fantastic_4pc
+#endif
 
+#ifdef MPC_PROTOCOL_REPLICATED_THREE
 namespace replicated_3pc {
     init_mpc_types(int, orq::Vector, std::vector, orq::EVector, 2);
     init_mpc_system(orq::NoCopyCommunicator, orq::Replicated_3PC, orq::Replicated_3PC_Factory);
@@ -232,6 +242,8 @@ namespace replicated_3pc {
             argc, argv, Protocol_8::parties_num, groups);
     }
 }  // namespace replicated_3pc
+#endif
+
 #ifdef MPC_PROTOCOL_BEAVER_TWO
 namespace beaver_2pc {
     init_mpc_types(int, orq::Vector, std::vector, orq::EVector, 1);
@@ -245,5 +257,6 @@ namespace beaver_2pc {
     }
 }  // namespace beaver_2pc
 #endif
+#endif  // MPC_USE_NO_COPY_COMMUNICATOR
 
 }  // namespace orq::service::nocopy_service

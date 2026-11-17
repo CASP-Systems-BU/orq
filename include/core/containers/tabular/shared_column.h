@@ -67,9 +67,9 @@ class SharedColumn : public EncodedColumn {
      * @param other The encoded column whose contents will be moved to the new column.
      */
     SharedColumn(std::unique_ptr<EncodedColumn>&& other) {
-        auto& v = *other.get();
-        encoding = v.encoding;
-        contents = v.contents;
+        encoding = other->encoding;
+        contents = std::move(other->contents);
+        name = std::move(other->name);
     }
 
     /**
@@ -77,9 +77,9 @@ class SharedColumn : public EncodedColumn {
      * @param other The encoded column whose contents will be moved to the new column.
      */
     SharedColumn& operator=(std::unique_ptr<EncodedColumn>&& other) override {
-        auto& c = *other.get();
-        this->encoding = c.encoding;
-        this->contents.reset(c.contents.release());
+        this->encoding = other->encoding;
+        this->contents = std::move(other->contents);
+        this->name = std::move(other->name);
         return *this;
     }
 
@@ -96,7 +96,7 @@ class SharedColumn : public EncodedColumn {
      * @brief
      *
      */
-    virtual ~SharedColumn() {};
+    virtual ~SharedColumn() override {};
 
     /**
      * @return The column's size in number of elements.
@@ -121,13 +121,13 @@ class SharedColumn : public EncodedColumn {
             // Create truly independent copies using the new EVector method
             // that ensures each replica has new storage with reset batch state
             EVector copy = v->vector.deepcopy();
-            auto new_shared = std::make_unique<ASharedVector<Share, EVector>>(copy);
+            auto new_shared = std::make_unique<ASharedVector<Share, EVector>>(std::move(copy));
             s = std::make_unique<SharedColumn>(std::move(new_shared));
         } else {
             auto v = static_cast<BSharedVector<Share, EVector>*>(contents.get());
 
             EVector copy = v->vector.deepcopy();
-            auto new_shared = std::make_unique<BSharedVector<Share, EVector>>(copy);
+            auto new_shared = std::make_unique<BSharedVector<Share, EVector>>(std::move(copy));
             s = std::make_unique<SharedColumn>(std::move(new_shared));
         }
 
@@ -320,7 +320,12 @@ class SharedColumn : public EncodedColumn {
  *
  */
 binary_op_ptr_element(+);
+binary_op_ptr_element(-);
+binary_op_ptr_element(*);
 binary_op_ptr_element(/);
+binary_op_ptr_element(&);
+binary_op_ptr_element(|);
+binary_op_ptr_element(^);
 binary_op_ptr_element(>>);
 binary_op_ptr_element(<<);
 

@@ -132,9 +132,10 @@ namespace operators {
         bext.extend_lsb(bits);
 
         for (int i = 0; i < cols_num; ++i) {
-            auto tmp = bext & (x_vec[i] ^ y_vec[i]);
-            x_vec[i] ^= tmp;
-            y_vec[i] ^= tmp;
+            auto tmp = x_vec[i] ^ y_vec[i];
+            *tmp &= bext;
+            x_vec[i] ^= *tmp;
+            y_vec[i] ^= *tmp;
         }
     }
 
@@ -147,9 +148,10 @@ namespace operators {
 
         // Swap elements
         for (int i = 0; i < cols_num; ++i) {
-            auto tmp = bits * (x_vec[i] - y_vec[i]);
-            x_vec[i] -= tmp;
-            y_vec[i] += tmp;
+            auto tmp = x_vec[i] - y_vec[i];
+            *tmp *= bits;
+            x_vec[i] -= *tmp;
+            y_vec[i] += *tmp;
         }
     }
 

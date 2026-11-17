@@ -137,7 +137,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      * @param z Output vector.
      */
     void add_a(const EVector &x, const EVector &y, EVector &z) {
-        z = x + y;
+        Protocol<Data, Share, Vector, EVector>::add_a(x, y, z);
         op_counter[__func__] += x.size();
     }
 
@@ -149,7 +149,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      * @param z Output vector.
      */
     void sub_a(const EVector &x, const EVector &y, EVector &z) {
-        z = x - y;
+        Protocol<Data, Share, Vector, EVector>::sub_a(x, y, z);
         op_counter[__func__] += x.size();
     }
 
@@ -187,7 +187,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      */
     void neg_a(const EVector &x, EVector &y) {
         op_counter[__func__] += x.size();
-        y = -x;
+        Protocol<Data, Share, Vector, EVector>::neg_a(x, y);
     }
 
     /**
@@ -236,7 +236,7 @@ class Plaintext_1PC : public Protocol<Data, Share, Vector, EVector> {
      */
     void xor_b(const EVector &x, const EVector &y, EVector &z) {
         op_counter[__func__] += x.size();
-        z = x ^ y;
+        Protocol<Data, Share, Vector, EVector>::xor_b(x, y, z);
     }
 
     /**

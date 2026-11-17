@@ -57,9 +57,5 @@ struct DoubleWidth<uint64_t> {
 #ifdef ZEROPC_DUMMY_VECTOR
 #include "dummy_vector.h"
 #else
-#ifdef USE_INDEX_MAPPED_VECTOR
 #include "mapping_access_vector.h"
-#else
-#include "class_access_vector.h"
-#endif
 #endif
