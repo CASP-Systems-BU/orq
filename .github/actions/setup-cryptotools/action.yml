@@ -5,7 +5,7 @@ runs:
   steps:
     - name: Restore cached
       id: cache-cryptotools
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: build/libOTe-install
         key: cryptotools-${{ hashFiles('scripts/_clone_libote.sh', 'scripts/_setup_cryptotools.sh') }}

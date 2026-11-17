@@ -30,7 +30,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Create build dir
         run: mkdir -p ${{github.workspace}}/build
@@ -71,7 +71,7 @@ jobs:
     timeout-minutes: 35
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Create build dir
         run: mkdir -p ${{github.workspace}}/build
@@ -90,7 +90,7 @@ jobs:
       # script. This saves about 10 minutes. To prevent over-agressive caching,
       # manually specifying the files we need.
       - name: Restore cached libOTe
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: cache-deps
         with:
           path: |
@@ -105,7 +105,7 @@ jobs:
 
       # To save time, restore SecureJoin from cache if no changes to either script
       - name: Restore cached SecureJoin
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: cache-securejoin
         with:
           path: |

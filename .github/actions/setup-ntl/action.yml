@@ -5,7 +5,7 @@ runs:
   steps:
     - name: Restore cached NTL
       id: cache-ntl
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: build/ntl-install
         key: ntl-${{ hashFiles('scripts/_setup_ntl.sh') }}
