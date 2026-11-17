@@ -119,12 +119,12 @@
  * @brief True column-constant operations, like shifts and public division
  *
  */
-#define binary_op_fixed_element(_op_, eType, vType)                            \
-    std::unique_ptr<EncodedColumn> operator _op_(int64_t y) const override {   \
-        assert(encoding == Encoding::eType);                                   \
-        using T = vType<Share, EVector>;                                       \
-        auto v = static_cast<const T*>(contents.get());                        \
-        return std::make_unique<SharedColumn>(*v _op_ y); \
+#define binary_op_fixed_element(_op_, eType, vType)                          \
+    std::unique_ptr<EncodedColumn> operator _op_(int64_t y) const override { \
+        assert(encoding == Encoding::eType);                                 \
+        using T = vType<Share, EVector>;                                     \
+        auto v = static_cast<const T*>(contents.get());                      \
+        return std::make_unique<SharedColumn>(*v _op_ y);                    \
     }
 
 /**
@@ -174,9 +174,7 @@ class EncodedColumn {
      */
     virtual size_t size() const = 0;
 
-    virtual bool owns_storage() const {
-        return contents && contents->owns_storage();
-    }
+    virtual bool owns_storage() const { return contents && contents->owns_storage(); }
 
     /**
      * Gets the fixed-point precision. Virtual to let subclasses override.

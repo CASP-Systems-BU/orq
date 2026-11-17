@@ -47,15 +47,15 @@ inline bool vector_owns_storage(const T& t) {
         return std::move(x);                                                         \
     }
 
-#define define_assignment_ptr_operator_no_move(op)                                 \
-    template <typename T>                                                          \
-        requires requires(const T& t) { t.size(); }                                \
+#define define_assignment_ptr_operator_no_move(op)                                  \
+    template <typename T>                                                           \
+        requires requires(const T& t) { t.size(); }                                 \
     std::unique_ptr<T>& operator op(std::unique_ptr<T>& x, std::unique_ptr<T>& y) { \
-        auto& x_ = *x;                                                             \
-        auto& y_ = *y;                                                             \
-        assert(x_.size() == y_.size());                                            \
-        x_ op y_;                                                                  \
-        return x;                                                                  \
+        auto& x_ = *x;                                                              \
+        auto& y_ = *y;                                                              \
+        assert(x_.size() == y_.size());                                             \
+        x_ op y_;                                                                   \
+        return x;                                                                   \
     }
 
 #define shares_define_pointers_operator(op)                                          \
@@ -110,12 +110,12 @@ inline bool vector_owns_storage(const T& t) {
         return op(*x);                                      \
     }
 
-#define shares_define_pointer_scalar_operator(op)                 \
-    template <typename T, typename S>                             \
-        requires requires(const T& t) { t.size(); } &&            \
-                 (!std::is_same_v<std::remove_cvref_t<S>, T>)     \
-    std::unique_ptr<T> operator op(std::unique_ptr<T>& x, S y) {  \
-        return (*x) op y;                                         \
+#define shares_define_pointer_scalar_operator(op)                \
+    template <typename T, typename S>                            \
+        requires requires(const T& t) { t.size(); } &&           \
+                 (!std::is_same_v<std::remove_cvref_t<S>, T>)    \
+    std::unique_ptr<T> operator op(std::unique_ptr<T>& x, S y) { \
+        return (*x)op y;                                         \
     }
 
 #define shares_define_pointer_scalar_rvalue(op)                   \
@@ -123,70 +123,79 @@ inline bool vector_owns_storage(const T& t) {
         requires requires(const T& t) { t.size(); } &&            \
                  (!std::is_same_v<std::remove_cvref_t<S>, T>)     \
     std::unique_ptr<T> operator op(std::unique_ptr<T>&& x, S y) { \
-        return (*x) op y;                                         \
+        return (*x)op y;                                          \
     }
 
-#define shares_define_pointer_reference_reuse(op, assign_op, trait, enc)              \
-    template <typename T>                                                             \
-        requires requires(const T& t) { t.size(); }                                   \
-    std::unique_ptr<T> operator op(std::unique_ptr<T>&& x, const T& y) {              \
-        assert(x->size() == y.size());                                                \
-        if constexpr (requires { T::trait; }) {                                       \
-            if constexpr (T::trait) {                                                 \
-                if (orq::vector_owns_storage(*x)) {                                   \
-                    *x assign_op y;                                                   \
-                    return std::move(x);                                              \
-                }                                                                     \
-            }                                                                         \
-        } else if constexpr (requires { x->encoding; (*x) assign_op y; }) {           \
-            if (x->encoding == orq::Encoding::enc && orq::vector_owns_storage(*x)) {   \
-                *x assign_op y;                                                       \
-                return std::move(x);                                                  \
-            }                                                                         \
-        }                                                                             \
-        return *x op y;                                                               \
+#define shares_define_pointer_reference_reuse(op, assign_op, trait, enc)             \
+    template <typename T>                                                            \
+        requires requires(const T& t) { t.size(); }                                  \
+    std::unique_ptr<T> operator op(std::unique_ptr<T>&& x, const T & y) {            \
+        assert(x->size() == y.size());                                               \
+        if constexpr (requires { T::trait; }) {                                      \
+            if constexpr (T::trait) {                                                \
+                if (orq::vector_owns_storage(*x)) {                                  \
+                    *x assign_op y;                                                  \
+                    return std::move(x);                                             \
+                }                                                                    \
+            }                                                                        \
+        } else if constexpr (requires {                                              \
+                                 x->encoding;                                        \
+                                 (*x) assign_op y;                                   \
+                             }) {                                                    \
+            if (x->encoding == orq::Encoding::enc && orq::vector_owns_storage(*x)) { \
+                *x assign_op y;                                                      \
+                return std::move(x);                                                 \
+            }                                                                        \
+        }                                                                            \
+        return *x op y;                                                              \
     }
 
-#define shares_define_pointers_reuse(op, assign_op, trait, enc)                       \
-    template <typename T>                                                             \
-        requires requires(const T& t) { t.size(); }                                   \
-    std::unique_ptr<T> operator op(std::unique_ptr<T>&& x, std::unique_ptr<T>&& y) {  \
-        assert(x->size() == y->size());                                               \
-        if constexpr (requires { T::trait; }) {                                       \
-            if constexpr (T::trait) {                                                 \
-                if (orq::vector_owns_storage(*x)) {                                   \
-                    *x assign_op *y;                                                  \
-                    return std::move(x);                                              \
-                }                                                                     \
-            }                                                                         \
-        } else if constexpr (requires { x->encoding; (*x) assign_op *y; }) {          \
-            if (x->encoding == orq::Encoding::enc && orq::vector_owns_storage(*x)) {   \
-                *x assign_op *y;                                                      \
-                return std::move(x);                                                  \
-            }                                                                         \
-        }                                                                             \
-        return *x op *y;                                                              \
+#define shares_define_pointers_reuse(op, assign_op, trait, enc)                      \
+    template <typename T>                                                            \
+        requires requires(const T& t) { t.size(); }                                  \
+    std::unique_ptr<T> operator op(std::unique_ptr<T>&& x, std::unique_ptr<T>&& y) { \
+        assert(x->size() == y->size());                                              \
+        if constexpr (requires { T::trait; }) {                                      \
+            if constexpr (T::trait) {                                                \
+                if (orq::vector_owns_storage(*x)) {                                  \
+                    *x assign_op* y;                                                 \
+                    return std::move(x);                                             \
+                }                                                                    \
+            }                                                                        \
+        } else if constexpr (requires {                                              \
+                                 x->encoding;                                        \
+                                 (*x) assign_op * y;                                 \
+                             }) {                                                    \
+            if (x->encoding == orq::Encoding::enc && orq::vector_owns_storage(*x)) { \
+                *x assign_op* y;                                                     \
+                return std::move(x);                                                 \
+            }                                                                        \
+        }                                                                            \
+        return *x op * y;                                                            \
     }
 
-#define shares_define_pointer_scalar_reuse(op, assign_op, trait, enc)                 \
-    template <typename T, typename S>                                                 \
-        requires requires(const T& t) { t.size(); } &&                                \
-                 (!std::is_same_v<std::remove_cvref_t<S>, T>)                         \
-    std::unique_ptr<T> operator op(std::unique_ptr<T>&& x, S y) {                     \
-        if constexpr (requires { T::trait; }) {                                       \
-            if constexpr (T::trait) {                                                 \
-                if (orq::vector_owns_storage(*x)) {                                   \
-                    *x assign_op y;                                                   \
-                    return std::move(x);                                              \
-                }                                                                     \
-            }                                                                         \
-        } else if constexpr (requires { x->encoding; (*x) assign_op y; }) {           \
-            if (x->encoding == orq::Encoding::enc && orq::vector_owns_storage(*x)) {   \
-                *x assign_op y;                                                       \
-                return std::move(x);                                                  \
-            }                                                                         \
-        }                                                                             \
-        return (*x) op y;                                                             \
+#define shares_define_pointer_scalar_reuse(op, assign_op, trait, enc)                \
+    template <typename T, typename S>                                                \
+        requires requires(const T& t) { t.size(); } &&                               \
+                 (!std::is_same_v<std::remove_cvref_t<S>, T>)                        \
+    std::unique_ptr<T> operator op(std::unique_ptr<T>&& x, S y) {                    \
+        if constexpr (requires { T::trait; }) {                                      \
+            if constexpr (T::trait) {                                                \
+                if (orq::vector_owns_storage(*x)) {                                  \
+                    *x assign_op y;                                                  \
+                    return std::move(x);                                             \
+                }                                                                    \
+            }                                                                        \
+        } else if constexpr (requires {                                              \
+                                 x->encoding;                                        \
+                                 (*x) assign_op y;                                   \
+                             }) {                                                    \
+            if (x->encoding == orq::Encoding::enc && orq::vector_owns_storage(*x)) { \
+                *x assign_op y;                                                      \
+                return std::move(x);                                                 \
+            }                                                                        \
+        }                                                                            \
+        return (*x)op y;                                                             \
     }
 
 #define ORQ_UNIQUE_PTR_CMP_OPS(macro) \
@@ -206,7 +215,7 @@ inline bool vector_owns_storage(const T& t) {
     macro(|);                           \
     macro(^);
 
-#define ORQ_INSTANTIATE_UNIQUE_PTR_REUSE()                            \
+#define ORQ_INSTANTIATE_UNIQUE_PTR_REUSE()                              \
     shares_define_pointer_reference_reuse(+, +=, inplace_add, AShared); \
     shares_define_pointer_reference_reuse(-, -=, inplace_sub, AShared); \
     shares_define_pointer_reference_reuse(*, *=, inplace_mul, AShared); \
@@ -219,13 +228,13 @@ inline bool vector_owns_storage(const T& t) {
     shares_define_pointers_reuse(&, &=, inplace_and, BShared);          \
     shares_define_pointers_reuse(|, |=, inplace_or, BShared);           \
     shares_define_pointers_reuse(^, ^=, inplace_xor, BShared);          \
-    shares_define_pointer_scalar_reuse(+, +=, inplace_add, AShared);     \
-    shares_define_pointer_scalar_reuse(-, -=, inplace_sub, AShared);     \
-    shares_define_pointer_scalar_reuse(*, *=, inplace_mul, AShared);     \
-    shares_define_pointer_scalar_reuse(&, &=, inplace_and, BShared);     \
-    shares_define_pointer_scalar_reuse(|, |=, inplace_or, BShared);      \
-    shares_define_pointer_scalar_reuse(^, ^=, inplace_xor, BShared);     \
-    shares_define_pointer_scalar_reuse(<<, <<=, inplace_and, BShared);   \
+    shares_define_pointer_scalar_reuse(+, +=, inplace_add, AShared);    \
+    shares_define_pointer_scalar_reuse(-, -=, inplace_sub, AShared);    \
+    shares_define_pointer_scalar_reuse(*, *=, inplace_mul, AShared);    \
+    shares_define_pointer_scalar_reuse(&, &=, inplace_and, BShared);    \
+    shares_define_pointer_scalar_reuse(|, |=, inplace_or, BShared);     \
+    shares_define_pointer_scalar_reuse(^, ^=, inplace_xor, BShared);    \
+    shares_define_pointer_scalar_reuse(<<, <<=, inplace_and, BShared);  \
     shares_define_pointer_scalar_reuse(>>, >>=, inplace_and, BShared);
 
 #define binary_op(_op_, type, func, this, y)                     \
@@ -247,7 +256,7 @@ inline bool vector_owns_storage(const T& t) {
     }
 
 #define compound_assignment_op(_op_, func, T)                 \
-    inline T& operator _op_(const T& y) {                     \
+    inline T& operator _op_(const T & y) {                    \
         auto& x_vector = this->vector;                        \
         auto& y_vector = y.vector;                            \
         assert(x_vector.size() == y_vector.size());           \
@@ -260,7 +269,7 @@ inline bool vector_owns_storage(const T& t) {
         Vector<S> yv({y});                                                              \
         auto ypv = orq::service::runTime->public_share<EVector::replicationNumber>(yv); \
         *this _op_ ypv.cyclic_subset_reference(this->size());                           \
-        return *this;                                                                  \
+        return *this;                                                                   \
     }
 
 #define compound_assignment_ptr_op(_op_, func, T)   \
@@ -272,18 +281,18 @@ inline bool vector_owns_storage(const T& t) {
         return *this;                               \
     }
 
-#define unary_op(_op_, type, func, this)                                           \
-    std::unique_ptr<type> operator _op_() const & {                                \
-        auto res = std::make_unique<type>(this->size());                           \
-        service::runTime->func(this->vector, res->vector);                         \
-        return res;                                                                \
-    }                                                                              \
-    std::unique_ptr<type> operator _op_() && {                                     \
-        if (this->owns_storage()) {                                                \
-            service::runTime->func(this->vector, this->vector);                    \
-            return std::make_unique<type>(std::move(*static_cast<type*>(this)));   \
-        }                                                                          \
-        return _op_ static_cast<const type&>(*this);                               \
+#define unary_op(_op_, type, func, this)                                         \
+    std::unique_ptr<type> operator _op_() const& {                               \
+        auto res = std::make_unique<type>(this->size());                         \
+        service::runTime->func(this->vector, res->vector);                       \
+        return res;                                                              \
+    }                                                                            \
+    std::unique_ptr<type> operator _op_() && {                                   \
+        if (this->owns_storage()) {                                              \
+            service::runTime->func(this->vector, this->vector);                  \
+            return std::make_unique<type>(std::move(*static_cast<type*>(this))); \
+        }                                                                        \
+        return _op_ static_cast<const type&>(*this);                             \
     }
 
 #define fn_no_input(func, type, this)                      \

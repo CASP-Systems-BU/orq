@@ -15,40 +15,32 @@
  * @brief Defines a dummy binary operator
  *
  */
-#define define_binary_vector_op(_op_)                             \
-    inline Vector operator _op_(const Vector& y) const & {        \
-        return *this;                                             \
-    }                                                             \
-    inline Vector operator _op_(const Vector& y) && {             \
-        return std::move(*this);                                  \
-    }
+#define define_binary_vector_op(_op_)                                     \
+    inline Vector operator _op_(const Vector& y) const& { return *this; } \
+    inline Vector operator _op_(const Vector& y) && { return std::move(*this); }
 
-#define define_unary_vector_op(_op_)             \
-    inline Vector operator _op_() const & {      \
-        return *this;                            \
-    }                                            \
-    inline Vector operator _op_() && {           \
-        return std::move(*this);                 \
-    }
+#define define_unary_vector_op(_op_)                       \
+    inline Vector operator _op_() const& { return *this; } \
+    inline Vector operator _op_() && { return std::move(*this); }
 
-#define define_binary_vector_element_op(_op_)                   \
-    template <typename OtherType>                               \
-    inline Vector operator _op_(const OtherType& other) const & { \
-        return *this;                                           \
-    }                                                           \
-    template <typename OtherType>                               \
-    inline Vector operator _op_(const OtherType& other) && {    \
-        return std::move(*this);                                \
+#define define_binary_vector_element_op(_op_)                    \
+    template <typename OtherType>                                \
+    inline Vector operator _op_(const OtherType& other) const& { \
+        return *this;                                            \
+    }                                                            \
+    template <typename OtherType>                                \
+    inline Vector operator _op_(const OtherType& other) && {     \
+        return std::move(*this);                                 \
     }
 
 /**
  * @brief Defines a dummy binary assignment operator.
  *
  */
-#define define_binary_vector_assignment_op(_op_)          \
-    template <typename OtherType>                         \
-    inline Vector& operator _op_(const OtherType& other) { \
-        return *this;                                     \
+#define define_binary_vector_assignment_op(_op_)            \
+    template <typename OtherType>                           \
+    inline Vector& operator _op_(const OtherType & other) { \
+        return *this;                                       \
     }
 
 namespace orq {

@@ -44,70 +44,70 @@ concept arithmetic = std::integral<T> or std::floating_point<T> or orq::is_ntl_g
  * @brief Define a binary operation between two vectors, such as `a - b`.
  *
  */
-#define define_binary_vector_op(_op_)                      \
-    inline Vector operator _op_(const Vector& y) const & { \
-        VectorSizeType size = this->size();                \
-        Vector res = this->construct_like();               \
-        for (VectorSizeType i = 0; i < size; ++i) {        \
-            res[i] = (*this)[i] _op_ y[i];                 \
-        }                                                  \
-        res.setPrecision(this->getPrecision());            \
-        return res;                                        \
-    }                                                      \
-    inline Vector operator _op_(const Vector& y) && {      \
-        if (owns_storage() && size() == y.size()) {        \
-            VectorSizeType n = this->size();               \
-            for (VectorSizeType i = 0; i < n; ++i) {       \
-                (*this)[i] = (*this)[i] _op_ y[i];         \
-            }                                              \
-            return std::move(*this);                       \
-        }                                                  \
-        return static_cast<const Vector&>(*this) _op_ y;   \
-    }
-
-#define define_unary_vector_op(_op_)                      \
-    inline Vector operator _op_() const & {               \
+#define define_binary_vector_op(_op_)                     \
+    inline Vector operator _op_(const Vector& y) const& { \
         VectorSizeType size = this->size();               \
         Vector res = this->construct_like();              \
         for (VectorSizeType i = 0; i < size; ++i) {       \
-            res[i] = _op_(*this)[i];                      \
+            res[i] = (*this)[i] _op_ y[i];                \
         }                                                 \
         res.setPrecision(this->getPrecision());           \
         return res;                                       \
     }                                                     \
-    inline Vector operator _op_() && {                    \
-        if (owns_storage()) {                             \
+    inline Vector operator _op_(const Vector& y) && {     \
+        if (owns_storage() && size() == y.size()) {       \
             VectorSizeType n = this->size();              \
             for (VectorSizeType i = 0; i < n; ++i) {      \
-                (*this)[i] = _op_(*this)[i];              \
+                (*this)[i] = (*this)[i] _op_ y[i];        \
             }                                             \
             return std::move(*this);                      \
         }                                                 \
-        return _op_ static_cast<const Vector&>(*this);    \
+        return static_cast<const Vector&>(*this) _op_ y;  \
     }
 
-#define define_binary_vector_element_op(_op_)            \
-    template <typename S>                                \
-        requires arithmetic<S>                           \
-    inline Vector operator _op_(const S other) const & { \
-        VectorSizeType size = this->size();              \
-        Vector res = this->construct_like();             \
-        for (VectorSizeType i = 0; i < size; ++i) {      \
-            res[i] = (*this)[i] _op_ other;              \
-        }                                                \
-        res.setPrecision(this->getPrecision());          \
-        return res;                                      \
-    }                                                    \
-    template <typename S>                                \
-        requires arithmetic<S>                           \
-    inline Vector operator _op_(const S other) && {      \
-        if (owns_storage()) {                            \
-            VectorSizeType n = this->size();             \
-            for (VectorSizeType i = 0; i < n; ++i) {     \
-                (*this)[i] = (*this)[i] _op_ other;      \
-            }                                            \
-            return std::move(*this);                     \
-        }                                                \
+#define define_unary_vector_op(_op_)                   \
+    inline Vector operator _op_() const& {             \
+        VectorSizeType size = this->size();            \
+        Vector res = this->construct_like();           \
+        for (VectorSizeType i = 0; i < size; ++i) {    \
+            res[i] = _op_(*this)[i];                   \
+        }                                              \
+        res.setPrecision(this->getPrecision());        \
+        return res;                                    \
+    }                                                  \
+    inline Vector operator _op_() && {                 \
+        if (owns_storage()) {                          \
+            VectorSizeType n = this->size();           \
+            for (VectorSizeType i = 0; i < n; ++i) {   \
+                (*this)[i] = _op_(*this)[i];           \
+            }                                          \
+            return std::move(*this);                   \
+        }                                              \
+        return _op_ static_cast<const Vector&>(*this); \
+    }
+
+#define define_binary_vector_element_op(_op_)                \
+    template <typename S>                                    \
+        requires arithmetic<S>                               \
+    inline Vector operator _op_(const S other) const& {      \
+        VectorSizeType size = this->size();                  \
+        Vector res = this->construct_like();                 \
+        for (VectorSizeType i = 0; i < size; ++i) {          \
+            res[i] = (*this)[i] _op_ other;                  \
+        }                                                    \
+        res.setPrecision(this->getPrecision());              \
+        return res;                                          \
+    }                                                        \
+    template <typename S>                                    \
+        requires arithmetic<S>                               \
+    inline Vector operator _op_(const S other) && {          \
+        if (owns_storage()) {                                \
+            VectorSizeType n = this->size();                 \
+            for (VectorSizeType i = 0; i < n; ++i) {         \
+                (*this)[i] = (*this)[i] _op_ other;          \
+            }                                                \
+            return std::move(*this);                         \
+        }                                                    \
         return static_cast<const Vector&>(*this) _op_ other; \
     }
 
@@ -115,13 +115,13 @@ concept arithmetic = std::integral<T> or std::floating_point<T> or orq::is_ntl_g
  * @brief Define a Vector assignment operator with a Vector, such as `a &= b`.
  *
  */
-#define define_binary_vector_assignment_op(_op_)        \
-    inline Vector& operator _op_(const Vector& other) { \
-        VectorSizeType size = this->size();             \
-        for (VectorSizeType i = 0; i < size; i++) {     \
-            (*this)[i] _op_ other[i];                   \
-        }                                               \
-        return *this;                                   \
+#define define_binary_vector_assignment_op(_op_)         \
+    inline Vector& operator _op_(const Vector & other) { \
+        VectorSizeType size = this->size();              \
+        for (VectorSizeType i = 0; i < size; i++) {      \
+            (*this)[i] _op_ other[i];                    \
+        }                                                \
+        return *this;                                    \
     }
 
 /**
@@ -724,9 +724,7 @@ class Vector {
      */
     bool has_mapping() const { return mapping != nullptr; }
 
-    bool owns_storage() const {
-        return !has_mapping() && __data && __data.use_count() == 1;
-    }
+    bool owns_storage() const { return !has_mapping() && __data && __data.use_count() == 1; }
 
     /**
      * @brief Remaps the vector to reference a subset of the original vector. Returned Vector points

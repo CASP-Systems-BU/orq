@@ -191,6 +191,7 @@ constexpr bool SKIP_MALICIOUS_CHECK_FLAG =
 #include <chrono>
 #include <climits>
 #include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <ios>
@@ -200,7 +201,6 @@ constexpr bool SKIP_MALICIOUS_CHECK_FLAG =
 #include <set>
 #include <string>
 #include <string_view>
-#include <cstdint>
 #include <vector>
 
 namespace orq {
