@@ -3,8 +3,11 @@
 # abort if any command fails
 set -e
 
-## Set up libOTe
+## Set up SecureJoin
 echo "==== Building SecureJoin..."
+
+# Resolve before the clone step, which cds into secure-join.
+script_dir=$(cd "$(dirname "$0")" && pwd)
 
 mkdir -p secure-join-install
 
@@ -19,35 +22,36 @@ fi
 case "$(uname -m)" in
     x86_64|amd64|AMD64)
         SSE_OPTION="-DENABLE_SSE=ON"
-        # secure-join adds -march=native unless this is set. On GitHub runners
-        # that faults; leave native builds alone everywhere else.
-        ARCH_OPTION=
-        if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
-            ARCH_OPTION="-DNO_ARCH_NATIVE=ON"
-        fi
         ;;
     *)
         SSE_OPTION="-DENABLE_SSE=OFF -DENABLE_AVX=OFF -DSECUREJOIN_ENABLE_SSE=OFF"
-        ARCH_OPTION=
         ;;
 esac
 
-# Use the libOTe prefix from _setup_libote.sh
+# Use the libOTe already installed by _setup_libote.sh. --noauto tells
+# SecureJoin not to clone and build another copy. The include file supplies
+# the libOTe target name its CMakeLists already links.
 libote_prefix="$(cd .. && pwd)/libOTe-install"
 if [[ ! -f "${libote_prefix}/lib/cmake/libOTe/libOTeConfig.cmake" && ! -f "${libote_prefix}/lib64/cmake/libOTe/libOTeConfig.cmake" ]]; then
     echo "libOTe install not found under ${libote_prefix}; run _setup_libote.sh first" >&2
     exit 1
 fi
 
+# SecureJoin adds -march=native unless this is set. On GitHub's x86 runners
+# that faults. Leave other machines on the project default.
+ARCH_OPTION=
+case "$(uname -m)" in
+    x86_64|amd64|AMD64)
+        if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            ARCH_OPTION="-DNO_ARCH_NATIVE=ON"
+        fi
+        ;;
+esac
+
 python3 build.py --noauto -DSODIUM_MONTGOMERY=false \
-    -DCMAKE_PREFIX_PATH="${libote_prefix}" \
+    -DLIBOTE_INSTALL_PREFIX="${libote_prefix}" \
+    -DCMAKE_PROJECT_secureJoin_INCLUDE="${script_dir}/securejoin-installed-libote.cmake" \
     --install=../secure-join-install \
     $SSE_OPTION $ARCH_OPTION
-
-install_prefix="$(cd .. && pwd)/secure-join-install"
-if [[ ! -f "${install_prefix}/lib/cmake/secureJoin/secureJoinConfig.cmake" && ! -f "${install_prefix}/lib64/cmake/secureJoin/secureJoinConfig.cmake" ]]; then
-    echo "secureJoin build did not install secureJoinConfig.cmake under ${install_prefix}" >&2
-    exit 1
-fi
 
 echo "==== SecureJoin installed"
