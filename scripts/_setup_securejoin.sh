@@ -12,11 +12,11 @@ script_dir=$(cd "$(dirname "$0")" && pwd)
 mkdir -p secure-join-install
 
 if ! cd secure-join; then
-    git clone https://github.com/CASP-Systems-BU/secure-join.git
+    git clone https://github.com/ladnir/secure-join.git
     cd secure-join
     # Latest commit from master branch
     # This file needs to change with every new commit to trigger a new build on GitHub CI
-    git checkout 98fda2e6780738926bc53c90e801c449e3ba89e8
+    git checkout 377ca63b9d8f4f6aede0d3a2e3d9078973a3ee10
 fi
 
 case "$(uname -m)" in
@@ -28,9 +28,9 @@ case "$(uname -m)" in
         ;;
 esac
 
-# Use the libOTe already installed by _setup_libote.sh. --noauto tells
-# SecureJoin not to clone and build another copy. The include file supplies
-# the libOTe target name its CMakeLists already links.
+# Link the libOTe already installed by _setup_libote.sh. --noauto is
+# SecureJoin's switch for that. FindlibOTe.cmake is what its find_package
+# call loads, and it publishes the libOTe target name SecureJoin links.
 libote_prefix="$(cd .. && pwd)/libOTe-install"
 if [[ ! -f "${libote_prefix}/lib/cmake/libOTe/libOTeConfig.cmake" && ! -f "${libote_prefix}/lib64/cmake/libOTe/libOTeConfig.cmake" ]]; then
     echo "libOTe install not found under ${libote_prefix}; run _setup_libote.sh first" >&2
@@ -48,10 +48,37 @@ case "$(uname -m)" in
         ;;
 esac
 
+# install.cmake installs a camelCase secureJoin/ header directory before the
+# secure-join/ sources. That directory is not in this checkout, and a missing
+# DIRECTORY stops the install before the headers ORQ includes are copied.
+# An empty directory satisfies the rule and copies nothing.
+mkdir -p secureJoin
+
 python3 build.py --noauto -DSODIUM_MONTGOMERY=false \
     -DLIBOTE_INSTALL_PREFIX="${libote_prefix}" \
-    -DCMAKE_PROJECT_secureJoin_INCLUDE="${script_dir}/securejoin-installed-libote.cmake" \
+    -DCMAKE_PREFIX_PATH="${libote_prefix}" \
+    -DCMAKE_MODULE_PATH="${script_dir}/cmake" \
     --install=../secure-join-install \
     $SSE_OPTION $ARCH_OPTION
+
+# build.py ignores cmake's exit status, so a failed configure still looks done.
+install_prefix="../secure-join-install"
+cfg=
+for d in "${install_prefix}/lib/cmake/secureJoin" "${install_prefix}/lib64/cmake/secureJoin"; do
+    if [[ -f "${d}/secureJoinConfig.cmake" ]]; then
+        cfg="${d}"
+    fi
+done
+header="${install_prefix}/include/secureJoin/secure-join/Prf/AltModPrf.h"
+lib_ok=0
+for d in "${install_prefix}/lib" "${install_prefix}/lib64"; do
+    if [[ -f "${d}/libsecureJoin.a" || -f "${d}/libsecureJoin.so" ]]; then
+        lib_ok=1
+    fi
+done
+if [[ -z "${cfg}" || ! -f "${header}" || "${lib_ok}" -ne 1 ]]; then
+    echo "SecureJoin install did not produce the package, library, or headers under ${install_prefix}" >&2
+    exit 1
+fi
 
 echo "==== SecureJoin installed"
