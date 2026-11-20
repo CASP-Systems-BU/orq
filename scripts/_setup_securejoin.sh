@@ -12,11 +12,12 @@ script_dir=$(cd "$(dirname "$0")" && pwd)
 mkdir -p secure-join-install
 
 if ! cd secure-join; then
-    git clone https://github.com/ladnir/secure-join.git
+    git clone https://github.com/CASP-Systems-BU/secure-join.git
     cd secure-join
     # Latest commit from master branch
     # This file needs to change with every new commit to trigger a new build on GitHub CI
-    git checkout 377ca63b9d8f4f6aede0d3a2e3d9078973a3ee10
+    # This is the version Sam fixed
+    git checkout 86ca35dc81e086e5bbee15cb4eebab770afb5971
 fi
 
 case "$(uname -m)" in
