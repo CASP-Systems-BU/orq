@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 
 project(Orq VERSION 1.0.0 LANGUAGES CXX)
 
+# Imported packages (libOTe, cryptoTools) must be the headers we found.
+# CMake otherwise marks their include directories as system, and a copy
+# under /usr/local/include is searched first.
+set(CMAKE_NO_SYSTEM_FROM_IMPORTED ON)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(OPT_LEVEL "2" CACHE STRING "Optimization level (0-3)")
@@ -120,22 +125,24 @@ set(LINK_LIBRARIES "${MPI_LIBRARIES}" "${SODIUM_LIBRARY}" "${NTL_LIBRARY}")
 
 # Add libOTe and SecureJoin for 2pc only
 if (PROTOCOL EQUAL "2" AND LINK_LIBOTE)
-    find_package(libOTe REQUIRED HINTS
+    find_package(libOTe REQUIRED NO_DEFAULT_PATH HINTS
         libOTe-install/lib/cmake/libOTe/
         libOTe-install/lib64/cmake/libOTe/
         build/libOTe-install/lib/cmake/libOTe/
         build/libOTe-install/lib64/cmake/libOTe/)
     list(APPEND LINK_LIBRARIES "oc::libOTe")
 
-    find_package(secureJoin REQUIRED HINTS
+    find_package(secureJoin REQUIRED NO_DEFAULT_PATH HINTS
         secure-join-install/lib/cmake/secureJoin/
         secure-join-install/lib64/cmake/secureJoin/
         build/secure-join-install/lib/cmake/secureJoin/
         build/secure-join-install/lib64/cmake/secureJoin/)
-    link_directories(${CMAKE_CURRENT_SOURCE_DIR}/build/secure-join-install/lib)
+    # The installed config file does not include the exported target.
+    include("${secureJoin_DIR}/secureJoinTargets.cmake")
+    get_filename_component(SECUREJOIN_PREFIX "${secureJoin_DIR}/../../.." ABSOLUTE)
 endif ()
 
-find_package(cryptoTools REQUIRED HINTS
+find_package(cryptoTools REQUIRED NO_DEFAULT_PATH HINTS
         libOTe-install/lib/cmake/cryptoTools/
         libOTe-install/lib64/cmake/cryptoTools/
         build/libOTe-install/lib/cmake/cryptoTools/
@@ -144,8 +151,10 @@ list(APPEND LINK_LIBRARIES "oc::cryptoTools")
 
 function(add_secure_join target_name)
   if(PROTOCOL EQUAL "2" AND LINK_LIBOTE)
-    target_link_libraries(${target_name} secureJoin)
-    target_include_directories(${target_name} SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/build/secure-join-install/include/secureJoin/)
+    target_link_libraries(${target_name} visa::secureJoin)
+    # Headers live at include/secureJoin/secure-join/. The exported include
+    # directory is the install prefix's include/, one level too high.
+    target_include_directories(${target_name} SYSTEM PRIVATE "${SECUREJOIN_PREFIX}/include/secureJoin")
   endif()
 endfunction()
 

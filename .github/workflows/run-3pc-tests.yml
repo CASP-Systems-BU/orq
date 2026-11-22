@@ -110,7 +110,7 @@ jobs:
         with:
           path: |
             build/secure-join-install
-          key: secrecy-securejoin-${{ hashFiles('scripts/_setup_libote.sh', 'scripts/_clone_libote.sh', 'scripts/_setup_securejoin.sh', 'scripts/cmake/FindlibOTe.cmake') }}
+          key: secrecy-securejoin-${{ hashFiles('scripts/_setup_libote.sh', 'scripts/_clone_libote.sh', 'scripts/_setup_securejoin.sh', 'scripts/cmake/securejoin-libote.cmake') }}
 
       # cache miss, so install from scratch
       - if: ${{ steps.cache-securejoin.outputs.cache-hit != 'true' }}
